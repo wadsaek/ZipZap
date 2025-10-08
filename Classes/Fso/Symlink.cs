@@ -1,6 +1,9 @@
 namespace ZipZap.Classes;
 
 sealed public class Symlink : Fso {
+    public Symlink() {
+        Target = null!;
+    }
     public Symlink(
         FsoId id,
         string name,

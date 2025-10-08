@@ -1,4 +1,4 @@
-namespace ZipZap.FileService.Helpers;
+namespace ZipZap.Classes.Helpers;
 
 using System;
 

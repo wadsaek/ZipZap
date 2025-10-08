@@ -3,7 +3,7 @@ using System.Security.Cryptography;
 
 namespace ZipZap.Classes;
 
-public class User {
+public class User : IEntity<UserId> {
     public User(
         UserId id,
         string username,

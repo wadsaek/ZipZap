@@ -1,6 +1,6 @@
 using System;
 
-namespace ZipZap.FileService.Helpers;
+namespace ZipZap.Classes.Helpers;
 
 public class InvalidEnumVariantException : Exception {
     public InvalidEnumVariantException() {

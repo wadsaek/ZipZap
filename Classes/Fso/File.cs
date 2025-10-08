@@ -1,6 +1,12 @@
 namespace ZipZap.Classes;
 
 sealed public class File : Fso {
+
+    public File() {
+        Permissions = default;
+        PhysicalPath = null!;
+    }
+
     public File(
         FsoId id,
         string name,
@@ -8,10 +14,10 @@ sealed public class File : Fso {
         string dataPath,
         FilePermissions permissions
         ) : base(id, name, data) {
-        DataPath = dataPath;
+        PhysicalPath = dataPath;
         Permissions = permissions;
     }
 
-    public string DataPath { get; set; }
+    public string PhysicalPath { get; set; }
     public FilePermissions Permissions { get; set; }
 }

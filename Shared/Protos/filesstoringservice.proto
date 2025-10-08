@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+option csharp_namespace = "ZipZap.FileService.Services";
+
+import "fsotypes.proto";
+import "emptyrequest.proto";
+
+message SaveFileRequest {
+  string name = 1;
+  string parentId = 2;
+  bytes content = 3;
+}
+message SaveFileResponse{
+  string fileId = 1;
+}
+
+message GetFsoRequest{
+  string fsoId = 1;
+}
+
+message GetFsoResponse{
+  FsoSharedData data = 1;
+  oneof specificData {
+    FileData fileData = 2;
+    DirectoryData directoryData = 3;
+    SymlinkData symlinkData = 4;
+  }
+}
+
+message GetRootRequest {
+}
+message GetRootResponse {
+  FsoSharedData data = 1;
+  DirectoryData directoryData = 2;
+}
+
+message DeleteFsoRequest{
+  string fsoId = 1;
+}
+
+message ReplaceFsoRequest{
+  string locationId = 1;
+  bytes content = 2;
+}
+
+message ExistsOwnerIdRequest{
+  string ownerId = 1;
+}
+
+message ExistsOwnerIdResponse{
+  bool exists = 1;
+}
+
+service FilesStoringService {
+  rpc SaveFile(SaveFileRequest) returns (SaveFileResponse);
+  rpc GetFso(GetFsoRequest) returns (GetFsoResponse);
+  rpc GetRoot(GetRootRequest) returns (GetRootResponse);
+  rpc DeleteFso(DeleteFsoRequest) returns (EmptyMessage);
+  rpc RemoveFrenchLanguagePack(EmptyMessage) returns (EmptyMessage);
+  rpc ReplaceFso(ReplaceFsoRequest) returns (EmptyMessage);
+  rpc ExistsOwnerId(ExistsOwnerIdRequest) returns (ExistsOwnerIdResponse);
+}

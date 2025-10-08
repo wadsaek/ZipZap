@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+option csharp_namespace = "ZipZap.FileService.Services";
+
+enum FileType {
+  REGULAR_FILE = 0;
+  DIRECTORY = 1;
+  SYMLINK = 2;
+}
+
+message FileData {
+  bytes content = 1;
+}
+
+message DirectoryData {
+  map<string, FsoSharedData> entries = 1;
+}
+
+message SymlinkData {
+  string target = 1;
+}
+
+message FsoSharedData {
+  string name = 1;
+  string rootId = 2;
+  int32 permissions = 3;
+  string owner = 4;
+  string group = 5;
+}

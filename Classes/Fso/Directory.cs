@@ -1,6 +1,9 @@
 namespace ZipZap.Classes;
 
 sealed public class Directory : Fso {
+    public Directory() {
+        Permissions = default;
+    }
 
     public Directory(
         FsoId id,

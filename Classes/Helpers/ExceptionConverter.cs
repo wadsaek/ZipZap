@@ -1,6 +1,6 @@
 using System;
 
-namespace ZipZap.FileService.Helpers;
+namespace ZipZap.Classes.Helpers;
 
 public abstract class ExceptionConverter<Err> {
     public abstract Err Convert(Exception e);

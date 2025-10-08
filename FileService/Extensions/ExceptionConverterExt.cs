@@ -1,9 +1,10 @@
 using System;
-using ZipZap.FileService.Helpers;
-
+using ZipZap.Classes.Helpers;
 namespace ZipZap.FileService.Extensions;
 
 public static class ExceptionConverterExt {
-    public static ChainedExceptionConverter<E> After<E>(this ExceptionConverter<E> converter, Func<Exception, Option<E>> selector)
-        => new ChainedExceptionConverter<E>(selector, converter);
+    extension<E>(ExceptionConverter<E> converter) {
+        public ChainedExceptionConverter<E> After(Func<Exception, Option<E>> selector)
+        => new(selector, converter);
+    }
 }

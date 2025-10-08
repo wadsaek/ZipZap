@@ -1,13 +1,20 @@
+using ZipZap.Classes.Helpers;
+
 namespace ZipZap.Classes;
 public class FsData {
-    public FsData(Directory? virtualLocation, int fsoOwner, int fsoGroup) {
+    internal FsData() {
+        VirtualLocation = null!;
+        FsoOwner = null!;
+        FsoGroup = null!;
+    }
+    public FsData(Option<Directory> virtualLocation, string fsoOwner, string fsoGroup) {
         VirtualLocation = virtualLocation;
         FsoOwner = fsoOwner;
         FsoGroup = fsoGroup;
     }
 
-    public Directory? VirtualLocation { get; set; }
+    public Option<Directory> VirtualLocation { get; set; }
 
-    public int FsoOwner { get; set; }
-    public int FsoGroup { get; set; }
+    public string FsoOwner { get; set; }
+    public string FsoGroup { get; set; }
 }
