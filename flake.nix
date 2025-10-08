@@ -1,7 +1,7 @@
 {
   inputs = {
     flake-utils.url = "github:numtide/flake-utils";
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable-small";
   };
 
   outputs =
@@ -21,8 +21,7 @@
           }
         );
         dotnet = pkgs.dotnetCorePackages.combinePackages [
-          pkgs.dotnetCorePackages.dotnet_9.sdk
-          pkgs.dotnetCorePackages.dotnet_8.sdk
+          pkgs.dotnetCorePackages.dotnet_10.sdk
         ];
       in
       {
@@ -39,7 +38,7 @@
             dotnet
           ];
           # inputsFrom = [ self.packages.${system}.default ];
-          DOTNET_ROOT = "${pkgs.dotnetCorePackages.sdk_9_0_1xx}/share/dotnet";
+          DOTNET_ROOT = "${pkgs.dotnetCorePackages.sdk_10_0_1xx}/share/dotnet";
         };
       }
     );
