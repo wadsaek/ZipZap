@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 
 namespace ZipZap.FileService.Helpers;
 
-public interface InterfaceIO{
+public interface InterfaceIO {
     public Task WriteAsync(string path, Stream content);
     public Task<byte[]> ReadAsync(string path);
     public Task RemoveAsync(string path);

@@ -11,12 +11,10 @@ namespace ZipZap.FileService.Helpers;
 
 using static Assertions;
 
-public class IO : InterfaceIO
-{
+public class IO : InterfaceIO {
     private readonly IConfiguration _config;
     private readonly ILogger<IO> _logger;
-    public IO(IConfiguration config, ILogger<IO> logger)
-    {
+    public IO(IConfiguration config, ILogger<IO> logger) {
         _config = config;
         _logger = logger;
 
@@ -40,8 +38,7 @@ public class IO : InterfaceIO
     private string GetFullPath(string fileName)
         => Path.Combine(_config.BaseFilePath, fileName);
 
-    public async Task<byte[]> ReadAsync(string fileName)
-    {
+    public async Task<byte[]> ReadAsync(string fileName) {
         AssertPath(fileName);
 
         fileName = GetFullPath(fileName);
@@ -52,8 +49,7 @@ public class IO : InterfaceIO
         return contents;
     }
 
-    public async Task WriteAsync(string fileName, Stream content)
-    {
+    public async Task WriteAsync(string fileName, Stream content) {
         AssertPath(fileName);
         var fullPath = GetFullPath(fileName);
 
@@ -70,8 +66,7 @@ public class IO : InterfaceIO
         mut.ReleaseMutex();
     }
 
-    public Task RemoveAsync(string fileName)
-    {
+    public Task RemoveAsync(string fileName) {
         AssertPath(fileName);
 
         var fullPath = GetFullPath(fileName);
@@ -89,8 +84,7 @@ public class IO : InterfaceIO
             filenames.Select(
                 f => Task.Run(async () => await RemoveAsync(f))));
 
-    public Task CopyAsync(string oldPath, string newPath)
-    {
+    public Task CopyAsync(string oldPath, string newPath) {
         AssertPath(oldPath); AssertPath(newPath);
         var (fullOldPath, fullNewPath) = (GetFullPath(oldPath), GetFullPath(newPath));
 

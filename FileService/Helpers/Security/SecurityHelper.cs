@@ -5,10 +5,8 @@ namespace ZipZap.FileService.Helpers;
 
 using static Assertions;
 
-public class SecurityHelper : ISecurityHelper
-{
-    public string GenerateString(int length, Func<char, bool> isValidChar)
-    {
+public class SecurityHelper : ISecurityHelper {
+    public string GenerateString(int length, Func<char, bool> isValidChar) {
         Assert(isValidChar('_'), ("the byte value of `_` has to be a valid byte"));
 
         var rnd = new Random();
