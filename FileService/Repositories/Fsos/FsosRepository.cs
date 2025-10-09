@@ -77,7 +77,7 @@ public class FsosRepository : IFsosRepository {
                 name: fsoName,
                 target: linkRef!
             ),
-            _ => throw new InvalidEnumVariantException()
+            _ => throw new InvalidEnumVariantException(nameof(fsoType))
         };
     }
 
@@ -242,8 +242,7 @@ public class FsosRepository : IFsosRepository {
                 await Get(Some("fsos.id = $1"), Some("LIMIT 1"),
                     Some<Action<NpgsqlCommand>>(cmd => cmd.Parameters.Add(new NpgsqlParameter<Guid> { Value = id.Id })))
                 )
-            .Select(a => a.FirstOrDefault())
-            .SelectMany<Fso?, Fso>(fso => fso is null ? None<Fso>() : Some(fso));
+            .SelectMany<IEnumerable<Fso>, Fso>(a => a.FirstOrDefault());
 
     public async Task<Result<Unit, DbError>> DeleteAsync(FsoId id, CancellationToken token = default) {
         await using var _disp = await _conn.OpenAsyncDisposable();
