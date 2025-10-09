@@ -1,3 +1,4 @@
+using System.Threading;
 using System.Threading.Tasks;
 using Npgsql;
 
@@ -9,8 +10,8 @@ public static class NpgsqlDataReaderExt {
         where T : class =>
             reader.IsDBNull(ordinal) ? reader.GetFieldValue<T>(ordinal) : null;
 
-        public async Task<T?> GetNullableFieldValueAsync<T>(int ordinal)
+        public async Task<T?> GetNullableFieldValueAsync<T>(int ordinal, CancellationToken token = default)
         where T : class =>
-            await reader.IsDBNullAsync(ordinal) ? null : await reader.GetFieldValueAsync<T>(ordinal);
+            await reader.IsDBNullAsync(ordinal) ? null : await reader.GetFieldValueAsync<T>(ordinal,token);
     }
 }

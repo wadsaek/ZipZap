@@ -14,6 +14,7 @@ using System.Text;
 using static ZipZap.Classes.Helpers.OptionExt;
 using Directory = ZipZap.Classes.Directory;
 using File = ZipZap.Classes.File;
+using static ZipZap.FileService.Helpers.Assertions;
 
 namespace ZipZap.FileService.Repositories;
 
@@ -264,4 +265,26 @@ public class FsosRepository : IFsosRepository {
         return new Ok<int, DbError>(result);
     }
 
+    public async Task<Option<Directory>> GetRootDirectory(FsoId id, CancellationToken token = default) {
+        var fsos = await Get(None<string>(), None<string>(), Some<Action<NpgsqlCommand>>(cmd => {
+            cmd.CommandText = $"""
+            WITH RECURSIVE ctename AS (
+                    SELECT f.id, f.fso_name,f.virtual_location_id,
+                    0 AS level
+                    FROM fsos f 
+                    WHERE f.id = $1
+                    UNION ALL
+                    SELECT f.id, f.fso_name, f.virtual_location_id ,
+                    ctename.level + 1
+                    FROM fsos f
+                    JOIN ctename ON f.id = ctename.virtual_location_id
+                    )
+            SELECT {sqlFieldsInOrder} FROM ctename as fsos order by level desc limit 1;
+        """;
+            cmd.Parameters.Add(new NpgsqlParameter { Value = id.Id });
+        }));
+        var directory = fsos.FirstOrDefault();
+        Assert(directory is Directory or null);
+        return directory as Directory;
+    }
 }
