@@ -26,71 +26,83 @@ public class FsosRepository : IFsosRepository {
         _converter = converter;
     }
 
-    private async Task<IEnumerable<Fso>> Get(Option<string> condition, Option<string> postCondition, Option<Action<NpgsqlCommand>> commandCallback, CancellationToken token = default) {
+    private static readonly string sqlFieldsInOrder = """
+        fsos.id, fsos.fso_name,
+        fsos.virtual_location_id, fsos.permissions,
+        fsos.fso_owner, fsos.fso_group,
+        fsos.fso_type,
+        fsos.link_ref, fsos.file_physical_path
+
+        """;
+    private async Task<Fso> ParseFsoPresumingFieldOrderAsync(NpgsqlDataReader reader, CancellationToken token = default) {
+        var id = await reader.GetFieldValueAsync<Guid>(0, token);
+        var fsoName = await reader.GetFieldValueAsync<string>(1, token);
+        var virtualLocationId = await reader.GetFieldValueAsync<Guid?>(2, token);
+        var permissions = await reader.GetFieldValueAsync<BitArray>(3, token);
+        var fsoOwner = await reader.GetFieldValueAsync<string>(4, token);
+        var fsoGroup = await reader.GetFieldValueAsync<string>(5, token);
+        var fsoType = await reader.GetFieldValueAsync<FsoType>(6, token);
+        var linkRef = await reader.GetNullableFieldValueAsync<string>(7, token);
+        var filePhysicalPath = await reader.GetNullableFieldValueAsync<string>(8, token);
+        return fsoType switch {
+            FsoType.RegularFile => new File(
+                id: new FsoId(id),
+                data: new FsData(
+                    virtualLocation: virtualLocationId.ToOption().Select(id => new Directory() { Id = new(id) }),
+                    fsoOwner,
+                    fsoGroup
+                ),
+                name: fsoName,
+                dataPath: filePhysicalPath!,
+                permissions: FilePermissions.FromBitArray(permissions)
+            ),
+            FsoType.Directory => new Directory(
+                id: new FsoId(id),
+                data: new FsData(
+                    virtualLocation: virtualLocationId.ToOption().Select(id => new Directory() { Id = new(id) }),
+
+                    fsoOwner,
+                    fsoGroup
+                ),
+                name: fsoName,
+                permissions: DirectoryPermissions.FromBitArray(permissions)
+            ),
+            FsoType.Symlink => new Symlink(
+                id: new FsoId(id),
+                data: new FsData(
+                    virtualLocation: virtualLocationId.ToOption().Select(id => new Directory() { Id = new(id) }),
+                    fsoOwner,
+                    fsoGroup
+                ),
+                name: fsoName,
+                target: linkRef!
+            ),
+            _ => throw new InvalidEnumVariantException()
+        };
+    }
+
+    private NpgsqlCommand BuildCommand(Option<Action<NpgsqlCommand>> commandCallback, Option<string> condition, Option<string> postCondition) {
         var cmdBuilder = new StringBuilder();
-        cmdBuilder.AppendLine("""
-                SELECT fsos.id, fsos.fso_name,
-                fsos.virtual_location_id, fsos.permissions,
-                fsos.fso_owner, fsos.fso_group,
-                fsos.fso_type,
-                fsos.link_ref, fsos.file_physical_path
-                FROM fsos
-                """);
+        cmdBuilder.AppendLine($"SELECT {sqlFieldsInOrder} FROM fsos ");
         condition.Select(condition => cmdBuilder.AppendLine($"WHERE {condition}"));
         postCondition.Select(cmdBuilder.AppendLine);
         cmdBuilder.Append(';');
 
         var cmdText = cmdBuilder.ToString();
-        await using var cmd = _conn.CreateCommand(cmdText);
+        var cmd = _conn.CreateCommand(cmdText);
         commandCallback.Select(callback => { callback(cmd); return new Unit(); });
+        return cmd;
+    }
+    private async Task<IEnumerable<Fso>> Get(
+            Option<string> condition, Option<string> postCondition,
+            Option<Action<NpgsqlCommand>> commandCallback, CancellationToken token = default
+        ) {
+        await using var cmd = BuildCommand(commandCallback, condition, postCondition);
         await using var _disposable = await _conn.OpenAsyncDisposable();
         await using var reader = await cmd.ExecuteReaderAsync(token);
         var fsos = new Dictionary<FsoId, Fso>();
         while (await reader.ReadAsync(token)) {
-            var id = await reader.GetFieldValueAsync<Guid>(0);
-            var fsoName = await reader.GetFieldValueAsync<string>(1);
-            var virtualLocationId = await reader.GetFieldValueAsync<Guid?>(2);
-            var permissions = await reader.GetFieldValueAsync<BitArray>(3);
-            var fsoOwner = await reader.GetFieldValueAsync<string>(4);
-            var fsoGroup = await reader.GetFieldValueAsync<string>(5);
-            var fsoType = await reader.GetFieldValueAsync<FsoType>(6);
-            var linkRef = await reader.GetNullableFieldValueAsync<string>(7);
-            var filePhysicalPath = await reader.GetNullableFieldValueAsync<string>(8);
-            Fso fso = fsoType switch {
-                FsoType.RegularFile => new File(
-                    id: new FsoId(id),
-                    data: new FsData(
-                        virtualLocation: virtualLocationId.ToOption().Select(id => new Directory() { Id = new(id) }),
-                        fsoOwner,
-                        fsoGroup
-                    ),
-                    name: fsoName,
-                    dataPath: filePhysicalPath!,
-                    permissions: FilePermissions.FromBitArray(permissions)
-                ),
-                FsoType.Directory => new Directory(
-                    id: new FsoId(id),
-                    data: new FsData(
-                        virtualLocation: virtualLocationId.ToOption().Select(id => new Directory() { Id = new(id) }),
-
-                        fsoOwner,
-                        fsoGroup
-                    ),
-                    name: fsoName,
-                    permissions: DirectoryPermissions.FromBitArray(permissions)
-                ),
-                FsoType.Symlink => new Symlink(
-                    id: new FsoId(id),
-                    data: new FsData(
-                        virtualLocation: virtualLocationId.ToOption().Select(id => new Directory() { Id = new(id) }),
-                        fsoOwner,
-                        fsoGroup
-                    ),
-                    name: fsoName,
-                    target: linkRef!
-                ),
-                _ => throw new InvalidEnumVariantException()
-            };
+            var fso = await ParseFsoPresumingFieldOrderAsync(reader, token);
             fsos.Add(fso.Id, fso);
         }
         foreach ((_, var fso) in fsos) {
@@ -137,7 +149,7 @@ public class FsosRepository : IFsosRepository {
         cmd.Parameters.Add(new NpgsqlParameter<string?> { Value = (createEntity as File)?.PhysicalPath });
     }
     public async Task<Result<Unit, DbError>> CreateAsync(Fso createEntity, CancellationToken token = default) {
-        var cmd = _conn.CreateCommand("""
+        await using var cmd = _conn.CreateCommand("""
                 INSERT INTO fsos
                 (fso_name, virtual_location_id,
                 permssions, fso_owner, fso_group, fso_type,
@@ -168,7 +180,7 @@ public class FsosRepository : IFsosRepository {
 
                 """
                 );
-        var cmd = _conn.CreateCommand();
+        await using var cmd = _conn.CreateCommand();
         foreach ((var i, var fso) in entityList.Index()) {
             var offset = i * 8;
             cmdBuilder.AppendFormat("""
@@ -206,7 +218,7 @@ public class FsosRepository : IFsosRepository {
 
         await using var _disp = await _conn.OpenAsyncDisposable();
         await using var transaction = await _conn.BeginTransactionAsync();
-        var cmd = _conn.CreateCommand("""
+        await using var cmd = _conn.CreateCommand("""
                 UPDATE fsos
                 fso_name=$1,
                 virtual_location_id=$2,
@@ -252,14 +264,14 @@ public class FsosRepository : IFsosRepository {
         cmdBuilder.Append("WHERE fsos.id IN (");
         List<NpgsqlParameter> parameters = [];
         foreach ((var i, var fsoId) in ids.Index()) {
-            cmdBuilder.Append($"${i+1}, ");
-            parameters.Add(new NpgsqlParameter{ Value = fsoId.Id });
+            cmdBuilder.Append($"${i + 1}, ");
+            parameters.Add(new NpgsqlParameter { Value = fsoId.Id });
 
         }
         var len = cmdBuilder.Length;
         cmdBuilder.Remove(len - 2, 2);
         cmdBuilder.Append(");");
-        var cmd = _conn.CreateCommand(cmdBuilder.ToString());
+        await using var cmd = _conn.CreateCommand(cmdBuilder.ToString());
         cmd.Parameters.AddRange(parameters.ToArray());
         int result = await cmd.ExecuteNonQueryAsync(token);
         return new Ok<int, DbError>(result);
