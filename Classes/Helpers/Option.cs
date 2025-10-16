@@ -9,7 +9,7 @@ public abstract record Option<T> {
     public static implicit operator Option<T>(T? t) =>
             t is null
             ? None<T>()
-            : Some<T>(t);
+            : Some(t);
     public static implicit operator T?(Option<T> option) => option switch {
         Some<T>(T Data) => Data,
         None<T> => default,
@@ -25,10 +25,10 @@ public sealed record Some<T>(T Data) : Option<T> {
 
 public static class OptionExt {
     extension<T>(Option<T> option) {
-        public static Some<T> Some(T arg) {
+        public static Option<T> Some(T arg) {
             return new Some<T>(arg);
         }
-        public static None<T> None() {
+        public static Option<T> None() {
             return new None<T>();
         }
         public T UnwrapOr(T fallback) => option switch {
@@ -66,12 +66,12 @@ public static class OptionExt {
         public Option<T> ToOption() =>
             t is null
             ? None<T>()
-            : Some<T>(t);
+            : Some(t);
     }
     extension<T>(T? t) where T : struct {
         public Option<T> ToOption() =>
             t is null
             ? None<T>()
-            : Some<T>((T)t);
+            : Some((T)t);
     }
 }
