@@ -25,4 +25,4 @@ public class User : IEntity<UserId> {
     public Directory Root { get; set; }
 }
 
-public record struct UserId(Guid id);
+public record struct UserId(Guid Id);

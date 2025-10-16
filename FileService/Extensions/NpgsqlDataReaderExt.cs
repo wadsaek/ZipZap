@@ -12,6 +12,6 @@ public static class NpgsqlDataReaderExt {
 
         public async Task<T?> GetNullableFieldValueAsync<T>(int ordinal, CancellationToken token = default)
         where T : class =>
-            await reader.IsDBNullAsync(ordinal) ? null : await reader.GetFieldValueAsync<T>(ordinal,token);
+            await reader.IsDBNullAsync(ordinal) ? null : await reader.GetFieldValueAsync<T>(ordinal, token);
     }
 }
