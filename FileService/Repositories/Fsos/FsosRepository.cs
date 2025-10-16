@@ -19,61 +19,18 @@ using static ZipZap.Classes.Helpers.Assertions;
 namespace ZipZap.FileService.Repositories;
 
 public class FsosRepository : IFsosRepository {
+    private readonly IEntityHelper<Fso> _fsoHelper;
     private readonly NpgsqlConnection _conn;
     private readonly ExceptionConverter<DbError> _converter;
-    public FsosRepository(NpgsqlConnection conn, ExceptionConverter<DbError> converter) {
+    public FsosRepository(IEntityHelper<Fso> fsoHelper, NpgsqlConnection conn, ExceptionConverter<DbError> converter) {
+        _fsoHelper = fsoHelper;
         _conn = conn;
         _converter = converter;
     }
 
-    private static readonly string sqlFieldsInOrder = """
-        fsos.id, fsos.fso_name,
-        fsos.virtual_location_id, fsos.permissions,
-        fsos.fso_owner, fsos.fso_group,
-        fsos.fso_type,
-        fsos.link_ref, fsos.file_physical_path
-        """;
-    private async Task<Fso> ParseFsoPresumingFieldOrderAsync(NpgsqlDataReader reader, CancellationToken token = default) {
-        var id = await reader.GetFieldValueAsync<Guid>(0, token);
-        var name = await reader.GetFieldValueAsync<string>(1, token);
-        var virtualLocationId = await reader.GetFieldValueAsync<Guid?>(2, token);
-        var permissions = await reader.GetFieldValueAsync<BitArray>(3, token);
-        var fsoOwner = await reader.GetFieldValueAsync<int>(4, token);
-        var fsoGroup = await reader.GetFieldValueAsync<int>(5, token);
-        var fsoType = await reader.GetFieldValueAsync<FsoType>(6, token);
-        var linkRef = await reader.GetNullableFieldValueAsync<string>(7, token);
-        var filePhysicalPath = await reader.GetNullableFieldValueAsync<string>(8, token);
-        var data = new FsData(
-                                virtualLocation: virtualLocationId
-                                    .ToOption()
-                                    .Select(id => new Directory() { Id = new(id) }),
-                                name,
-                                fsoOwner,
-                                fsoGroup,
-                                Permissions.FromBitArray(permissions)
-                                );
-        return fsoType switch {
-            FsoType.RegularFile => new File(
-                id: new FsoId(id),
-                data: data,
-                dataPath: filePhysicalPath!
-            ),
-            FsoType.Directory => new Directory(
-                id: new FsoId(id),
-                data: data
-            ),
-            FsoType.Symlink => new Symlink(
-                id: new FsoId(id),
-                data: data,
-                target: linkRef!
-            ),
-            _ => throw new InvalidEnumVariantException(nameof(fsoType))
-        };
-    }
-
     private NpgsqlCommand BuildCommand(Option<Action<NpgsqlCommand>> commandCallback, Option<string> condition, Option<string> postCondition) {
         var cmdBuilder = new StringBuilder();
-        cmdBuilder.AppendLine($"SELECT {sqlFieldsInOrder} FROM fsos ");
+        cmdBuilder.AppendLine($"SELECT {_fsoHelper.SqlFieldsInOrder} FROM fsos ");
         condition.Select(condition => cmdBuilder.AppendLine($"WHERE {condition}"));
         postCondition.Select(cmdBuilder.AppendLine);
         cmdBuilder.Append(';');
@@ -92,7 +49,7 @@ public class FsosRepository : IFsosRepository {
         await using var reader = await cmd.ExecuteReaderAsync(token);
         var fsos = new Dictionary<FsoId, Fso>();
         while (await reader.ReadAsync(token)) {
-            var fso = await ParseFsoPresumingFieldOrderAsync(reader, token);
+            var fso = await _fsoHelper.Parse(reader, token);
             fsos.Add(fso.Id, fso);
         }
         foreach ((_, var fso) in fsos) {
@@ -103,6 +60,7 @@ public class FsosRepository : IFsosRepository {
 
         return fsos.Values;
     }
+
     public async Task<IEnumerable<Fso>> GetAll(CancellationToken token = default)
         => await Get(None<string>(), None<string>(), None<Action<NpgsqlCommand>>(), token);
 
@@ -180,6 +138,7 @@ public class FsosRepository : IFsosRepository {
                     );
             FillFsoParameters(cmd, fso);
         }
+        cmdBuilder.Remove(cmdBuilder.Length - 2, 2);
         cmdBuilder.AppendLine("RETURNING id;");
         cmd.CommandText = cmdBuilder.ToString();
         await using var _ = await _conn.OpenAsyncDisposable();
@@ -226,7 +185,7 @@ public class FsosRepository : IFsosRepository {
     public async Task<Option<Fso>> GetByIdAsync(FsoId id, CancellationToken token = default)
         =>
             (await Get("fsos.id = $1", "LIMIT 1",
-                (Action<NpgsqlCommand>)(cmd => cmd.Parameters.Add(new NpgsqlParameter<Guid> { Value = id.Id }))))
+                Some<Action<NpgsqlCommand>>(cmd => cmd.Parameters.Add(new NpgsqlParameter<Guid> { Value = id.Id }))))
             .FirstOrDefault();
 
     public async Task<Result<Unit, DbError>> DeleteAsync(FsoId id, CancellationToken token = default) {
@@ -265,17 +224,17 @@ public class FsosRepository : IFsosRepository {
         var fsos = await Get(None<string>(), None<string>(), Some<Action<NpgsqlCommand>>(cmd => {
             cmd.CommandText = $"""
             WITH RECURSIVE ctename AS (
-                    SELECT f.id, f.fso_name,f.virtual_location_id,
+                    SELECT {_fsoHelper.SqlFieldsInOrder},
                     0 AS level
-                    FROM fsos f 
+                    FROM fsos 
                     WHERE f.id = $1
                     UNION ALL
-                    SELECT f.id, f.fso_name, f.virtual_location_id ,
+                    SELECT {_fsoHelper.SqlFieldsInOrder},
                     ctename.level + 1
-                    FROM fsos f
+                    FROM fsos
                     JOIN ctename ON f.id = ctename.virtual_location_id
                     )
-            SELECT {sqlFieldsInOrder} FROM ctename as fsos order by level desc limit 1;
+            SELECT {_fsoHelper.SqlFieldsInOrder} FROM ctename as fsos order by level desc limit 1;
         """;
             cmd.Parameters.Add(new NpgsqlParameter { Value = id.Id });
         }));

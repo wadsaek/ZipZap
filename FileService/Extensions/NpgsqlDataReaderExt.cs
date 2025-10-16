@@ -1,5 +1,6 @@
 using System.Threading;
 using System.Threading.Tasks;
+using System.Data;
 using Npgsql;
 
 namespace ZipZap.FileService.Extensions;
@@ -13,5 +14,13 @@ public static class NpgsqlDataReaderExt {
         public async Task<T?> GetNullableFieldValueAsync<T>(int ordinal, CancellationToken token = default)
         where T : class =>
             await reader.IsDBNullAsync(ordinal) ? null : await reader.GetFieldValueAsync<T>(ordinal, token);
+
+        public T? GetNullableFieldValue<T>(string name)
+        where T : class =>
+            reader.IsDBNull(name) ? reader.GetFieldValue<T>(name) : null;
+
+        public async Task<T?> GetNullableFieldValueAsync<T>(string name, CancellationToken token = default)
+        where T : class =>
+            await reader.IsDBNullAsync(name) ? null : await reader.GetFieldValueAsync<T>(name, token);
     }
 }

@@ -63,6 +63,7 @@ public class Program {
         builder.Services.AddScoped<ISecurityHelper, SecurityHelper>();
         builder.Services.AddSingleton<ExceptionConverter<DbError>>(new SimpleExceptionConverter<DbError>(err => new DbError()));
         builder.Services.AddScoped<IFsosRepository, FsosRepository>();
+        builder.Services.AddScoped<IEntityHelper<Fso>, FsoHelper>();
 
         var app = builder.Build();
         app.MapGrpcService<FilesStoringServiceImpl>();
