@@ -98,8 +98,18 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         await _fsosRepo.DeleteAsync(fso);
         return new EmptyMessage { };
     }
-    public override Task<SaveFileResponse> SaveFile(SaveFileRequest request, ServerCallContext context){
-        return base.SaveFile(request,context);
+
+    public override async Task<SaveFileResponse> SaveFile(SaveFileRequest request, ServerCallContext context) {
+        var user = await GetUserOrThrowAsync(context);
+        var parentDir = await GetFsoOrFailAsync(request.ParentId, user, fso => fso is Directory, context.CancellationToken) as Directory;
+        var path = await GenerateValidPathAsync();
+        var file = new File(default, new FsData(parentDir!, request.Name, 1000, 100, Permissions.FileDefault), path);
+        var createResult = await _fsosRepo.CreateAsync(file);
+        if (createResult is Err<Unit, DbError>)
+            throw new RpcException(new(StatusCode.Internal, "failed to create file in db"));
+        await _io.WriteAsync(path, new MemoryStream(request.Content.ToByteArray()));
+        return new SaveFileResponse() { FileId = file.Id.Id.ToString() };
+    }
 
     public override async Task<GetRootResponse> GetRoot(GetRootRequest request, ServerCallContext context) {
         var user = await GetUserOrThrowAsync(context);
