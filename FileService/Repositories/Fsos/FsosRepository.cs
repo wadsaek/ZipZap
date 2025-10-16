@@ -205,7 +205,7 @@ public class FsosRepository : IFsosRepository {
         await using var _disp = await _conn.OpenAsyncDisposable();
         await using var transaction = await _conn.BeginTransactionAsync();
         await using var cmd = _conn.CreateCommand("""
-                UPDATE fsos
+                UPDATE fsos SET
                 fso_name=$1,
                 virtual_location_id=$2,
                 permssions=$3,
@@ -224,11 +224,10 @@ public class FsosRepository : IFsosRepository {
     }
 
     public async Task<Option<Fso>> GetByIdAsync(FsoId id, CancellationToken token = default)
-        => Some(
-                await Get(Some("fsos.id = $1"), Some("LIMIT 1"),
-                    Some<Action<NpgsqlCommand>>(cmd => cmd.Parameters.Add(new NpgsqlParameter<Guid> { Value = id.Id })))
-                )
-            .SelectMany<IEnumerable<Fso>, Fso>(a => a.FirstOrDefault());
+        =>
+            (await Get("fsos.id = $1", "LIMIT 1",
+                (Action<NpgsqlCommand>)(cmd => cmd.Parameters.Add(new NpgsqlParameter<Guid> { Value = id.Id }))))
+            .FirstOrDefault();
 
     public async Task<Result<Unit, DbError>> DeleteAsync(FsoId id, CancellationToken token = default) {
         await using var _disp = await _conn.OpenAsyncDisposable();
