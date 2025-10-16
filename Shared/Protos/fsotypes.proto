@@ -24,6 +24,6 @@ message FsoSharedData {
   string name = 1;
   string rootId = 2;
   int32 permissions = 3;
-  string owner = 4;
-  string group = 5;
+  int32 owner = 6;
+  int32 group = 7;
 }

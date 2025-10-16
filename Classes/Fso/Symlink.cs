@@ -6,10 +6,9 @@ sealed public class Symlink : Fso {
     }
     public Symlink(
         FsoId id,
-        string name,
         FsData data,
         string target
-        ) : base(id, name, data) {
+        ) : base(id, data) {
         Target = target;
     }
 

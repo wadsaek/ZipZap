@@ -32,49 +32,39 @@ public class FsosRepository : IFsosRepository {
         fsos.fso_owner, fsos.fso_group,
         fsos.fso_type,
         fsos.link_ref, fsos.file_physical_path
-
         """;
     private async Task<Fso> ParseFsoPresumingFieldOrderAsync(NpgsqlDataReader reader, CancellationToken token = default) {
         var id = await reader.GetFieldValueAsync<Guid>(0, token);
-        var fsoName = await reader.GetFieldValueAsync<string>(1, token);
+        var name = await reader.GetFieldValueAsync<string>(1, token);
         var virtualLocationId = await reader.GetFieldValueAsync<Guid?>(2, token);
         var permissions = await reader.GetFieldValueAsync<BitArray>(3, token);
-        var fsoOwner = await reader.GetFieldValueAsync<string>(4, token);
-        var fsoGroup = await reader.GetFieldValueAsync<string>(5, token);
+        var fsoOwner = await reader.GetFieldValueAsync<int>(4, token);
+        var fsoGroup = await reader.GetFieldValueAsync<int>(5, token);
         var fsoType = await reader.GetFieldValueAsync<FsoType>(6, token);
         var linkRef = await reader.GetNullableFieldValueAsync<string>(7, token);
         var filePhysicalPath = await reader.GetNullableFieldValueAsync<string>(8, token);
+        var data = new FsData(
+                                virtualLocation: virtualLocationId
+                                    .ToOption()
+                                    .Select(id => new Directory() { Id = new(id) }),
+                                name,
+                                fsoOwner,
+                                fsoGroup,
+                                Permissions.FromBitArray(permissions)
+                                );
         return fsoType switch {
             FsoType.RegularFile => new File(
                 id: new FsoId(id),
-                data: new FsData(
-                    virtualLocation: virtualLocationId.ToOption().Select(id => new Directory() { Id = new(id) }),
-                    fsoOwner,
-                    fsoGroup
-                ),
-                name: fsoName,
-                dataPath: filePhysicalPath!,
-                permissions: FilePermissions.FromBitArray(permissions)
+                data: data,
+                dataPath: filePhysicalPath!
             ),
             FsoType.Directory => new Directory(
                 id: new FsoId(id),
-                data: new FsData(
-                    virtualLocation: virtualLocationId.ToOption().Select(id => new Directory() { Id = new(id) }),
-
-                    fsoOwner,
-                    fsoGroup
-                ),
-                name: fsoName,
-                permissions: DirectoryPermissions.FromBitArray(permissions)
+                data: data
             ),
             FsoType.Symlink => new Symlink(
                 id: new FsoId(id),
-                data: new FsData(
-                    virtualLocation: virtualLocationId.ToOption().Select(id => new Directory() { Id = new(id) }),
-                    fsoOwner,
-                    fsoGroup
-                ),
-                name: fsoName,
+                data: data,
                 target: linkRef!
             ),
             _ => throw new InvalidEnumVariantException(nameof(fsoType))
@@ -128,13 +118,9 @@ public class FsosRepository : IFsosRepository {
 
 
     private void FillFsoParameters(NpgsqlCommand cmd, Fso createEntity) {
-        cmd.Parameters.Add(new NpgsqlParameter<string> { Value = createEntity.Name });
+        cmd.Parameters.Add(new NpgsqlParameter<string> { Value = createEntity.Data.Name });
         cmd.Parameters.Add(new NpgsqlParameter<Guid?> { Value = createEntity.Data.VirtualLocation.Select(dir => dir.Id.Id) });
-        cmd.Parameters.Add(new NpgsqlParameter<BitArray?> {
-            Value =
-                    (createEntity as File)?.Permissions.ToBitArray()
-                    ?? (createEntity as Directory)?.Permissions.ToBitArray()
-        });
+        cmd.Parameters.Add(new NpgsqlParameter<BitArray?> { Value = createEntity.Data.Permissions.ToBitArray() });
         cmd.Parameters.Add(new NpgsqlParameter<string> { Value = createEntity.Data.FsoOwner });
         cmd.Parameters.Add(new NpgsqlParameter<string> { Value = createEntity.Data.FsoGroup });
         cmd.Parameters.Add(new NpgsqlParameter<FsoType> {
