@@ -100,5 +100,13 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
     }
     public override Task<SaveFileResponse> SaveFile(SaveFileRequest request, ServerCallContext context){
         return base.SaveFile(request,context);
+
+    public override async Task<GetRootResponse> GetRoot(GetRootRequest request, ServerCallContext context) {
+        var user = await GetUserOrThrowAsync(context);
+        var (sharedData, directoryData) = user.Root.ToRpcResponse();
+        return new GetRootResponse() {
+            Data = sharedData,
+            DirectoryData = directoryData
+        };
     }
 }
