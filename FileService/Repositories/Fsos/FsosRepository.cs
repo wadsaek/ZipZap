@@ -14,7 +14,7 @@ using System.Text;
 using static ZipZap.Classes.Helpers.OptionExt;
 using Directory = ZipZap.Classes.Directory;
 using File = ZipZap.Classes.File;
-using static ZipZap.FileService.Helpers.Assertions;
+using static ZipZap.Classes.Helpers.Assertions;
 
 namespace ZipZap.FileService.Repositories;
 

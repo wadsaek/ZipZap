@@ -1,6 +1,6 @@
 using System;
 
-namespace ZipZap.FileService.Helpers;
+namespace ZipZap.Classes.Helpers;
 
 public static class Assertions {
     public static void Assert(bool expression, string message = "Assserion failed") {

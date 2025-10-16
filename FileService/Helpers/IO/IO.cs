@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using ICSharpCode.SharpZipLib.GZip;
 using ZipZap.FileService.Extensions;
 using System.Collections.Generic;
+using ZipZap.Classes.Helpers;
 
 namespace ZipZap.FileService.Helpers;
 
@@ -20,7 +21,7 @@ public class IO : InterfaceIO {
 
     }
 
-    private static readonly char[] _invalidCharacters = new char[] { '<', '>', ':', '"', '/', '\\', '|', '?', '*', '.', '\0' };
+    private static readonly char[] _invalidCharacters = ['<', '>', ':', '"', '/', '\\', '|', '?', '*', '.', '\0'];
 
     public bool IsValidPathChar(char c) =>
         c > 32 // control characters and ASCII space
@@ -53,7 +54,7 @@ public class IO : InterfaceIO {
         AssertPath(fileName);
         var fullPath = GetFullPath(fileName);
 
-        using Mutex mut = new Mutex(false, fileName);
+        using Mutex mut = new(false, fileName);
         _logger.LogInformation($"Created named mutex for the file {fullPath}");
 
 
@@ -71,7 +72,7 @@ public class IO : InterfaceIO {
 
         var fullPath = GetFullPath(fileName);
 
-        using Mutex mut = new Mutex(false, fileName);
+        using Mutex mut = new(false, fileName);
         mut.WaitOne();
         File.Delete(fullPath);
         mut.ReleaseMutex();
@@ -88,7 +89,7 @@ public class IO : InterfaceIO {
         AssertPath(oldPath); AssertPath(newPath);
         var (fullOldPath, fullNewPath) = (GetFullPath(oldPath), GetFullPath(newPath));
 
-        using Mutex mut = new Mutex(false, fullNewPath);
+        using Mutex mut = new(false, fullNewPath);
         mut.WaitOne();
         File.Copy(fullOldPath, fullNewPath);
         mut.ReleaseMutex();
