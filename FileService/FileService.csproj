@@ -8,10 +8,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Protobuf Include="../Shared/Protos/*" GrpcServices="FilesStoringService" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="Grpc.AspNetCore" Version="2.70.0" />
     <PackageReference Include="Grpc.AspNetCore.Server.Reflection" Version="2.70.0" />
     <PackageReference Include="Npgsql" Version="9.0.3" />

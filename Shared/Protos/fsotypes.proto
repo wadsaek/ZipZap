@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option csharp_namespace = "ZipZap.FileService.Services";
+option csharp_namespace = "ZipZap.Grpc";
 
 enum FileType {
   REGULAR_FILE = 0;
