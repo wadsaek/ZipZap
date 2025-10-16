@@ -13,7 +13,7 @@ message FileData {
 }
 
 message DirectoryData {
-  map<string, FsoSharedData> entries = 1;
+  map<string, string> entries = 1;
 }
 
 message SymlinkData {
