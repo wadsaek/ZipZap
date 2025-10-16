@@ -1,6 +1,7 @@
 namespace ZipZap.Classes.Helpers;
 
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using static OptionExt;
 
@@ -53,13 +54,28 @@ public static class OptionExt {
             None<T> => new None<U>(),
             _ => throw new InvalidEnumVariantException(nameof(Option<>))
         };
+        public IEnumerable<U> SelectMany<U>(Func<T, IEnumerable<U>> selector) => option switch {
+            Some<T>(T data) => selector(data),
+            None<T> => [],
+            _ => throw new InvalidEnumVariantException(nameof(Option<>))
+        };
         public Option<T> Where(Func<T, bool> filter) =>
         option.SelectMany<T, T>(data => filter(data) ? new Some<T>(data) : new None<T>());
+
+        public bool IsSomeAnd(Func<T, bool> predicate)
+            => option.Where(predicate).IsSome();
     }
 
     extension<T>(Task<Option<T>> opt) {
         public async Task<Option<T>> WhereAsync(Func<T, bool> filter) =>
         (await opt).Where(filter);
+
+        public async Task<Option<T>> WhereAsync(Func<T, Task<bool>> filter) =>
+        await opt switch {
+            None<T> => await opt,
+            Some<T>(T data) => await filter(data) ? Some(data) : None<T>(),
+            _ => throw new InvalidEnumVariantException()
+        };
     }
 
     extension<T>(T? t) where T : class {
