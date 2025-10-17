@@ -3,7 +3,7 @@ namespace ZipZap.Classes.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using static OptionExt;
+using static Constructors;
 
 public abstract record Option<T> {
     public abstract bool IsSome();
@@ -26,12 +26,6 @@ public sealed record Some<T>(T Data) : Option<T> {
 
 public static class OptionExt {
     extension<T>(Option<T> option) {
-        public static Option<T> Some(T arg) {
-            return new Some<T>(arg);
-        }
-        public static Option<T> None() {
-            return new None<T>();
-        }
         public T UnwrapOr(T fallback) => option switch {
             Some<T>(T data) => data,
             None<T> => fallback,

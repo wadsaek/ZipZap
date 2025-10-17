@@ -7,11 +7,12 @@ using System.Linq;
 using ZipZap.Classes;
 using ZipZap.FileService.Models;
 using ZipZap.Classes.Helpers;
+using ZipZap.Classes.Extensions;
 using ZipZap.FileService.Extensions;
 using System.Collections;
 using System.Text;
 
-using static ZipZap.Classes.Helpers.OptionExt;
+using static ZipZap.Classes.Helpers.Constructors;
 using Directory = ZipZap.Classes.Directory;
 using File = ZipZap.Classes.File;
 using static ZipZap.Classes.Helpers.Assertions;
@@ -54,8 +55,10 @@ public class FsosRepository : IFsosRepository {
         }
         foreach ((_, var fso) in fsos) {
             var data = fso.Data;
-            if (data.VirtualLocation is Some<Directory>(Directory dir))
-                data.VirtualLocation = fsos.GetValueOrDefault(dir.Id) as Directory;
+            if (data.VirtualLocation is Some<MaybeEntity<Directory, FsoId>>(var dir)) {
+                var parent = fsos.GetValueOrDefault(dir.Id) as Directory;
+                data = data with { VirtualLocation = parent?.AsMaybe() ?? data.VirtualLocation };
+            }
         }
 
         return fsos.Values;
@@ -108,8 +111,7 @@ public class FsosRepository : IFsosRepository {
         await using var _disposable = await _conn.OpenAsyncDisposable();
         var id = await cmd.ExecuteScalarAsync(token) as Guid?;
         if (id is null) return new Err<Fso, DbError>(new DbError());
-        createEntity.Id = new(id.Value);
-        return new Ok<Fso, DbError>(createEntity ) });
+        return new Ok<Fso, DbError>(createEntity with { Id = new(id.Value) });
     }
 
     public async Task<Result<IEnumerable<Fso>, DbError>> CreateRangeAsync(IEnumerable<Fso> entities, CancellationToken token = default) {
@@ -146,8 +148,8 @@ public class FsosRepository : IFsosRepository {
         int j = 0; // i is used in the foreach loop
         while (await reader.ReadAsync()) {
             var id = await reader.GetFieldValueAsync<Guid>(0);
-            entityList[j++].Id = new(id);
-
+            entityList[j] = entityList[j] with { Id = new(id) };
+            j++;
         }
         await using var _disposable = await _conn.OpenAsyncDisposable();
         return new Ok<IEnumerable<Fso>, DbError>(entityList);

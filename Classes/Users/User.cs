@@ -1,5 +1,5 @@
 using System;
-using System.Security.Cryptography;
+using ZipZap.Classes.Helpers;
 
 namespace ZipZap.Classes;
 
@@ -9,7 +9,7 @@ public class User : IEntity<UserId> {
         string username,
         byte[] passwordHash,
         string email,
-        Directory root
+        MaybeEntity<Directory, FsoId> root
         ) {
         Id = id;
         Username = username;
@@ -22,7 +22,7 @@ public class User : IEntity<UserId> {
     public string Username { get; set; }
     public byte[] PasswordHash { get; set; }
     public string Email { get; set; }
-    public Directory Root { get; set; }
+    public MaybeEntity<Directory, FsoId> Root { get; set; }
 }
 
 public record struct UserId(Guid Id);

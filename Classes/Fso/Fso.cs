@@ -1,21 +1,18 @@
 ﻿using System;
+using System.Collections.Generic;
+using ZipZap.Classes.Helpers;
+using static ZipZap.Classes.Helpers.Constructors;
 
 namespace ZipZap.Classes;
 
-public abstract class Fso : IEntity<FsoId> {
-    protected Fso(FsoId id, FsData data) {
-        Id = id;
-        Data = data;
-    }
-    protected Fso() {
-        Id = default;
-        Data = null!;
-    }
 
-    public FsoId Id { get; set; }
-
-    // fs data
-    public FsData Data { get; set; }
+public abstract record Fso(FsoId Id, FsData Data) : IEntity<FsoId>;
+public sealed record File(FsoId Id, FsData Data) : Fso(Id, Data){
+    public string PhysicalPath => Id.Id.ToString();
+}
+public sealed record Symlink(FsoId Id, FsData Data, string Target) : Fso(Id, Data);
+public sealed record Directory(FsoId Id, FsData Data) : Fso(Id, Data) {
+    public Option<IEnumerable<Fso>> MaybeChildren { get; set; } = None<IEnumerable<Fso>>();
 }
 
 public record struct FsoId(Guid Id);

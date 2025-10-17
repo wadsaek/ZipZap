@@ -4,11 +4,13 @@ using System.Threading;
 using System.Threading.Tasks;
 using Npgsql;
 using ZipZap.Classes;
+using ZipZap.Classes.Extensions;
 using ZipZap.FileService.Extensions;
 using ZipZap.Classes.Helpers;
 using System.Data;
 using System.Collections.Generic;
 using System.Linq;
+using static ZipZap.Classes.Helpers.Constructors;
 
 namespace ZipZap.FileService.Repositories;
 
@@ -36,30 +38,22 @@ public class FsoHelper : IEntityHelper<Fso> {
         var linkRef = await reader.GetNullableFieldValueAsync<string>("fsos.link_ref", token);
         var filePhysicalPath = await reader.GetNullableFieldValueAsync<string>("fsos.file_physical_path", token);
 
+        var virtualLocation = virtualLocationId
+            .ToOption()
+            .Select(id => new FsoId(id))
+            .Select(Directory.WithId);
+
         var data = new FsData(
-                                virtualLocation: virtualLocationId
-                                    .ToOption()
-                                    .Select(id => new Directory() { Id = new(id) }),
+                                virtualLocation,
+                                Permissions.FromBitArray(permissions),
                                 name,
                                 fsoOwner,
-                                fsoGroup,
-                                Permissions.FromBitArray(permissions)
+                                fsoGroup
                                 );
         return fsoType switch {
-            FsoType.RegularFile => new File(
-                id: new FsoId(id),
-                data: data,
-                dataPath: filePhysicalPath!
-            ),
-            FsoType.Directory => new Directory(
-                id: new FsoId(id),
-                data: data
-            ),
-            FsoType.Symlink => new Symlink(
-                id: new FsoId(id),
-                data: data,
-                target: linkRef!
-            ),
+            FsoType.RegularFile => new File( new FsoId(id), data),
+            FsoType.Directory => new Directory( new FsoId(id), data),
+            FsoType.Symlink => new Symlink( new FsoId(id), data, linkRef!),
             _ => throw new InvalidEnumVariantException(nameof(fsoType))
         };
     }

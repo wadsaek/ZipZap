@@ -94,4 +94,15 @@ BEGIN
     END IF;
 END $MIGRATION$;
 
+DO
+$MIGRATION$
+BEGIN
+    IF NOT EXISTS (SELECT * FROM migrations WHERE migration_name = 'remove_file_location') THEN
+
+        INSERT INTO migrations VALUES ('remove_file_location');
+
+        ALTER TABLE fsos DROP COLUMN file_physical_path;
+    END IF;
+END $MIGRATION$;
+
 COMMIT;

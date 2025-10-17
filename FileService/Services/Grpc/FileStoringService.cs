@@ -7,7 +7,7 @@ using ZipZap.Classes;
 using ZipZap.FileService.Helpers;
 using ZipZap.FileService.Repositories;
 using ZipZap.Grpc;
-using static ZipZap.Classes.Helpers.OptionExt;
+using static ZipZap.Classes.Helpers.Constructors;
 using ZipZap.Classes.Helpers;
 using System.Diagnostics.CodeAnalysis;
 using static Grpc.Core.Metadata;
@@ -101,9 +101,9 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
 
     public override async Task<SaveFileResponse> SaveFile(SaveFileRequest request, ServerCallContext context) {
         var user = await GetUserOrThrowAsync(context);
-        var parentDir = await GetFsoOrFailAsync(request.ParentId, user, fso => fso is Directory, context.CancellationToken) as Directory;
+        var parentDir = (await GetFsoOrFailAsync(request.ParentId, user, fso => fso is Directory, context.CancellationToken) as Directory)!;
         var path = await GenerateValidPathAsync();
-        var file = new File(default, new FsData(parentDir!, request.Name, 1000, 100, Permissions.FileDefault), path);
+        var file = new File(default, new FsData(parentDir.AsMaybe(), Permissions.FileDefault, request.Name, 1000, 100));
         var createResult = await _fsosRepo.CreateAsync(file);
         file = createResult switch {
             Err<Fso, DbError> =>
@@ -117,7 +117,12 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
 
     public override async Task<GetRootResponse> GetRoot(GetRootRequest request, ServerCallContext context) {
         var user = await GetUserOrThrowAsync(context);
-        var (sharedData, directoryData) = user.Root.ToRpcResponse();
+        var root = user.Root switch {
+            OnlyId<Directory, FsoId> => throw new RpcException(new(StatusCode.Internal, "failed to get root")),
+            ExistsEntity<Directory, FsoId>(var dir) => dir,
+            _ => throw new InvalidEnumVariantException(nameof(user.Root))
+        };
+        var (sharedData, directoryData) = root.ToRpcResponse();
         return new GetRootResponse() {
             Data = sharedData,
             DirectoryData = directoryData
