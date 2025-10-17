@@ -14,7 +14,7 @@ public sealed record File(FsoId Id, FsData Data) : Fso(Id, Data) {
 }
 public sealed record Symlink(FsoId Id, FsData Data, string Target) : Fso(Id, Data);
 public sealed record Directory(FsoId Id, FsData Data) : Fso(Id, Data) {
-    public Option<IEnumerable<Fso>> MaybeChildren { get; set; } = None<IEnumerable<Fso>>();
+    public Option<IEnumerable<Fso>> MaybeChildren { get; init; } = None<IEnumerable<Fso>>();
 }
 
 public record struct FsoId(Guid Id);
