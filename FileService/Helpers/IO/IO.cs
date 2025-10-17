@@ -1,12 +1,15 @@
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 using System.Threading;
-using Microsoft.Extensions.Logging;
+using System.Threading.Tasks;
+
 using ICSharpCode.SharpZipLib.GZip;
-using ZipZap.FileService.Extensions;
-using System.Collections.Generic;
+
+using Microsoft.Extensions.Logging;
+
 using ZipZap.Classes.Helpers;
+using ZipZap.FileService.Extensions;
 
 namespace ZipZap.FileService.Helpers;
 

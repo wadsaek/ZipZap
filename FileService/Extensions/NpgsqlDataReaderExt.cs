@@ -1,6 +1,7 @@
+using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Data;
+
 using Npgsql;
 
 namespace ZipZap.FileService.Extensions;

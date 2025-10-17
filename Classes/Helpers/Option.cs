@@ -3,6 +3,7 @@ namespace ZipZap.Classes.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+
 using static Constructors;
 
 public abstract record Option<T> {

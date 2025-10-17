@@ -1,6 +1,7 @@
-using System.Linq;
 using System.Collections;
 using System.IO;
+using System.Linq;
+
 using static ZipZap.Classes.Helpers.Assertions;
 
 namespace ZipZap.Classes;

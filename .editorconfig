@@ -9,6 +9,9 @@ csharp_new_line_before_members_in_object_initializers = false
 csharp_new_line_before_open_brace = none
 csharp_new_line_between_query_expression_clauses = false
 
+dotnet_separate_import_directive_groups = true
+dotnet_sort_system_directives_first = true
+
 # IDE0160: Convert to block scoped namespace
 csharp_style_namespace_declarations = file_scoped
 

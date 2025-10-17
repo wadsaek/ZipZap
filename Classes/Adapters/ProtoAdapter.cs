@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
+
 using Google.Protobuf;
+
 using ZipZap.Grpc;
 namespace ZipZap.Classes.Adapters;
 

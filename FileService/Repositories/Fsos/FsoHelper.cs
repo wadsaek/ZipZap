@@ -1,15 +1,18 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Npgsql;
+
 using ZipZap.Classes;
 using ZipZap.Classes.Extensions;
-using ZipZap.FileService.Extensions;
 using ZipZap.Classes.Helpers;
-using System.Data;
-using System.Collections.Generic;
-using System.Linq;
+using ZipZap.FileService.Extensions;
+
 using static ZipZap.Classes.Helpers.Constructors;
 
 namespace ZipZap.FileService.Repositories;
@@ -51,9 +54,9 @@ public class FsoHelper : IEntityHelper<Fso> {
                                 fsoGroup
                                 );
         return fsoType switch {
-            FsoType.RegularFile => new File( new FsoId(id), data),
-            FsoType.Directory => new Directory( new FsoId(id), data),
-            FsoType.Symlink => new Symlink( new FsoId(id), data, linkRef!),
+            FsoType.RegularFile => new File(new FsoId(id), data),
+            FsoType.Directory => new Directory(new FsoId(id), data),
+            FsoType.Symlink => new Symlink(new FsoId(id), data, linkRef!),
             _ => throw new InvalidEnumVariantException(nameof(fsoType))
         };
     }
