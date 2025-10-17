@@ -13,8 +13,8 @@ where TEntity : IEntity<TKey>
 where TKey : IEquatable<TKey> {
 
     public Task<IEnumerable<TEntity>> GetAll(CancellationToken token = default);
-    public Task<Result<Unit, DbError>> CreateAsync(TEntity createEntity, CancellationToken token = default);
-    public Task<Result<Unit, DbError>> CreateRangeAsync(IEnumerable<TEntity> entities, CancellationToken token = default);
+    public Task<Result<TEntity, DbError>> CreateAsync(TEntity createEntity, CancellationToken token = default);
+    public Task<Result<IEnumerable<TEntity>, DbError>> CreateRangeAsync(IEnumerable<TEntity> entities, CancellationToken token = default);
     public Task<Result<Unit, DbError>> DeleteAsync(TEntity entity, CancellationToken token = default);
     public Task<Result<int, DbError>> DeleteRangeAsync(IEnumerable<TEntity> entities, CancellationToken token = default);
     public Task<Result<Unit, DbError>> UpdateAsync(TEntity entity, CancellationToken token = default);

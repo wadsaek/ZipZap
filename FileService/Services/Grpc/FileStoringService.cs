@@ -105,8 +105,12 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         var path = await GenerateValidPathAsync();
         var file = new File(default, new FsData(parentDir!, request.Name, 1000, 100, Permissions.FileDefault), path);
         var createResult = await _fsosRepo.CreateAsync(file);
-        if (createResult is Err<Unit, DbError>)
-            throw new RpcException(new(StatusCode.Internal, "failed to create file in db"));
+        file = createResult switch {
+            Err<Fso, DbError> =>
+            throw new RpcException(new(StatusCode.Internal, "failed to create file in db")),
+            Ok<Fso, DbError>(var fso) => (File)fso,
+            _ => throw new InvalidEnumVariantException(nameof(createResult))
+        };
         await _io.WriteAsync(path, new MemoryStream(request.Content.ToByteArray()));
         return new SaveFileResponse() { FileId = file.Id.Id.ToString() };
     }

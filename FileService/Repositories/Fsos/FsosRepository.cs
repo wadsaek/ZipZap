@@ -92,7 +92,7 @@ public class FsosRepository : IFsosRepository {
         cmd.Parameters.Add(new NpgsqlParameter<string?> { Value = (createEntity as Symlink)?.Target });
         cmd.Parameters.Add(new NpgsqlParameter<string?> { Value = (createEntity as File)?.PhysicalPath });
     }
-    public async Task<Result<Unit, DbError>> CreateAsync(Fso createEntity, CancellationToken token = default) {
+    public async Task<Result<Fso, DbError>> CreateAsync(Fso createEntity, CancellationToken token = default) {
         await using var cmd = _conn.CreateCommand("""
                 INSERT INTO fsos
                 (fso_name, virtual_location_id,
@@ -107,12 +107,12 @@ public class FsosRepository : IFsosRepository {
         FillFsoParameters(cmd, createEntity);
         await using var _disposable = await _conn.OpenAsyncDisposable();
         var id = await cmd.ExecuteScalarAsync(token) as Guid?;
-        if (id is null) return new Err<Unit, DbError>(new DbError());
+        if (id is null) return new Err<Fso, DbError>(new DbError());
         createEntity.Id = new(id.Value);
-        return new Ok<Unit, DbError>(new Unit());
+        return new Ok<Fso, DbError>(createEntity ) });
     }
 
-    public async Task<Result<Unit, DbError>> CreateRangeAsync(IEnumerable<Fso> entities, CancellationToken token = default) {
+    public async Task<Result<IEnumerable<Fso>, DbError>> CreateRangeAsync(IEnumerable<Fso> entities, CancellationToken token = default) {
         var entityList = entities.ToList();
         var cmdBuilder = new StringBuilder(
                 """
@@ -150,7 +150,7 @@ public class FsosRepository : IFsosRepository {
 
         }
         await using var _disposable = await _conn.OpenAsyncDisposable();
-        return new Ok<Unit, DbError>(new Unit());
+        return new Ok<IEnumerable<Fso>, DbError>(entityList);
     }
 
     public async Task<Result<Unit, DbError>> DeleteAsync(Fso entity, CancellationToken token = default)
