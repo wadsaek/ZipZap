@@ -27,7 +27,7 @@ public class Program {
         if (envPath is not null)
             path = envPath;
         else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) || RuntimeInformation.IsOSPlatform(OSPlatform.FreeBSD))
-            path = Environment.GetEnvironmentVariable("XDG_DATA_HOME") + "/FileService";
+            path = Environment.GetEnvironmentVariable("XDG_DATA_HOME") ?? $"{Environment.GetEnvironmentVariable("HOME")}/.local/share" + "/FileService";
         else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             path = Environment.GetEnvironmentVariable("HOME") + "/Library/FileService";
         else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
