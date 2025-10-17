@@ -7,7 +7,7 @@ public class User : IEntity<UserId> {
     public User(
         UserId id,
         string username,
-        SHA512 passwordHash,
+        byte[] passwordHash,
         string email,
         Directory root
         ) {
@@ -20,7 +20,7 @@ public class User : IEntity<UserId> {
 
     public UserId Id { get; set; }
     public string Username { get; set; }
-    public SHA512 PasswordHash { get; set; }
+    public byte[] PasswordHash { get; set; }
     public string Email { get; set; }
     public Directory Root { get; set; }
 }
