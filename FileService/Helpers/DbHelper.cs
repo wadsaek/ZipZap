@@ -1,6 +1,8 @@
 using ZipZap.Classes.Helpers;
 using ZipZap.FileService.Models;
 
+namespace ZipZap.FileService.Extensions;
+
 public static class DbHelper {
     public static Result<Unit, DbError> EnsureSingle(int n)
  => n switch {

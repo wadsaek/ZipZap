@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 
 using ZipZap.Classes;
 using ZipZap.Classes.Helpers;
+using ZipZap.FileService.Extensions;
 using ZipZap.FileService.Helpers;
 using ZipZap.FileService.Models;
 using ZipZap.FileService.Repositories;
