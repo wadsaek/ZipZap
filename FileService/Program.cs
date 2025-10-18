@@ -63,7 +63,7 @@ public class Program {
             options.MaxReceiveMessageSize = (int)config.MaximumFileSize.AsBytes();
         });
         builder.Services.AddGrpcReflection();
-        builder.Services.AddScoped<InterfaceIO, IO>();
+        builder.Services.AddScoped<IIO, IO>();
         builder.Services.AddScoped<ISecurityHelper, SecurityHelper>();
         builder.Services.AddSingleton<ExceptionConverter<DbError>>(new SimpleExceptionConverter<DbError>(err => new DbError()));
         builder.Services.AddScoped<IFsosRepository, FsosRepository>();

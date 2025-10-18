@@ -9,7 +9,7 @@ using static Assertions;
 
 public class SecurityHelper : ISecurityHelper {
     public string GenerateString(int length, Func<char, bool> isValidChar) {
-        Assert(isValidChar('_'), ("the byte value of `_` has to be a valid byte"));
+        Assert(isValidChar('_'), "the byte value of `_` has to be a valid byte");
 
         var rnd = new Random();
         byte[] bytes = new byte[length];

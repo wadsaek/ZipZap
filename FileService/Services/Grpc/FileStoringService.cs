@@ -27,7 +27,7 @@ namespace ZipZap.FileService.Services;
 
 public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBase {
     private readonly ILogger<FilesStoringServiceImpl> _logger;
-    private readonly InterfaceIO _io;
+    private readonly IIO _io;
     private readonly ISecurityHelper _securityHelper;
     private readonly IFsosRepository _fsosRepo;
     private readonly IConfiguration _config;
@@ -35,7 +35,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
 
     public FilesStoringServiceImpl(
             ILogger<FilesStoringServiceImpl> logger,
-            InterfaceIO io,
+            IIO io,
             ISecurityHelper securityHelper,
             IFsosRepository fsosRepo,
             IConfiguration config,

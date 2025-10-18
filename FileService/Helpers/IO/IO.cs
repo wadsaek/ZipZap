@@ -15,7 +15,7 @@ namespace ZipZap.FileService.Helpers;
 
 using static Assertions;
 
-public class IO : InterfaceIO {
+public class IO : IIO {
     private readonly IConfiguration _config;
     private readonly ILogger<IO> _logger;
     public IO(IConfiguration config, ILogger<IO> logger) {
