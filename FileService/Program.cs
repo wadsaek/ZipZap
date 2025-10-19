@@ -23,16 +23,17 @@ namespace ZipZap.FileService;
 
 public class Program {
     private static string GetDataPath() {
-        string path = Environment.CurrentDirectory;
+        string basePath = Environment.CurrentDirectory;
         var envPath = Environment.GetEnvironmentVariable("FILE_SERVICE_FILES");
         if (envPath is not null)
-            path = envPath;
+            basePath = envPath;
         else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) || RuntimeInformation.IsOSPlatform(OSPlatform.FreeBSD))
-            path = Environment.GetEnvironmentVariable("XDG_DATA_HOME") ?? $"{Environment.GetEnvironmentVariable("HOME")}/.local/share" + "/FileService";
+            basePath = Environment.GetEnvironmentVariable("XDG_DATA_HOME") ?? $"{Environment.GetEnvironmentVariable("HOME")}/.local/share";
         else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            path = Environment.GetEnvironmentVariable("HOME") + "/Library/FileService";
+            basePath = Environment.GetEnvironmentVariable("HOME") + "/Library/";
         else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            path = Environment.GetEnvironmentVariable("LOCALAPPDATA") + "\\FileService";
+            basePath = Environment.GetEnvironmentVariable("LOCALAPPDATA") ?? throw new DirectoryNotFoundException("no app data on windows");
+        var path = Path.Join(basePath, "FileService");
         if (!Path.Exists(path))
             Directory.CreateDirectory(path);
         return path;
