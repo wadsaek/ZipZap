@@ -22,9 +22,10 @@ public static class PermissionsExt {
     extension(Permissions permissions) {
         public static Permissions FromBitArray(BitArray array) {
             Assert(array.Length == 12);
+            var bytes = new byte[array.Length];
+            array.CopyTo(bytes,0);
             return new(
-                    array
-                    .Cast<byte>()
+                    bytes
                     .Index()
                     .Aggregate(M.None,
                         (mode, item) => mode | (M)(item.Item << item.Index)
