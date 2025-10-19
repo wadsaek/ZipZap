@@ -1,8 +1,8 @@
 namespace ZipZap.Classes.Helpers;
 
-public abstract record MaybeEntity<T, TKey>(TKey Id) where T : IEntity<TKey> {
-    public static implicit operator MaybeEntity<T, TKey>(TKey Id) => new OnlyId<T, TKey>(Id);
-    public static implicit operator MaybeEntity<T, TKey>(T Entity) => new ExistsEntity<T, TKey>(Entity);
+public abstract record MaybeEntity<T, TId>(TId Id) where T : IEntity<TId> {
+    public static implicit operator MaybeEntity<T, TId>(TId Id) => new OnlyId<T, TId>(Id);
+    public static implicit operator MaybeEntity<T, TId>(T Entity) => new ExistsEntity<T, TId>(Entity);
 }
-public sealed record OnlyId<T, TKey>(TKey Id) : MaybeEntity<T, TKey>(Id) where T : IEntity<TKey>;
-public sealed record ExistsEntity<T, TKey>(T Entity) : MaybeEntity<T, TKey>(Entity.Id) where T : IEntity<TKey>;
+public sealed record OnlyId<T, TId>(TId Id) : MaybeEntity<T, TId>(Id) where T : IEntity<TId>;
+public sealed record ExistsEntity<T, TId>(T Entity) : MaybeEntity<T, TId>(Entity.Id) where T : IEntity<TId>;

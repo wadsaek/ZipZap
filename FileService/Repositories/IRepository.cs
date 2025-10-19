@@ -9,9 +9,9 @@ using ZipZap.FileService.Models;
 
 namespace ZipZap.FileService.Repositories;
 
-public interface IRepository<TEntity, TKey>
-where TEntity : IEntity<TKey>
-where TKey : IEquatable<TKey> {
+public interface IRepository<TEntity, TId>
+where TEntity : IEntity<TId>
+where TId : IEquatable<TId> {
 
     public Task<IEnumerable<TEntity>> GetAll(CancellationToken token = default);
     public Task<Result<TEntity, DbError>> CreateAsync(TEntity createEntity, CancellationToken token = default);
@@ -19,7 +19,7 @@ where TKey : IEquatable<TKey> {
     public Task<Result<Unit, DbError>> DeleteAsync(TEntity entity, CancellationToken token = default);
     public Task<Result<int, DbError>> DeleteRangeAsync(IEnumerable<TEntity> entities, CancellationToken token = default);
     public Task<Result<Unit, DbError>> UpdateAsync(TEntity entity, CancellationToken token = default);
-    public Task<Option<TEntity>> GetByIdAsync(TKey id, CancellationToken token = default);
-    public Task<Result<Unit, DbError>> DeleteAsync(TKey id, CancellationToken token = default);
-    public Task<Result<int, DbError>> DeleteRangeAsync(IEnumerable<TKey> ids, CancellationToken token = default);
+    public Task<Option<TEntity>> GetByIdAsync(TId id, CancellationToken token = default);
+    public Task<Result<Unit, DbError>> DeleteAsync(TId id, CancellationToken token = default);
+    public Task<Result<int, DbError>> DeleteRangeAsync(IEnumerable<TId> ids, CancellationToken token = default);
 }

@@ -1,5 +1,5 @@
 namespace ZipZap.Classes;
 
-public interface IEntity<TKey> {
-    public TKey Id { get; }
+public interface IEntity<TId> {
+    public TId Id { get; }
 }
