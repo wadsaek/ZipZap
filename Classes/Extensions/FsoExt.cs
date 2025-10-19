@@ -19,8 +19,8 @@ public static class FsoExt {
                 Owner = fso.FsoOwner,
                 Permissions = (int)fso.Permissions.Inner,
             };
-            if (fso.VirtualLocation is not null)
-                data.RootId = fso.VirtualLocation.ToString();
+            if (fso.VirtualLocation is Some<MaybeEntity<Directory,FsoId>>(var location))
+                data.RootId = location.Id.Value.ToString();
             return data;
         }
     }

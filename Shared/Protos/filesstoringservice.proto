@@ -30,6 +30,7 @@ message GetFsoResponse{
 message GetRootRequest {
 }
 message GetRootResponse {
+  string fsoId = 3;
   FsoSharedData data = 1;
   DirectoryData directoryData = 2;
 }

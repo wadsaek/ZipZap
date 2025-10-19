@@ -128,8 +128,10 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
             ExistsEntity<Directory, FsoId>(var dir) => dir,
             _ => throw new InvalidEnumVariantException(nameof(user.Root))
         };
+        root = root with { MaybeChildren = Some(await _fsosRepo.GetAllByDirectory(root)) };
         var (sharedData, directoryData) = root.ToRpcResponse();
         return new GetRootResponse() {
+            FsoId = root.Id.Value.ToString(),
             Data = sharedData,
             DirectoryData = directoryData
         };

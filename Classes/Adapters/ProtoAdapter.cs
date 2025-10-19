@@ -19,7 +19,7 @@ public static class ProtoAdapter {
             var a = new DirectoryData();
             a.Entries.Add(
                 map
-               .Select(f => new KeyValuePair<string, string>(f.Key, f.Value.ToString()))
+               .Select(f => new KeyValuePair<string, string>(f.Key, f.Value.Value.ToString()))
                .ToDictionary());
             return a;
         }
