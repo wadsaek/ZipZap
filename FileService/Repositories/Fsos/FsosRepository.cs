@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -11,6 +10,7 @@ using Npgsql;
 using ZipZap.Classes;
 using ZipZap.Classes.Extensions;
 using ZipZap.Classes.Helpers;
+using ZipZap.FileService.Data;
 using ZipZap.FileService.Extensions;
 using ZipZap.FileService.Models;
 
@@ -18,233 +18,78 @@ using static ZipZap.Classes.Helpers.Assertions;
 using static ZipZap.Classes.Helpers.Constructors;
 
 using Directory = ZipZap.Classes.Directory;
-using File = ZipZap.Classes.File;
 
 namespace ZipZap.FileService.Repositories;
 
-public class FsosRepository : IFsosRepository {
-    private readonly IEntityHelper<Fso> _fsoHelper;
+internal class FsosRepository : IFsosRepository {
+    private readonly EntityHelper<FsoInner, Fso, Guid> _fsoHelper;
     private readonly NpgsqlConnection _conn;
     private readonly ExceptionConverter<DbError> _converter;
-    public FsosRepository(IEntityHelper<Fso> fsoHelper, NpgsqlConnection conn, ExceptionConverter<DbError> converter) {
+    private readonly BasicRepository<Fso, FsoInner, Guid> _basic;
+
+    private string TName => _fsoHelper.TableName;
+    private string IdCol => _fsoHelper.GetColumnName(nameof(FsoInner.Id));
+    public FsosRepository(EntityHelper<FsoInner, Fso, Guid> fsoHelper, NpgsqlConnection conn, ExceptionConverter<DbError> converter, BasicRepository<Fso, FsoInner, Guid> basic) {
         _fsoHelper = fsoHelper;
         _conn = conn;
         _converter = converter;
-    }
-
-    private NpgsqlCommand BuildCommand(Option<Action<NpgsqlCommand>> commandCallback, Option<string> condition, Option<string> postCondition) {
-        var cmdBuilder = new StringBuilder();
-        cmdBuilder.AppendLine($"SELECT {_fsoHelper.SqlFieldsInOrder} FROM fsos ");
-        condition.Select(condition => cmdBuilder.AppendLine($"WHERE {condition}"));
-        postCondition.Select(cmdBuilder.AppendLine);
-        cmdBuilder.Append(';');
-
-        var cmdText = cmdBuilder.ToString();
-        var cmd = _conn.CreateCommand(cmdText);
-        commandCallback.Select(callback => { callback(cmd); return new Unit(); });
-        return cmd;
-    }
-    private async Task<IEnumerable<Fso>> Get(
-            Option<string> condition, Option<string> postCondition,
-            Option<Action<NpgsqlCommand>> commandCallback, CancellationToken token = default
-        ) {
-        await using var cmd = BuildCommand(commandCallback, condition, postCondition);
-        await using var _disposable = await _conn.OpenAsyncDisposable();
-        await using var reader = await cmd.ExecuteReaderAsync(token);
-        var fsos = new Dictionary<FsoId, Fso>();
-        while (await reader.ReadAsync(token)) {
-            var fso = await _fsoHelper.Parse(reader, token);
-            fsos.Add(fso.Id, fso);
-        }
-        foreach ((_, var fso) in fsos) {
-            var data = fso.Data;
-            if (data.VirtualLocation is Some<MaybeEntity<Directory, FsoId>>(var dir)) {
-                var parent = fsos.GetValueOrDefault(dir.Id) as Directory;
-                data = data with { VirtualLocation = parent?.AsMaybe() ?? data.VirtualLocation };
-            }
-        }
-
-        return fsos.Values;
-    }
-
-    public async Task<IEnumerable<Fso>> GetAll(CancellationToken token = default)
-        => await Get(None<string>(), None<string>(), None<Action<NpgsqlCommand>>(), token);
-
-
-    public async Task<IEnumerable<Fso>> GetAllByDirectory(Directory location, CancellationToken token = default)
-        => await Get(
-                Some("fsos.virtual_location_id = $1"),
-                None<string>(),
-                Some<Action<NpgsqlCommand>>(
-                    cmd => cmd.Parameters.Add(new NpgsqlParameter<Guid> { Value = location.Id.Id })
-                    )
-                );
-
-
-    private void FillFsoParameters(NpgsqlCommand cmd, Fso createEntity) {
-        cmd.Parameters.Add(new NpgsqlParameter<string> { Value = createEntity.Data.Name });
-        cmd.Parameters.Add(new NpgsqlParameter<Guid?> { Value = createEntity.Data.VirtualLocation.Select(dir => dir.Id.Id) });
-        cmd.Parameters.Add(new NpgsqlParameter<BitArray?> { Value = createEntity.Data.Permissions.ToBitArray() });
-        cmd.Parameters.Add(new NpgsqlParameter<string> { Value = createEntity.Data.FsoOwner });
-        cmd.Parameters.Add(new NpgsqlParameter<string> { Value = createEntity.Data.FsoGroup });
-        cmd.Parameters.Add(new NpgsqlParameter<FsoType> {
-            Value = createEntity switch {
-                File => FsoType.RegularFile,
-                Directory => FsoType.Directory,
-                Symlink => FsoType.Symlink,
-                _ => throw new InvalidEnumVariantException()
-            }
-        });
-        cmd.Parameters.Add(new NpgsqlParameter<string?> { Value = (createEntity as Symlink)?.Target });
-        cmd.Parameters.Add(new NpgsqlParameter<string?> { Value = (createEntity as File)?.PhysicalPath });
-    }
-    public async Task<Result<Fso, DbError>> CreateAsync(Fso createEntity, CancellationToken token = default) {
-        await using var cmd = _conn.CreateCommand("""
-                INSERT INTO fsos
-                (fso_name, virtual_location_id,
-                permssions, fso_owner, fso_group, fso_type,
-                link_ref,file_physical_path )
-                VALUES (
-                    $1, $2, $3, $4,
-                    $5, $6, $7, $8
-                    )
-                RETURNING id;
-                """);
-        FillFsoParameters(cmd, createEntity);
-        await using var _disposable = await _conn.OpenAsyncDisposable();
-        var id = await cmd.ExecuteScalarAsync(token) as Guid?;
-        if (id is null) return new Err<Fso, DbError>(new DbError());
-        return new Ok<Fso, DbError>(createEntity with { Id = new(id.Value) });
-    }
-
-    public async Task<Result<IEnumerable<Fso>, DbError>> CreateRangeAsync(IEnumerable<Fso> entities, CancellationToken token = default) {
-        var entityList = entities.ToList();
-        var cmdBuilder = new StringBuilder(
-                """
-                INSERT INTO fsos
-                (fso_name, virtual_location_id,
-                permssions, fso_owner, fso_group, fso_type,
-                link_ref,file_physical_path )
-                VALUES
-
-                """
-                );
-        await using var cmd = _conn.CreateCommand();
-        foreach ((var i, var fso) in entityList.Index()) {
-            var offset = i * 8;
-            cmdBuilder.AppendFormat("""
-                (
-                    ${0}, ${1}, ${2}, ${3},
-                    ${4}, ${5}, ${6}, ${7}
-                ),
-                """,
-                    offset + 1, offset + 2, offset + 3, offset + 4,
-                    offset + 5, offset + 6, offset + 7, offset + 8
-                    );
-            FillFsoParameters(cmd, fso);
-        }
-        cmdBuilder.Remove(cmdBuilder.Length - 2, 2);
-        cmdBuilder.AppendLine("RETURNING id;");
-        cmd.CommandText = cmdBuilder.ToString();
-        await using var _ = await _conn.OpenAsyncDisposable();
-        var reader = await cmd.ExecuteReaderAsync(token);
-        int j = 0; // i is used in the foreach loop
-        while (await reader.ReadAsync()) {
-            var id = await reader.GetFieldValueAsync<Guid>(0);
-            entityList[j] = entityList[j] with { Id = new(id) };
-            j++;
-        }
-        await using var _disposable = await _conn.OpenAsyncDisposable();
-        return new Ok<IEnumerable<Fso>, DbError>(entityList);
-    }
-
-    public async Task<Result<Unit, DbError>> DeleteAsync(Fso entity, CancellationToken token = default)
-        => await DeleteAsync(entity.Id);
-
-    public async Task<Result<int, DbError>> DeleteRangeAsync(IEnumerable<Fso> entities, CancellationToken token = default)
-        => await DeleteRangeAsync(entities.Select(fso => fso.Id), token);
-
-    public async Task<Result<Unit, DbError>> UpdateAsync(Fso entity, CancellationToken token = default) {
-
-        await using var _disp = await _conn.OpenAsyncDisposable();
-        await using var transaction = await _conn.BeginTransactionAsync();
-        await using var cmd = _conn.CreateCommand("""
-                UPDATE fsos SET
-                fso_name=$1,
-                virtual_location_id=$2,
-                permssions=$3,
-                fso_owner=$4,
-                fso_group=$5,
-                fso_type=$6,
-                link_ref=$7,
-                file_physical_path=$8
-                WHERE 
-                RETURNING id;
-                """);
-        FillFsoParameters(cmd, entity);
-        var count = await cmd.ExecuteNonQueryAsync();
-        await transaction.CommitAsync();
-        return DbHelper.EnsureSingle(count);
-    }
-
-    public async Task<Option<Fso>> GetByIdAsync(FsoId id, CancellationToken token = default)
-        =>
-            (await Get("fsos.id = $1", "LIMIT 1",
-                Some<Action<NpgsqlCommand>>(cmd => cmd.Parameters.Add(new NpgsqlParameter<Guid> { Value = id.Id }))))
-            .FirstOrDefault();
-
-    public async Task<Result<Unit, DbError>> DeleteAsync(FsoId id, CancellationToken token = default) {
-        await using var _disp = await _conn.OpenAsyncDisposable();
-        await using var transaction = await _conn.BeginTransactionAsync();
-        var deleteResult = await DeleteRangeAsyncWithOpenConn([id], token);
-        await transaction.CommitAsync();
-        return deleteResult.SelectMany(DbHelper.EnsureSingle);
-    }
-
-    public async Task<Result<int, DbError>> DeleteRangeAsync(IEnumerable<FsoId> ids, CancellationToken token = default) {
-        await using var _disp = await _conn.OpenAsyncDisposable();
-        var result = await DeleteRangeAsyncWithOpenConn(ids, token);
-        return result;
-    }
-    public async Task<Result<int, DbError>> DeleteRangeAsyncWithOpenConn(IEnumerable<FsoId> ids, CancellationToken token = default) {
-        var cmdBuilder = new StringBuilder();
-        cmdBuilder.AppendLine("DELETE FROM fsos");
-        cmdBuilder.Append("WHERE fsos.id IN (");
-        List<NpgsqlParameter> parameters = [];
-        foreach ((var i, var fsoId) in ids.Index()) {
-            cmdBuilder.Append($"${i + 1}, ");
-            parameters.Add(new NpgsqlParameter { Value = fsoId.Id });
-
-        }
-        var len = cmdBuilder.Length;
-        cmdBuilder.Remove(len - 2, 2);
-        cmdBuilder.Append(");");
-        await using var cmd = _conn.CreateCommand(cmdBuilder.ToString());
-        cmd.Parameters.AddRange(parameters.ToArray());
-        int result = await cmd.ExecuteNonQueryAsync(token);
-        return new Ok<int, DbError>(result);
+        _basic = basic;
     }
 
     public async Task<Option<Directory>> GetRootDirectory(FsoId id, CancellationToken token = default) {
-        var fsos = await Get(None<string>(), None<string>(), Some<Action<NpgsqlCommand>>(cmd => {
+        var fsos = await _basic.Get(None<string>(), None<string>(), Some<Action<NpgsqlCommand>>(cmd => {
             cmd.CommandText = $"""
             WITH RECURSIVE ctename AS (
-                    SELECT {_fsoHelper.SqlFieldsInOrder},
+                    SELECT
+                    {_fsoHelper.SqlFieldsInOrder},
                     0 AS level
-                    FROM fsos 
-                    WHERE f.id = $1
+                    FROM {TName}
+                    WHERE {TName}.{IdCol} = $1
                     UNION ALL
-                    SELECT {_fsoHelper.SqlFieldsInOrder},
+                    SELECT
+                    {_fsoHelper.SqlFieldsInOrder},
                     ctename.level + 1
-                    FROM fsos
-                    JOIN ctename ON f.id = ctename.virtual_location_id
+                    FROM {TName} 
+                    JOIN ctename ON {TName}.{IdCol} =
+                    {TName}_{_fsoHelper.GetColumnName(nameof(FsoInner.VirtualLocationId))}
                     )
-            SELECT {_fsoHelper.SqlFieldsInOrder} FROM ctename as fsos order by level desc limit 1;
+            SELECT
+            {_fsoHelper.SqlFields.Select(f => $"{TName}_{f}").ConcatenateWith(", ")}
+            FROM ctename order by level desc limit 1;
         """;
-            cmd.Parameters.Add(new NpgsqlParameter { Value = id.Id });
-        }));
+            cmd.Parameters.Add(new NpgsqlParameter { Value = id.Value });
+        }), token);
         var directory = fsos.FirstOrDefault();
         Assert(directory is Directory or null);
         return directory as Directory;
     }
+
+    public Task<IEnumerable<Fso>> GetAllByDirectory(Directory location, CancellationToken token = default)
+        => _basic.Get(Some($"{TName}.{_fsoHelper.GetColumnName(nameof(FsoInner.VirtualLocationId))} = $1"), None<string>(), Some<Action<NpgsqlCommand>>(
+                    cmd => cmd.Parameters.Add(new NpgsqlParameter<Guid> { Value = location.Id.Value })
+                    )
+, token);
+
+    public Task<Result<Fso, DbError>> CreateAsync(Fso createEntity, CancellationToken token = default) => _basic.CreateAsync(createEntity, token);
+
+    public Task<Result<IEnumerable<Fso>, DbError>> CreateRangeAsync(IEnumerable<Fso> entities, CancellationToken token = default) => _basic.CreateRangeAsync(entities, token);
+
+    public Task<Result<Unit, DbError>> DeleteAsync(Fso entity, CancellationToken token = default)
+        => DeleteAsync(entity.Id, token);
+
+    public Task<Result<int, DbError>> DeleteRangeAsync(IEnumerable<Fso> entities, CancellationToken token = default)
+        => DeleteRangeAsync(entities.Select(fso => fso.Id), token);
+
+    public Task<Result<Unit, DbError>> UpdateAsync(Fso entity, CancellationToken token = default) => _basic.UpdateAsync(entity, token);
+
+    public Task<Option<Fso>> GetByIdAsync(FsoId id, CancellationToken token = default)
+        => _basic.GetByIdAsync(id.Value, token);
+
+    public Task<Result<Unit, DbError>> DeleteAsync(FsoId id, CancellationToken token = default) => _basic.DeleteAsync(id.Value, token);
+
+    public Task<Result<int, DbError>> DeleteRangeAsync(IEnumerable<FsoId> ids, CancellationToken token = default)
+        => _basic.DeleteRangeAsyncWithOpenConn(ids.Select(id => id.Value), token);
+
+    public Task<IEnumerable<Fso>> GetAll(CancellationToken token = default)
+        => _basic.Get(None<string>(), None<string>(), None<Action<NpgsqlCommand>>(), token);
 }

@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 
 using ZipZap.Classes;
 using ZipZap.Classes.Helpers;
+using ZipZap.FileService.Data;
 using ZipZap.FileService.Extensions;
 using ZipZap.FileService.Helpers;
 using ZipZap.FileService.Models;
@@ -67,8 +68,10 @@ public class Program {
         builder.Services.AddScoped<IIO, IO>();
         builder.Services.AddScoped<ISecurityHelper, SecurityHelper>();
         builder.Services.AddSingleton<ExceptionConverter<DbError>>(new SimpleExceptionConverter<DbError>(err => new DbError()));
+        builder.Services.AddScoped(typeof(BasicRepository<,,>));
         builder.Services.AddScoped<IFsosRepository, FsosRepository>();
-        builder.Services.AddScoped<IEntityHelper<Fso>, FsoHelper>();
+        builder.Services.AddScoped<EntityHelper<FsoInner, Fso, Guid>, FsoHelper>();
+
 
         var app = builder.Build();
         app.MapGrpcService<FilesStoringServiceImpl>();

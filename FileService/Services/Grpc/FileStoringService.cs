@@ -118,7 +118,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
             _ => throw new InvalidEnumVariantException(nameof(createResult))
         };
         await _io.WriteAsync(path, new MemoryStream(request.Content.ToByteArray()));
-        return new SaveFileResponse() { FileId = file.Id.Id.ToString() };
+        return new SaveFileResponse() { FileId = file.Id.Value.ToString() };
     }
 
     public override async Task<GetRootResponse> GetRoot(GetRootRequest request, ServerCallContext context) {
