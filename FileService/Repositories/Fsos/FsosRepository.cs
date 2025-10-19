@@ -65,14 +65,18 @@ internal class FsosRepository : IFsosRepository {
     }
 
     public Task<IEnumerable<Fso>> GetAllByDirectory(Directory location, CancellationToken token = default)
-        => _basic.Get(Some($"{TName}.{_fsoHelper.GetColumnName(nameof(FsoInner.VirtualLocationId))} = $1"), None<string>(), Some<Action<NpgsqlCommand>>(
+        => _basic.Get(
+                $"{TName}.{_fsoHelper.GetColumnName(nameof(FsoInner.VirtualLocationId))} = $1",
+                None<string>(),
+                Some<Action<NpgsqlCommand>>(
                     cmd => cmd.Parameters.Add(new NpgsqlParameter<Guid> { Value = location.Id.Value })
-                    )
-, token);
+                ), token);
 
-    public Task<Result<Fso, DbError>> CreateAsync(Fso createEntity, CancellationToken token = default) => _basic.CreateAsync(createEntity, token);
+    public Task<Result<Fso, DbError>> CreateAsync(Fso createEntity, CancellationToken token = default)
+        => _basic.CreateAsync(createEntity, token);
 
-    public Task<Result<IEnumerable<Fso>, DbError>> CreateRangeAsync(IEnumerable<Fso> entities, CancellationToken token = default) => _basic.CreateRangeAsync(entities, token);
+    public Task<Result<IEnumerable<Fso>, DbError>> CreateRangeAsync(IEnumerable<Fso> entities, CancellationToken token = default)
+        => _basic.CreateRangeAsync(entities, token);
 
     public Task<Result<Unit, DbError>> DeleteAsync(Fso entity, CancellationToken token = default)
         => DeleteAsync(entity.Id, token);
@@ -80,12 +84,14 @@ internal class FsosRepository : IFsosRepository {
     public Task<Result<int, DbError>> DeleteRangeAsync(IEnumerable<Fso> entities, CancellationToken token = default)
         => DeleteRangeAsync(entities.Select(fso => fso.Id), token);
 
-    public Task<Result<Unit, DbError>> UpdateAsync(Fso entity, CancellationToken token = default) => _basic.UpdateAsync(entity, token);
+    public Task<Result<Unit, DbError>> UpdateAsync(Fso entity, CancellationToken token = default)
+        => _basic.UpdateAsync(entity, token);
 
     public Task<Option<Fso>> GetByIdAsync(FsoId id, CancellationToken token = default)
         => _basic.GetByIdAsync(id.Value, token);
 
-    public Task<Result<Unit, DbError>> DeleteAsync(FsoId id, CancellationToken token = default) => _basic.DeleteAsync(id.Value, token);
+    public Task<Result<Unit, DbError>> DeleteAsync(FsoId id, CancellationToken token = default)
+        => _basic.DeleteAsync(id.Value, token);
 
     public Task<Result<int, DbError>> DeleteRangeAsync(IEnumerable<FsoId> ids, CancellationToken token = default)
         => _basic.DeleteRangeAsyncWithOpenConn(ids.Select(id => id.Value), token);
