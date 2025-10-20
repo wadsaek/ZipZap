@@ -2,6 +2,7 @@ namespace ZipZap.Classes.Helpers;
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Threading.Tasks;
 
 using static Constructors;
@@ -15,7 +16,7 @@ public abstract record Option<T> {
     public static implicit operator T?(Option<T> option) => option switch {
         Some<T>(T Data) => Data,
         None<T> => default,
-        _ => throw new InvalidEnumVariantException(nameof(option))
+        _ => throw new InvalidEnumArgumentException(nameof(option))
     };
 };
 public sealed record None<T> : Option<T> {
@@ -30,29 +31,29 @@ public static class OptionExt {
         public T UnwrapOr(T fallback) => option switch {
             Some<T>(T data) => data,
             None<T> => fallback,
-            _ => throw new InvalidEnumVariantException(nameof(Option<>))
+            _ => throw new InvalidEnumArgumentException(nameof(Option<>))
 
         };
         public T UnwrapOrElse(Func<T> otherwise) => option switch {
             Some<T>(T data) => data,
             None<T> => otherwise(),
-            _ => throw new InvalidEnumVariantException(nameof(Option<>))
+            _ => throw new InvalidEnumArgumentException(nameof(Option<>))
         };
 
         public Option<U> Select<U>(Func<T, U> selector) => option switch {
             Some<T>(T data) => new Some<U>(selector(data)),
             None<T> => new None<U>(),
-            _ => throw new InvalidEnumVariantException(nameof(Option<>))
+            _ => throw new InvalidEnumArgumentException(nameof(Option<>))
         };
         public Option<U> SelectMany<U>(Func<T, Option<U>> selector) => option switch {
             Some<T>(T data) => selector(data),
             None<T> => new None<U>(),
-            _ => throw new InvalidEnumVariantException(nameof(Option<>))
+            _ => throw new InvalidEnumArgumentException(nameof(Option<>))
         };
         public IEnumerable<U> SelectMany<U>(Func<T, IEnumerable<U>> selector) => option switch {
             Some<T>(T data) => selector(data),
             None<T> => [],
-            _ => throw new InvalidEnumVariantException(nameof(Option<>))
+            _ => throw new InvalidEnumArgumentException(nameof(Option<>))
         };
         public Option<T> Where(Func<T, bool> filter) =>
         option.SelectMany<T, T>(data => filter(data) ? new Some<T>(data) : new None<T>());
@@ -69,7 +70,7 @@ public static class OptionExt {
         await opt switch {
             None<T> => await opt,
             Some<T>(T data) => await filter(data) ? Some(data) : None<T>(),
-            _ => throw new InvalidEnumVariantException()
+            _ => throw new InvalidEnumArgumentException()
         };
     }
 

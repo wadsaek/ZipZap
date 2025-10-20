@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.ComponentModel;
 
 using ZipZap.Classes;
 using ZipZap.Classes.Extensions;
@@ -55,7 +56,7 @@ public class FsoInner : ITranslatable<Fso>, ISqlRetrievable {
             FsoType.RegularFile => new File(new FsoId(Id), data),
             FsoType.Directory => new Directory(new FsoId(Id), data),
             FsoType.Symlink => new Symlink(new FsoId(Id), data, LinkRef!),
-            _ => throw new InvalidEnumVariantException(nameof(FsoType))
+            _ => throw new InvalidEnumArgumentException(nameof(FsoType))
         };
     }
 
@@ -71,7 +72,7 @@ public class FsoInner : ITranslatable<Fso>, ISqlRetrievable {
             File => FsoType.RegularFile,
             Directory => FsoType.Directory,
             Symlink => FsoType.Symlink,
-            _ => throw new InvalidEnumVariantException(nameof(fso))
+            _ => throw new InvalidEnumArgumentException(nameof(fso))
         }
     };
 

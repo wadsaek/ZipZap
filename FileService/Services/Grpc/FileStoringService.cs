@@ -22,6 +22,7 @@ using static ZipZap.Classes.Helpers.Constructors;
 
 using Directory = ZipZap.Classes.Directory;
 using File = ZipZap.Classes.File;
+using System.ComponentModel;
 
 namespace ZipZap.FileService.Services;
 
@@ -115,7 +116,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
             Err<Fso, DbError> =>
             throw new RpcException(new(StatusCode.Internal, "failed to create file in db")),
             Ok<Fso, DbError>(var fso) => (File)fso,
-            _ => throw new InvalidEnumVariantException(nameof(createResult))
+            _ => throw new InvalidEnumArgumentException(nameof(createResult))
         };
         await _io.WriteAsync(path, new MemoryStream(request.Content.ToByteArray()));
         return new SaveFileResponse() { FileId = file.Id.Value.ToString() };
@@ -126,7 +127,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         var root = user.Root switch {
             OnlyId<Directory, FsoId> => throw new RpcException(new(StatusCode.Internal, "failed to get root")),
             ExistsEntity<Directory, FsoId>(var dir) => dir,
-            _ => throw new InvalidEnumVariantException(nameof(user.Root))
+            _ => throw new InvalidEnumArgumentException(nameof(user.Root))
         };
         root = root with { MaybeChildren = Some(await _fsosRepo.GetAllByDirectory(root)) };
         var (sharedData, directoryData) = root.ToRpcResponse();
