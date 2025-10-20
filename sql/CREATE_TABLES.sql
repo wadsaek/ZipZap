@@ -105,4 +105,17 @@ BEGIN
     END IF;
 END $MIGRATION$;
 
+DO
+$MIGRATION$
+BEGIN
+    IF NOT EXISTS (SELECT * FROM migrations WHERE migration_name = 'use_bytea_for_hash') THEN
+
+        INSERT INTO migrations VALUES ('use_bytea_for_hash');
+
+        ALTER TABLE users
+        ALTER password_hash TYPE bytea
+        USING substr(varbit_send(password_hash),5);
+    END IF;
+END $MIGRATION$;
+
 COMMIT;

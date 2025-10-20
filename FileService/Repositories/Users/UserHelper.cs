@@ -26,7 +26,7 @@ internal class UserHelper : EntityHelper<UserInner, User, Guid> {
     public override async Task<User> Parse(NpgsqlDataReader reader, CancellationToken token = default) {
         var Id = await reader.GetFieldValueAsync<Guid>($"{TableName}_{IdCol}", token);
         var Username = await reader.GetFieldValueAsync<string>($"{TableName}_{GetColumnName(nameof(UserInner.Username))}", token);
-        var PasswordHash = await reader.GetFieldValueAsync<BitArray>($"{TableName}_{GetColumnName(nameof(UserInner.PasswordHash))}", token);
+        var PasswordHash = await reader.GetFieldValueAsync<byte[]>($"{TableName}_{GetColumnName(nameof(UserInner.PasswordHash))}", token);
         var Email = await reader.GetFieldValueAsync<string>($"{TableName}_{GetColumnName(nameof(UserInner.Email))}", token);
         var Root = await reader.GetFieldValueAsync<Guid>($"{TableName}_{GetColumnName(nameof(UserInner.Root))}", token);
         var user = new UserInner() {

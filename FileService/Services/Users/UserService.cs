@@ -1,5 +1,7 @@
 using System;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
 
 using ZipZap.Classes;
@@ -22,7 +24,11 @@ public class UserService : IUserService {
         if (split.Length < 3 || split[0] != "Bearer") return None<User>();
         if (!Guid.TryParse(split[1], out var id)) return None<User>();
         var uId = new UserId(id);
-        return await _repo.GetByIdAsync(uId);
+        var hash = SHA512.HashData(Encoding.UTF8.GetBytes(split[2]));
+        return (await _repo.GetByIdAsync(uId))
+            .Where(user =>
+                user.PasswordHash.SequenceCompareTo(hash) == 0
+            );
     }
 }
 
