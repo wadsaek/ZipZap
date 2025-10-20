@@ -1,10 +1,9 @@
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-
-using ICSharpCode.SharpZipLib.GZip;
 
 using Microsoft.Extensions.Logging;
 
@@ -42,15 +41,18 @@ public class IO : IIO {
     private string GetFullPath(string fileName)
         => Path.Combine(_config.BaseFilePath, fileName);
 
-    public async Task<byte[]> ReadAsync(string fileName) {
+    public async Task<Stream> ReadAsync(string fileName) {
         AssertPath(fileName);
 
         fileName = GetFullPath(fileName);
+        var output = new MemoryStream();
 
-        using Stream stream = File.OpenRead(fileName);
-        using var decompressed = new GZipInputStream(stream);
-        var contents = await decompressed.ToByteArrayAsync();
-        return contents;
+        using var stream = File.OpenRead(fileName);
+        using var decompressor = new GZipStream(stream, CompressionMode.Decompress);
+        await decompressor.CopyToAsync(output);
+        output.Position = 0;
+
+        return output;
     }
 
     public async Task WriteAsync(string fileName, Stream content) {
@@ -65,7 +67,9 @@ public class IO : IIO {
         mut.WaitOne();
 
         using FileStream file = File.OpenWrite(fullPath);
-        GZip.Compress(content, file, true);
+        using var gzipStream = new GZipStream(file, CompressionMode.Compress);
+        await content.CopyToAsync(gzipStream);
+
 
         mut.ReleaseMutex();
     }

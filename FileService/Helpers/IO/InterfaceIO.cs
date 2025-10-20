@@ -6,7 +6,7 @@ namespace ZipZap.FileService.Helpers;
 
 public interface IIO {
     public Task WriteAsync(string path, Stream content);
-    public Task<byte[]> ReadAsync(string path);
+    public Task<Stream> ReadAsync(string path);
     public Task RemoveAsync(string path);
     public Task RemoveRangeAsync(IEnumerable<string> paths);
     public Task CopyAsync(string oldPath, string newPath);
