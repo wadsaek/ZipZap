@@ -1,5 +1,5 @@
 using ZipZap.Classes;
 
-namespace ZipZap.FileService.Repositories;
+namespace ZipZap.Persistance.Repositories;
 
 public interface IUserRepository : IRepository<User, UserId> { }

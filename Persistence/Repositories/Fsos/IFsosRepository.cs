@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using ZipZap.Classes;
 using ZipZap.Classes.Helpers;
 
-namespace ZipZap.FileService.Repositories;
+namespace ZipZap.Persistance.Repositories;
 
 public interface IFsosRepository : IRepository<Fso, FsoId> {
     public Task<IEnumerable<Fso>> GetAllByDirectory(Directory location, CancellationToken token = default);

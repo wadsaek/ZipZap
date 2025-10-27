@@ -1,6 +1,6 @@
 using System;
 
-namespace ZipZap.FileService.Attributes;
+namespace ZipZap.Persistance.Attributes;
 
 [AttributeUsage(AttributeTargets.Property)]
 public class SqlColumnAttribute(string column) : Attribute {

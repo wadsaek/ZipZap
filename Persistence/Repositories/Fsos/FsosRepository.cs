@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -10,28 +9,26 @@ using Npgsql;
 using ZipZap.Classes;
 using ZipZap.Classes.Extensions;
 using ZipZap.Classes.Helpers;
-using ZipZap.FileService.Data;
-using ZipZap.FileService.Extensions;
-using ZipZap.FileService.Models;
+using ZipZap.Persistance.Data;
+using ZipZap.Persistance.Extensions;
+using ZipZap.Persistance.Models;
 
 using static ZipZap.Classes.Helpers.Assertions;
 using static ZipZap.Classes.Helpers.Constructors;
 
 using Directory = ZipZap.Classes.Directory;
 
-namespace ZipZap.FileService.Repositories;
+namespace ZipZap.Persistance.Repositories;
 
 internal class FsosRepository : IFsosRepository {
     private readonly EntityHelper<FsoInner, Fso, Guid> _fsoHelper;
-    private readonly NpgsqlConnection _conn;
     private readonly ExceptionConverter<DbError> _converter;
     private readonly BasicRepository<Fso, FsoInner, Guid> _basic;
 
     private string TName => _fsoHelper.TableName;
     private string IdCol => _fsoHelper.GetColumnName(nameof(FsoInner.Id));
-    public FsosRepository(EntityHelper<FsoInner, Fso, Guid> fsoHelper, NpgsqlConnection conn, ExceptionConverter<DbError> converter, BasicRepository<Fso, FsoInner, Guid> basic) {
+    public FsosRepository(EntityHelper<FsoInner, Fso, Guid> fsoHelper, ExceptionConverter<DbError> converter, BasicRepository<Fso, FsoInner, Guid> basic) {
         _fsoHelper = fsoHelper;
-        _conn = conn;
         _converter = converter;
         _basic = basic;
     }

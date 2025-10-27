@@ -5,9 +5,9 @@ using System.Threading.Tasks;
 
 using ZipZap.Classes;
 using ZipZap.Classes.Helpers;
-using ZipZap.FileService.Models;
+using ZipZap.Persistance.Models;
 
-namespace ZipZap.FileService.Repositories;
+namespace ZipZap.Persistance.Repositories;
 
 public interface IRepository<TEntity, TId>
 where TEntity : IEntity<TId>

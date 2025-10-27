@@ -1,7 +1,7 @@
 using System;
 using System.Threading.Tasks;
 
-namespace ZipZap.FileService.Helpers;
+namespace ZipZap.Classes.Helpers;
 
 public class Deffered<T> : IAsyncDisposable, IDisposable {
     private readonly T _defferedTarget;

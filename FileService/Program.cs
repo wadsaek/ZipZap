@@ -8,14 +8,10 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-using ZipZap.Classes;
-using ZipZap.Classes.Helpers;
-using ZipZap.FileService.Data;
 using ZipZap.FileService.Extensions;
 using ZipZap.FileService.Helpers;
-using ZipZap.FileService.Models;
-using ZipZap.FileService.Repositories;
 using ZipZap.FileService.Services;
+using ZipZap.Persistance;
 
 using Directory = System.IO.Directory;
 using IConfiguration = ZipZap.FileService.Helpers.IConfiguration;
@@ -47,9 +43,7 @@ public class Program {
                 builder.Configuration
                     .GetConnectionString(connectionStringEnvVar)
                 ?? throw new Exception(nameof(connectionStringEnvVar));
-        builder.Services.AddNpgsqlDataSource(connectionString, builder => {
-            builder.MapEnum<FsoType>();
-        });
+        builder.AddPersistance(connectionString);
 
         builder.Logging.AddConsole();
         var config = new Configuration(
@@ -67,12 +61,6 @@ public class Program {
         builder.Services.AddGrpcReflection();
         builder.Services.AddScoped<IIO, IO>();
         builder.Services.AddScoped<ISecurityHelper, SecurityHelper>();
-        builder.Services.AddSingleton<ExceptionConverter<DbError>>(new SimpleExceptionConverter<DbError>(err => new DbError()));
-        builder.Services.AddScoped(typeof(BasicRepository<,,>));
-        builder.Services.AddScoped<IFsosRepository, FsosRepository>();
-        builder.Services.AddScoped<IUserRepository, UserReposirory>();
-        builder.Services.AddScoped<EntityHelper<FsoInner, Fso, Guid>, FsoHelper>();
-        builder.Services.AddScoped<EntityHelper<UserInner, User, Guid>, UserHelper>();
         builder.Services.AddScoped<IUserService, UserService>();
 
 

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 using ZipZap.Classes;
 using ZipZap.Classes.Helpers;
-using ZipZap.FileService.Repositories;
+using ZipZap.Persistance.Repositories;
 
 using static ZipZap.Classes.Helpers.Constructors;
 

@@ -13,8 +13,8 @@ using ZipZap.Classes.Extensions;
 using ZipZap.Classes.Helpers;
 using ZipZap.FileService.Extensions;
 using ZipZap.FileService.Helpers;
-using ZipZap.FileService.Models;
-using ZipZap.FileService.Repositories;
+using ZipZap.Persistance.Models;
+using ZipZap.Persistance.Repositories;
 using ZipZap.Grpc;
 
 using static Grpc.Core.Metadata;
