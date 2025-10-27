@@ -12,13 +12,13 @@ using Npgsql;
 using ZipZap.Classes;
 using ZipZap.Classes.Extensions;
 using ZipZap.Classes.Helpers;
-using ZipZap.FileService.Attributes;
-using ZipZap.FileService.Data;
-using ZipZap.FileService.Extensions;
+using ZipZap.Persistance.Attributes;
+using ZipZap.Persistance.Extensions;
+using ZipZap.Persistance.Data;
 
 using static ZipZap.Classes.Helpers.Constructors;
 
-namespace ZipZap.FileService.Repositories;
+namespace ZipZap.Persistance.Repositories;
 
 internal abstract class EntityHelper<TInner, TEntity, TId>
 where TInner : ITranslatable<TEntity>, ISqlRetrievable {

@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 
 using Npgsql;
 
-namespace ZipZap.FileService.Extensions;
+namespace ZipZap.Persistance.Extensions;
 
 public static class NpgsqlDataReaderExt {
     extension(NpgsqlDataReader reader) {

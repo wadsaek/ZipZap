@@ -1,7 +1,7 @@
 using ZipZap.Classes.Helpers;
-using ZipZap.FileService.Models;
+using ZipZap.Persistance.Models;
 
-namespace ZipZap.FileService.Extensions;
+namespace ZipZap.Persistance.Data;
 
 public static class DbHelper {
     public static Result<Unit, DbError> EnsureSingle(int n)

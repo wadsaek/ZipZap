@@ -10,13 +10,13 @@ using Npgsql;
 using ZipZap.Classes;
 using ZipZap.Classes.Extensions;
 using ZipZap.Classes.Helpers;
-using ZipZap.FileService.Data;
-using ZipZap.FileService.Extensions;
-using ZipZap.FileService.Models;
+using ZipZap.Persistance.Data;
+using ZipZap.Persistance.Extensions;
+using ZipZap.Persistance.Models;
 
 using static ZipZap.Classes.Helpers.Constructors;
 
-namespace ZipZap.FileService.Repositories;
+namespace ZipZap.Persistance.Repositories;
 
 class BasicRepository<TEntity, TInner, TId>
 where TInner : ITranslatable<TEntity>, ISqlRetrievable

@@ -4,9 +4,9 @@ using System.Threading.Tasks;
 
 using Npgsql;
 
-using ZipZap.FileService.Helpers;
+using ZipZap.Classes.Helpers;
 
-namespace ZipZap.FileService.Extensions;
+namespace ZipZap.Persistance.Extensions;
 
 public static class NpgsqlConnectionExt {
     extension(NpgsqlConnection connection) {

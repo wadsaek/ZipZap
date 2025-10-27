@@ -5,9 +5,9 @@ using System.ComponentModel;
 using ZipZap.Classes;
 using ZipZap.Classes.Extensions;
 using ZipZap.Classes.Helpers;
-using ZipZap.FileService.Attributes;
+using ZipZap.Persistance.Attributes;
 
-namespace ZipZap.FileService.Data;
+namespace ZipZap.Persistance.Data;
 
 [SqlTable("fsos")]
 public class FsoInner : ITranslatable<Fso>, ISqlRetrievable {

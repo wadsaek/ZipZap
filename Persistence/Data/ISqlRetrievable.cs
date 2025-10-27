@@ -1,4 +1,4 @@
-namespace ZipZap.FileService.Data;
+namespace ZipZap.Persistance.Data;
 
 // Marker interface
 public interface ISqlRetrievable;

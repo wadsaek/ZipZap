@@ -9,10 +9,10 @@ using Npgsql;
 using ZipZap.Classes;
 using ZipZap.Classes.Extensions;
 using ZipZap.Classes.Helpers;
-using ZipZap.FileService.Data;
+using ZipZap.Persistance.Data;
 
 using static ZipZap.Classes.Helpers.Constructors;
-namespace ZipZap.FileService.Repositories;
+namespace ZipZap.Persistance.Repositories;
 
 internal class UserHelper : EntityHelper<UserInner, User, Guid> {
     public override string IdCol => GetColumnName(nameof(UserInner.Id));

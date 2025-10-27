@@ -4,11 +4,11 @@ using System.Security.Cryptography;
 
 using ZipZap.Classes;
 using ZipZap.Classes.Helpers;
-using ZipZap.FileService.Attributes;
+using ZipZap.Persistance.Attributes;
 
 using static ZipZap.Classes.Helpers.Constructors;
 
-namespace ZipZap.FileService.Data;
+namespace ZipZap.Persistance.Data;
 
 [SqlTable("users")]
 public class UserInner : ITranslatable<User>, ISqlRetrievable {
