@@ -10,7 +10,6 @@ using ZipZap.Classes;
 using ZipZap.Classes.Extensions;
 using ZipZap.Classes.Helpers;
 using ZipZap.Persistance.Data;
-using ZipZap.Persistance.Extensions;
 using ZipZap.Persistance.Models;
 
 using static ZipZap.Classes.Helpers.Assertions;
@@ -33,33 +32,42 @@ internal class FsosRepository : IFsosRepository {
         _basic = basic;
     }
 
+    private string GetRootQuery => $"""
+        WITH RECURSIVE ctename AS (
+                SELECT
+                {_fsoHelper.SqlFieldsInOrder},
+                0 AS level
+                FROM {TName}
+                WHERE {TName}.{IdCol} = $1
+                UNION ALL
+                SELECT
+                {_fsoHelper.SqlFieldsInOrder},
+                ctename.level + 1
+                FROM {TName}
+                JOIN ctename ON {TName}.{IdCol} =
+                {TName}_{_fsoHelper.GetColumnName(nameof(FsoInner.VirtualLocationId))}
+                )
+        SELECT
+        {_fsoHelper.SqlFields.Select(f => $"{TName}_{f}").ConcatenateWith(", ")}
+        FROM ctename order by level desc;
+        """;
     public async Task<Option<Directory>> GetRootDirectory(FsoId id, CancellationToken token = default) {
         var fsos = await _basic.Get(None<string>(), None<string>(), Some<Action<NpgsqlCommand>>(cmd => {
-            cmd.CommandText = $"""
-            WITH RECURSIVE ctename AS (
-                    SELECT
-                    {_fsoHelper.SqlFieldsInOrder},
-                    0 AS level
-                    FROM {TName}
-                    WHERE {TName}.{IdCol} = $1
-                    UNION ALL
-                    SELECT
-                    {_fsoHelper.SqlFieldsInOrder},
-                    ctename.level + 1
-                    FROM {TName} 
-                    JOIN ctename ON {TName}.{IdCol} =
-                    {TName}_{_fsoHelper.GetColumnName(nameof(FsoInner.VirtualLocationId))}
-                    )
-            SELECT
-            {_fsoHelper.SqlFields.Select(f => $"{TName}_{f}").ConcatenateWith(", ")}
-            FROM ctename order by level desc limit 1;
-        """;
-            cmd.Parameters.Add(new NpgsqlParameter { Value = id.Value });
+            cmd.CommandText = $"{GetRootQuery} LIMIT 1";
+            cmd.Parameters.Add(new NpgsqlParameter<Guid> { Value = id.Value });
         }), token);
         var directory = fsos.FirstOrDefault();
         Assert(directory is Directory or null);
         return directory as Directory;
     }
+    public async Task<IEnumerable<Directory>> GetFullPathTree(FsoId id, CancellationToken token = default) {
+        var fsos = await _basic.Get(None<string>(), None<string>(), Some<Action<NpgsqlCommand>>(cmd => {
+            cmd.CommandText = $"{GetRootQuery}";
+            cmd.Parameters.Add(new NpgsqlParameter<Guid> { Value = id.Value });
+        }), token);
+        return fsos.Assert(fso => fso is Directory).Cast<Directory>();
+    }
+
 
     public Task<IEnumerable<Fso>> GetAllByDirectory(Directory location, CancellationToken token = default)
         => _basic.Get(
