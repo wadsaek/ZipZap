@@ -15,7 +15,7 @@ public static class DI {
     extension(WebApplicationBuilder builder) {
         public WebApplicationBuilder AddPersistance(string connectionString) {
             builder.Services.AddSingleton<ExceptionConverter<DbError>>(new SimpleExceptionConverter<DbError>(err => new DbError()));
-            builder.Services.AddScoped(typeof(BasicRepository<,,>));
+            builder.Services.AddScoped(typeof(IBasicRepository<,,>), typeof(BasicRepository<,,>));
             builder.Services.AddScoped<IFsosRepository, FsosRepository>();
             builder.Services.AddScoped<IUserRepository, UserReposirory>();
             builder.Services.AddScoped<EntityHelper<FsoInner, Fso, Guid>, FsoHelper>();

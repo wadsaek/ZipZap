@@ -8,26 +8,24 @@ using System.Threading.Tasks;
 using Npgsql;
 
 using ZipZap.Classes;
-using ZipZap.Classes.Extensions;
 using ZipZap.Classes.Helpers;
 using ZipZap.Persistance.Data;
 using ZipZap.Persistance.Extensions;
 using ZipZap.Persistance.Models;
 
-using static ZipZap.Classes.Helpers.Constructors;
 namespace ZipZap.Persistance.Repositories;
 
 internal class UserReposirory : IUserRepository {
     private readonly NpgsqlConnection _conn;
     private readonly EntityHelper<UserInner, User, Guid> _userHelper;
     private readonly EntityHelper<FsoInner, Fso, Guid> _fsoHelper;
-    private readonly BasicRepository<User, UserInner, Guid> _basic;
+    private readonly IBasicRepository<User, UserInner, Guid> _basic;
 
     public UserReposirory(
             NpgsqlConnection conn,
             EntityHelper<UserInner, User, Guid> userHelper,
             EntityHelper<FsoInner, Fso, Guid> fsoHelper,
-            BasicRepository<User, UserInner, Guid> basic) {
+            IBasicRepository<User, UserInner, Guid> basic) {
         _conn = conn;
         _userHelper = userHelper;
         _fsoHelper = fsoHelper;

@@ -22,11 +22,11 @@ namespace ZipZap.Persistance.Repositories;
 internal class FsosRepository : IFsosRepository {
     private readonly EntityHelper<FsoInner, Fso, Guid> _fsoHelper;
     private readonly ExceptionConverter<DbError> _converter;
-    private readonly BasicRepository<Fso, FsoInner, Guid> _basic;
+    private readonly IBasicRepository<Fso, FsoInner, Guid> _basic;
 
     private string TName => _fsoHelper.TableName;
     private string IdCol => _fsoHelper.GetColumnName(nameof(FsoInner.Id));
-    public FsosRepository(EntityHelper<FsoInner, Fso, Guid> fsoHelper, ExceptionConverter<DbError> converter, BasicRepository<Fso, FsoInner, Guid> basic) {
+    public FsosRepository(EntityHelper<FsoInner, Fso, Guid> fsoHelper, ExceptionConverter<DbError> converter, IBasicRepository<Fso, FsoInner, Guid> basic) {
         _fsoHelper = fsoHelper;
         _converter = converter;
         _basic = basic;

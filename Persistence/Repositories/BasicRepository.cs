@@ -18,7 +18,23 @@ using static ZipZap.Classes.Helpers.Constructors;
 
 namespace ZipZap.Persistance.Repositories;
 
-class BasicRepository<TEntity, TInner, TId>
+interface IBasicRepository<TEntity, TInner, TId>
+where TInner : ITranslatable<TEntity>, ISqlRetrievable
+where TId : struct {
+    Task<Result<TEntity, DbError>> CreateAsync(TEntity createEntity, CancellationToken token = default);
+    Task<Result<TEntity, DbError>> CreateAsync(TInner createEntity, CancellationToken token = default);
+    Task<Result<IEnumerable<TEntity>, DbError>> CreateRangeAsync(IEnumerable<TInner> entities, CancellationToken token = default);
+    Task<Result<IEnumerable<TEntity>, DbError>> CreateRangeAsync(IEnumerable<TEntity> entities, CancellationToken token = default);
+    Task<Result<Unit, DbError>> DeleteAsync(TId id, CancellationToken token = default);
+    Task<Result<int, DbError>> DeleteRangeAsync(IEnumerable<TId> ids, CancellationToken token = default);
+    Task<Result<int, DbError>> DeleteRangeAsyncWithOpenConn(IEnumerable<TId> ids, CancellationToken token = default);
+    Task<IEnumerable<TEntity>> Get(Option<string> condition, Option<string> postCondition, Option<Action<NpgsqlCommand>> commandCallback, CancellationToken token = default);
+    Task<IEnumerable<TEntity>> GetAll(CancellationToken token = default);
+    Task<Option<TEntity>> GetByIdAsync(TId id, CancellationToken token = default);
+    Task<Result<Unit, DbError>> UpdateAsync(TEntity entity, CancellationToken token = default);
+}
+
+class BasicRepository<TEntity, TInner, TId> : IBasicRepository<TEntity, TInner, TId>
 where TInner : ITranslatable<TEntity>, ISqlRetrievable
 where TId : struct {
     private readonly EntityHelper<TInner, TEntity, TId> _helper;
