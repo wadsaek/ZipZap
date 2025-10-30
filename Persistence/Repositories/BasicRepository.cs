@@ -29,6 +29,7 @@ where TId : struct {
     Task<Result<int, DbError>> DeleteRangeAsync(IEnumerable<TId> ids, CancellationToken token = default);
     Task<Result<int, DbError>> DeleteRangeAsyncWithOpenConn(IEnumerable<TId> ids, CancellationToken token = default);
     Task<IEnumerable<TEntity>> Get(Option<string> condition, Option<string> postCondition, Option<Action<NpgsqlCommand>> commandCallback, CancellationToken token = default);
+    Task<IEnumerable<TEntity>> Get(Func<NpgsqlConnection, NpgsqlCommand> commandInitalizer, CancellationToken token = default);
     Task<IEnumerable<TEntity>> GetAll(CancellationToken token = default);
     Task<Option<TEntity>> GetByIdAsync(TId id, CancellationToken token = default);
     Task<Result<Unit, DbError>> UpdateAsync(TEntity entity, CancellationToken token = default);
@@ -60,11 +61,15 @@ where TId : struct {
         commandCallback.Select(callback => { callback(cmd); return new Unit(); });
         return cmd;
     }
+
     public async Task<IEnumerable<TEntity>> Get(
             Option<string> condition, Option<string> postCondition,
             Option<Action<NpgsqlCommand>> commandCallback, CancellationToken token = default
-        ) {
-        await using var cmd = BuildCommand(commandCallback, condition, postCondition);
+        )
+        => await Get(_ => BuildCommand(commandCallback, condition, postCondition), token);
+
+    public async Task<IEnumerable<TEntity>> Get(Func<NpgsqlConnection, NpgsqlCommand> commandInitalizer, CancellationToken token = default) {
+        await using var cmd = commandInitalizer(_conn);
         await using var _disposable = await _conn.OpenAsyncDisposable(token);
         await using var reader = await cmd.ExecuteReaderAsync(token);
         var fsos = new List<TEntity>();
@@ -119,7 +124,7 @@ where TId : struct {
                     .ConcatenateWith(", "));
             EntityHelper<TInner, TEntity, TId>.FillParameters(cmd, fso, fields);
         }
-        cmdBuilder.Remove(cmdBuilder.Length - 2, 2);
+        cmdBuilder.RemoveLastCharacters(2);
         cmdBuilder.AppendLine($"RETURNING {_helper.IdCol};");
         cmd.CommandText = cmdBuilder.ToString();
         await using var _ = await _conn.OpenAsyncDisposable(token);
@@ -189,4 +194,5 @@ where TId : struct {
         await transaction.CommitAsync(token);
         return deleteResult.SelectMany(DbHelper.EnsureSingle);
     }
+
 }

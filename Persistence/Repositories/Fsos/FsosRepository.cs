@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -10,6 +11,7 @@ using ZipZap.Classes;
 using ZipZap.Classes.Extensions;
 using ZipZap.Classes.Helpers;
 using ZipZap.Persistance.Data;
+using ZipZap.Persistance.Extensions;
 using ZipZap.Persistance.Models;
 
 using static ZipZap.Classes.Helpers.Assertions;
@@ -52,19 +54,23 @@ internal class FsosRepository : IFsosRepository {
         FROM ctename order by level desc;
         """;
     public async Task<Option<Directory>> GetRootDirectory(FsoId id, CancellationToken token = default) {
-        var fsos = await _basic.Get(None<string>(), None<string>(), Some<Action<NpgsqlCommand>>(cmd => {
-            cmd.CommandText = $"{GetRootQuery} LIMIT 1";
+        var fsos = await _basic.Get(conn => {
+            var cmd = conn.CreateCommand($"{GetRootQuery} LIMIT 1");
+
             cmd.Parameters.Add(new NpgsqlParameter<Guid> { Value = id.Value });
-        }), token);
+            return cmd;
+        }, token);
         var directory = fsos.FirstOrDefault();
         Assert(directory is Directory or null);
         return directory as Directory;
     }
     public async Task<IEnumerable<Directory>> GetFullPathTree(FsoId id, CancellationToken token = default) {
-        var fsos = await _basic.Get(None<string>(), None<string>(), Some<Action<NpgsqlCommand>>(cmd => {
-            cmd.CommandText = $"{GetRootQuery}";
+        var fsos = await _basic.Get(conn => {
+            var cmd = conn.CreateCommand(GetRootQuery);
+
             cmd.Parameters.Add(new NpgsqlParameter<Guid> { Value = id.Value });
-        }), token);
+            return cmd;
+        }, token);
         return fsos.Assert(fso => fso is Directory).Cast<Directory>();
     }
 
@@ -73,7 +79,7 @@ internal class FsosRepository : IFsosRepository {
         => _basic.Get(
                 $"{TName}.{_fsoHelper.GetColumnName(nameof(FsoInner.VirtualLocationId))} = $1",
                 None<string>(),
-                Some<Action<NpgsqlCommand>>(
+                new Action<NpgsqlCommand>(
                     cmd => cmd.Parameters.Add(new NpgsqlParameter<Guid> { Value = location.Id.Value })
                 ), token);
 
@@ -102,5 +108,5 @@ internal class FsosRepository : IFsosRepository {
         => _basic.DeleteRangeAsyncWithOpenConn(ids.Select(id => id.Value), token);
 
     public Task<IEnumerable<Fso>> GetAll(CancellationToken token = default)
-        => _basic.Get(None<string>(), None<string>(), None<Action<NpgsqlCommand>>(), token);
+        => _basic.GetAll(token);
 }
