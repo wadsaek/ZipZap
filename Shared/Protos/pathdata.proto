@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+import "guid.proto";
+option csharp_namespace = "ZipZap.Grpc";
+
+message PathData{
+  string name = 1;
+  oneof id {
+    string filePath = 2;
+    Guid parentId = 3;
+  }
+}

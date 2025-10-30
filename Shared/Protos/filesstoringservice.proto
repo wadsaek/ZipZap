@@ -2,20 +2,31 @@ syntax = "proto3";
 
 option csharp_namespace = "ZipZap.Grpc";
 
+import "guid.proto";
 import "fsotypes.proto";
 import "emptyrequest.proto";
+import "pathdata.proto";
 
 message SaveFileRequest {
-  string name = 1;
-  string parentId = 2;
-  bytes content = 3;
+  PathData path = 1;
+  bytes content = 2;
+}
+message MakeLinkRequest {
+  PathData path = 1;
+  string target = 2;
+}
+message MakeDirectoryRequest {
+  PathData path = 1;
 }
 message SaveFileResponse{
-  string fileId = 1;
+  Guid fileId = 1;
 }
 
 message GetFsoRequest{
-  string fsoId = 1;
+  oneof identifier {
+    Guid fsoId = 1;
+    PathData path = 2;
+  }
 }
 
 message GetFsoResponse{
@@ -30,18 +41,21 @@ message GetFsoResponse{
 message GetRootRequest {
 }
 message GetRootResponse {
-  string fsoId = 3;
+  Guid fsoId = 3;
   FsoSharedData data = 1;
   DirectoryData directoryData = 2;
 }
 
 message DeleteFsoRequest{
-  string fsoId = 1;
+  Guid fsoId = 1;
 }
 
-message ReplaceFsoRequest{
-  string locationId = 1;
-  bytes content = 2;
+message ReplaceFileRequest{
+  oneof identifier {
+    Guid fsoId = 1;
+    PathData path = 2;
+  }
+  bytes content = 3;
 }
 
 message ExistsOwnerIdRequest{
@@ -54,10 +68,12 @@ message ExistsOwnerIdResponse{
 
 service FilesStoringService {
   rpc SaveFile(SaveFileRequest) returns (SaveFileResponse);
+  rpc MakeDirectory(MakeDirectoryRequest) returns (SaveFileRequest);
+  rpc MakeLink(MakeLinkRequest) returns (SaveFileRequest);
   rpc GetFso(GetFsoRequest) returns (GetFsoResponse);
   rpc GetRoot(GetRootRequest) returns (GetRootResponse);
   rpc DeleteFso(DeleteFsoRequest) returns (EmptyMessage);
   rpc RemoveFrenchLanguagePack(EmptyMessage) returns (EmptyMessage);
-  rpc ReplaceFso(ReplaceFsoRequest) returns (EmptyMessage);
+  rpc ReplaceFile(ReplaceFileRequest) returns (EmptyMessage);
   rpc ExistsOwnerId(ExistsOwnerIdRequest) returns (ExistsOwnerIdResponse);
 }

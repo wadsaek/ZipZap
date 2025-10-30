@@ -25,7 +25,7 @@ public static class FsoExt {
         }
     }
     extension(File file) {
-        public async Task<FileData> ToRpcFileDataAsync(Stream stream) {
+        public static async Task<FileData> ToRpcFileDataAsync(Stream stream) {
             var data = FileData.NewFileData(
                 await ByteString.FromStreamAsync(stream)
             );
@@ -33,15 +33,24 @@ public static class FsoExt {
         }
         public async Task<(FsoSharedData, FileData)> ToRpcResponse(Stream stream) => (file.Data.ToRpcSharedData(), await File.ToRpcFileDataAsync(stream));
     }
-    extension(Directory file) {
+    extension(Directory dir) {
         public DirectoryData ToRpcDirectoryData() {
-            var data = DirectoryData.NewDirectoryData(
-                    file.MaybeChildren
-                    .SelectMany(a => a)
-                    .Select(fso => new KeyValuePair<string, FsoId>(fso.Data.Name, fso.Id))
+            var data = new DirectoryData();
+            data.Entries.Add(
+                dir.MaybeChildren.UnwrapOr([])
+               .Select(f => new KeyValuePair<string, Guid>(f.Data.Name, f.Id.Value.ToGrpcGuid()))
+               .ToDictionary());
+            return data;
+        }
+        public (FsoSharedData, DirectoryData) ToRpcResponse() => (dir.Data.ToRpcSharedData(), dir.ToRpcDirectoryData());
+    }
+    extension(Symlink link) {
+        public SymlinkData ToRpcLinkData() {
+            var data = SymlinkData.NewSymlinkData(
+                    link.Target
             );
             return data;
         }
-        public (FsoSharedData, DirectoryData) ToRpcResponse() => (file.Data.ToRpcSharedData(), file.ToRpcDirectoryData());
+        public (FsoSharedData, SymlinkData) ToRpcResponse() => (link.Data.ToRpcSharedData(), link.ToRpcLinkData());
     }
 }

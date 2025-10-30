@@ -2,6 +2,7 @@ using System;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -10,6 +11,7 @@ using Grpc.Core;
 using Microsoft.Extensions.Logging;
 
 using ZipZap.Classes;
+using ZipZap.Classes.Adapters;
 using ZipZap.Classes.Extensions;
 using ZipZap.Classes.Helpers;
 using ZipZap.FileService.Helpers;
@@ -22,6 +24,8 @@ using static ZipZap.Classes.Helpers.Constructors;
 
 using Directory = ZipZap.Classes.Directory;
 using File = ZipZap.Classes.File;
+using Guid = System.Guid;
+using PathData = ZipZap.Classes.PathData;
 
 namespace ZipZap.FileService.Services;
 
@@ -49,8 +53,8 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
     private static T ThrowUnauthenticated<T>(string detail = "Unauthenticated")
         => throw new RpcException(new(StatusCode.Unauthenticated, detail));
 
-    private static void ParseGuidOrThrow(string str, out Guid guid) {
-        if (!Guid.TryParse(str, out guid))
+    private static void ParseGuidOrThrow(Grpc.Guid grpcGuid, out Guid guid) {
+        if (!grpcGuid.TryToGuid(out guid))
             throw new RpcException(new(StatusCode.InvalidArgument, "Invalid guid"));
     }
 
@@ -61,10 +65,13 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
             async fso => (await _fsosRepo.GetRootDirectory(fso.Id)).IsSomeAnd(fso => fso.Id == owner.Root.Id);
 
 
-    private Task<Fso> GetFsoOrFailAsync(string key, User owner, CancellationToken cancellationToken = default)
+    private Task<Fso> GetFsoOrFailAsync(Grpc.Guid key, User owner, CancellationToken cancellationToken = default)
         => GetFsoOrFailAsync(key, owner, null, cancellationToken);
 
-    private async Task<Fso> GetFsoOrFailAsync(string key, User owner, Func<Fso, bool>? predicate = null, CancellationToken cancellationToken = default) {
+    private Task<Fso> GetFsoOrFailAsync(PathData pathData, User owner, CancellationToken cancellationToken = default)
+        => GetFsoOrFailAsync(pathData, owner, null, cancellationToken);
+
+    private async Task<Fso> GetFsoOrFailAsync(Grpc.Guid key, User owner, Func<Fso, bool>? predicate = null, CancellationToken cancellationToken = default) {
         ParseGuidOrThrow(key, out var guid);
         var file = await _fsosRepo.GetByIdAsync(
                 guid.ToFsoId(),
@@ -93,8 +100,8 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
 
     public override async Task<SaveFileResponse> SaveFile(SaveFileRequest request, ServerCallContext context) {
         var user = await GetUserOrThrowAsync(context);
-        var parentDir = (await GetFsoOrFailAsync(request.ParentId, user, fso => fso is Directory, context.CancellationToken) as Directory)!;
-        var file = new File(default, new FsData(parentDir.AsMaybe(), Permissions.FileDefault, request.Name, 1000, 100));
+        var parentDir = (await GetFsoOrFailAsync(request.Path.ToPathData(user.Root.Id), user, fso => fso is Directory, context.CancellationToken) as Directory)!;
+        var file = new File(default, new FsData(parentDir.AsMaybe(), Permissions.FileDefault, request.Path.Name, 1000, 100));
         var createResult = await _fsosRepo.CreateAsync(file);
         file = createResult switch {
             Err<Fso, DbError> =>
@@ -102,8 +109,8 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
             Ok<Fso, DbError>(var fso) => (File)fso,
             _ => throw new InvalidEnumArgumentException(nameof(createResult))
         };
-        return new SaveFileResponse() { FileId = file.Id.Value.ToString() };
         await _io.WriteAsync(file.PhysicalPath, new MemoryStream(request.Content.ToByteArray()));
+        return new SaveFileResponse() { FileId = file.Id.Value.ToGrpcGuid() };
     }
 
     public override async Task<GetRootResponse> GetRoot(GetRootRequest request, ServerCallContext context) {
@@ -116,7 +123,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         root = root with { MaybeChildren = Some(await _fsosRepo.GetAllByDirectory(root)) };
         var (sharedData, directoryData) = root.ToRpcResponse();
         return new GetRootResponse() {
-            FsoId = root.Id.Value.ToString(),
+            FsoId = root.Id.Value.ToGrpcGuid(),
             Data = sharedData,
             DirectoryData = directoryData
         };

@@ -74,8 +74,61 @@ internal class FsosRepository : IFsosRepository {
         return fsos.Assert(fso => fso is Directory).Cast<Directory>();
     }
 
+    public async Task<Option<Fso>> GetByPath(MaybeEntity<Directory, FsoId> root, IEnumerable<string> paths, CancellationToken token = default) => (await _basic.Get(
+                (conn => {
+                    var cmd = conn.CreateCommand();
+                    var builder = new StringBuilder(
+                        """
+                        WITH recursive paths(paths_level, paths_path_fragment) as (
+                        VALUES
+                        (0,'/'),
+                        """);
 
-    public Task<IEnumerable<Fso>> GetAllByDirectory(Directory location, CancellationToken token = default)
+                    cmd.Parameters.Add(new NpgsqlParameter<Guid> { Value = root.Id.Value });
+                    // Parameter 1 is reserved for the query
+                    int i = 0;
+                    foreach (var (index, path) in paths.Index()) {
+                        var level = index + 1;
+                        var paramIndex = index + 2;
+                        builder.Append($"({index + 1},${index + 2}),");
+                        cmd.Parameters.Add(new NpgsqlParameter<string> { Value = path });
+                        i = level;
+                    }
+                    builder.RemoveLastCharacters();
+                    builder.AppendFormat(
+                """
+                        ),
+                        ctename AS (
+                            SELECT
+                            {0},
+                            0 AS level
+                            FROM {1}
+                            WHERE {1}.{2} = $1
+                            UNION ALL
+                            SELECT {0},
+                            ctename.level + 1
+                            FROM {1}
+                            JOIN ctename ON {1}.{4}  = {1}_{2}
+                            join paths on {1}.{5} = paths_path_fragment and paths_level = level + 1
+                            )
+                        SELECT {3} FROM ctename WHERE level = {6}
+                        LIMIT 1;
+                        """,
+                    _fsoHelper.SqlFieldsInOrder,
+                    TName,
+                    IdCol,
+                    _fsoHelper.SqlFields.Select(f => $"{TName}_{f}").ConcatenateWith(", "),
+                    _fsoHelper.GetColumnName(nameof(FsoInner.VirtualLocationId)),
+                    _fsoHelper.GetColumnName(nameof(FsoInner.FsoName)),
+                    i
+                    );
+                    cmd.CommandText = builder.ToString();
+                    return cmd;
+                }), token
+                )).FirstOrDefault();
+
+
+    public Task<IEnumerable<Fso>> GetAllByDirectory(MaybeEntity<Directory, FsoId> location, CancellationToken token = default)
         => _basic.Get(
                 $"{TName}.{_fsoHelper.GetColumnName(nameof(FsoInner.VirtualLocationId))} = $1",
                 None<string>(),
@@ -109,4 +162,19 @@ internal class FsosRepository : IFsosRepository {
 
     public Task<IEnumerable<Fso>> GetAll(CancellationToken token = default)
         => _basic.GetAll(token);
+
+    public async Task<Option<Fso>> GetByDirectoryAndName(MaybeEntity<Directory, FsoId> location, string name, CancellationToken token = default)
+        => (await _basic.Get(
+                    $"""
+                    {TName}.{_fsoHelper.GetColumnName(nameof(FsoInner.VirtualLocationId))} = $1
+                    AND
+                    {TName}.{_fsoHelper.GetColumnName(nameof(FsoInner.FsoName))} = $2
+                    """,
+                    "LIMIT 1",
+                    new Action<NpgsqlCommand>(cmd => {
+                        cmd.Parameters.Add(new NpgsqlParameter<Guid> { Value = location.Id.Value });
+                        cmd.Parameters.Add(new NpgsqlParameter<string> { Value = name });
+                    }),
+                    token)).FirstOrDefault();
+
 }
