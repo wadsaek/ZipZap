@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Threading;
@@ -13,16 +14,15 @@ using ZipZap.Classes.Extensions;
 using ZipZap.Classes.Helpers;
 using ZipZap.FileService.Extensions;
 using ZipZap.FileService.Helpers;
+using ZipZap.Grpc;
 using ZipZap.Persistance.Models;
 using ZipZap.Persistance.Repositories;
-using ZipZap.Grpc;
 
 using static Grpc.Core.Metadata;
 using static ZipZap.Classes.Helpers.Constructors;
 
 using Directory = ZipZap.Classes.Directory;
 using File = ZipZap.Classes.File;
-using System.ComponentModel;
 
 namespace ZipZap.FileService.Services;
 
@@ -114,7 +114,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         var createResult = await _fsosRepo.CreateAsync(file);
         file = createResult switch {
             Err<Fso, DbError> =>
-            throw new RpcException(new(StatusCode.Internal, "failed to create file in db")),
+                throw new RpcException(new(StatusCode.Internal, "failed to create file in db")),
             Ok<Fso, DbError>(var fso) => (File)fso,
             _ => throw new InvalidEnumArgumentException(nameof(createResult))
         };

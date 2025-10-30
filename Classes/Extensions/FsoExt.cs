@@ -19,8 +19,8 @@ public static class FsoExt {
                 Owner = fso.FsoOwner,
                 Permissions = (int)fso.Permissions.Inner,
             };
-            if (fso.VirtualLocation is Some<MaybeEntity<Directory,FsoId>>(var location))
-                data.RootId = location.Id.Value.ToString();
+            if (fso.VirtualLocation is Some<MaybeEntity<Directory, FsoId>>(var location))
+                data.RootId = location.Id.Value.ToGrpcGuid();
             return data;
         }
     }
@@ -31,7 +31,7 @@ public static class FsoExt {
             );
             return data;
         }
-        public async Task<(FsoSharedData, FileData)> ToRpcResponse(Stream stream) => (file.Data.ToRpcSharedData(), await file.ToRpcFileDataAsync(stream));
+        public async Task<(FsoSharedData, FileData)> ToRpcResponse(Stream stream) => (file.Data.ToRpcSharedData(), await File.ToRpcFileDataAsync(stream));
     }
     extension(Directory file) {
         public DirectoryData ToRpcDirectoryData() {

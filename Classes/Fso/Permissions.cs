@@ -23,7 +23,7 @@ public static class PermissionsExt {
         public static Permissions FromBitArray(BitArray array) {
             Assert(array.Length == 12);
             var bytes = new byte[array.Length];
-            array.CopyTo(bytes,0);
+            array.CopyTo(bytes, 0);
             return new(
                     bytes
                     .Index()
