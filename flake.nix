@@ -31,6 +31,7 @@
             pkgs.dotnet-ef
             pkgs.protobuf_29
             pkgs.ilspycmd
+            pkgs.grpcurl
             pkgs.grpcui
             pkgs.ghz
             pkgs.pkg-config
