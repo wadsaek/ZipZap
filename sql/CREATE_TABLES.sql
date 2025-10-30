@@ -130,4 +130,21 @@ BEGIN
     END IF;
 END $MIGRATION$;
 
+DO
+$MIGRATION$
+BEGIN
+    IF NOT EXISTS (SELECT * FROM migrations WHERE migration_name = 'more_root_constraints') THEN
+
+        INSERT INTO migrations VALUES ('more_root_constraints');
+
+        UPDATE fsos SET fso_name = '/'
+        WHERE virtual_location_id IS NULL;
+
+        ALTER TABLE fsos
+        DROP CONSTRAINT root_is_directory;
+        ALTER TABLE fsos
+        ADD CONSTRAINT root_is_directory
+            CHECK(virtual_location_id IS NOT NULL OR (fso_type = 'directory' AND fso_name = '/'));
+    END IF;
+END $MIGRATION$;
 COMMIT;
