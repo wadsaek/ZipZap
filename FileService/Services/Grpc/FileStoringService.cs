@@ -80,6 +80,15 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         var fileInner = ThrowNotFoundIfNull(file, "Fso not found for this owner id");
         return fileInner;
     }
+    private async Task<Fso> GetFsoOrFailAsync(PathData pathData, User owner, Func<Fso, bool>? predicate = null, CancellationToken cancellationToken = default) =>
+        ThrowNotFoundIfNull((pathData switch {
+            PathDataWithId { ParentId: var parentId, Name: var name }
+                => await _fsosRepo.GetByDirectoryAndName(parentId, name, cancellationToken),
+            PathDataWithPath { Path: var paths, Name: var name }
+                => await _fsosRepo.GetByPath(owner.Root, paths.Append(name), cancellationToken),
+            _
+                => throw new InvalidEnumArgumentException(nameof(pathData))
+        }).Where(predicate ?? (_ => true)));
 
     private async Task<User> GetUserOrThrowAsync(ServerCallContext context) {
         var entry = context.RequestHeaders.Get("Authorization") ?? ThrowUnauthenticated<Entry>();
@@ -127,5 +136,59 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
             Data = sharedData,
             DirectoryData = directoryData
         };
+    }
+    public override async Task<GetFsoResponse> GetFso(GetFsoRequest request, ServerCallContext context) {
+        var user = await GetUserOrThrowAsync(context);
+        Fso fso = request.IdentifierCase switch {
+            GetFsoRequest.IdentifierOneofCase.FsoId
+                => await GetFsoOrFailAsync(request.FsoId, user, context.CancellationToken),
+            GetFsoRequest.IdentifierOneofCase.Path
+                => await GetFsoOrFailAsync(request.Path.ToPathData(user.Root.Id), user, context.CancellationToken),
+            _ or GetFsoRequest.IdentifierOneofCase.None
+                => throw new RpcException(new Status(StatusCode.InvalidArgument, nameof(request.IdentifierCase)))
+        };
+        return fso switch {
+            File file => await GetFsoResponse.FromFileAsync(file, await _io.ReadAsync(file.PhysicalPath)),
+            Directory dir => GetFsoResponse.FromDirectory(dir with {
+                MaybeChildren = Some(await _fsosRepo.GetAllByDirectory(dir))
+            }),
+            Symlink link => GetFsoResponse.FromSymlink(link),
+            _ => throw new InvalidEnumArgumentException(nameof(fso))
+        };
+    }
+
+    public override async Task<SaveFileResponse> MakeDirectory(MakeDirectoryRequest request, ServerCallContext context) {
+        var user = await GetUserOrThrowAsync(context);
+        var parentDir = (await GetFsoOrFailAsync(request.Path.ToPathData(user.Root.Id), user, fso => fso is Directory, context.CancellationToken) as Directory)!;
+        var dir = new Directory(default, new(parentDir.AsMaybe(), Permissions.DirectoryDefault, request.Path.Name, 1000, 100));
+        dir = await _fsosRepo.CreateAsync(dir, context.CancellationToken) switch {
+            Ok<Fso, DbError>(Directory d) => d,
+            Err<Fso, DbError> => throw new RpcException(new(StatusCode.Internal, "unable to create directory")),
+            Ok<Fso, DbError> => throw new RpcException(new(StatusCode.Internal, "CREATED FSO WAS A NOT A DIRECTORY")),
+            _ => throw new InvalidEnumArgumentException()
+        };
+
+        return new SaveFileResponse { FileId = dir.Id.Value.ToGrpcGuid() };
+    }
+    public override async Task<SaveFileResponse> MakeLink(MakeLinkRequest request, ServerCallContext context) {
+        var user = await GetUserOrThrowAsync(context);
+        var parentDir = (await GetFsoOrFailAsync(request.Path.ToPathData(user.Root.Id), user, fso => fso is Directory, context.CancellationToken) as Directory)!;
+        var link = new Symlink(default, new(parentDir.AsMaybe(), Permissions.SymlinkDefault, request.Path.Name, 1000, 100), request.Target);
+        link = await _fsosRepo.CreateAsync(link, context.CancellationToken) switch {
+            Ok<Fso, DbError>(Symlink l) => l,
+            Err<Fso, DbError> => throw new RpcException(new(StatusCode.Internal, "unable to create directory")),
+            Ok<Fso, DbError> => throw new RpcException(new(StatusCode.Internal, "CREATED FSO WAS A NOT A SYMLINK")),
+            _ => throw new InvalidEnumArgumentException()
+        };
+
+        return new SaveFileResponse { FileId = link.Id.Value.ToGrpcGuid() };
+    }
+    public override async Task<EmptyMessage> RemoveFrenchLanguagePack(EmptyMessage message, ServerCallContext context) {
+        var user = await GetUserOrThrowAsync(context);
+        var entries = await _fsosRepo.GetAllByDirectory(user.Root, context.CancellationToken);
+        if (_logger.IsEnabled(LogLevel.Information))
+            _logger.LogInformation("deleting {user}'s root :)", user);
+        await _fsosRepo.DeleteRangeAsync(entries, context.CancellationToken);
+        return new EmptyMessage { };
     }
 }

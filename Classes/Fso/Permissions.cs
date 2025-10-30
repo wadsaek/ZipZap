@@ -42,7 +42,7 @@ public static class PermissionsExt {
         }
 
         public static Permissions FileDefault => new(M.AllRead | M.UserWrite);
-        public static Permissions GroupDefault => new(M.AllRead | M.AllExecute | M.UserWrite);
+        public static Permissions DirectoryDefault => new(M.AllRead | M.AllExecute | M.UserWrite);
         public static Permissions SymlinkDefault => new(M.AllExecute | M.AllRead | M.AllWrite);
     }
 }

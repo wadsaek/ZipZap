@@ -68,12 +68,11 @@ message ExistsOwnerIdResponse{
 
 service FilesStoringService {
   rpc SaveFile(SaveFileRequest) returns (SaveFileResponse);
-  rpc MakeDirectory(MakeDirectoryRequest) returns (SaveFileRequest);
-  rpc MakeLink(MakeLinkRequest) returns (SaveFileRequest);
+  rpc MakeDirectory(MakeDirectoryRequest) returns (SaveFileResponse);
+  rpc MakeLink(MakeLinkRequest) returns (SaveFileResponse);
   rpc GetFso(GetFsoRequest) returns (GetFsoResponse);
   rpc GetRoot(GetRootRequest) returns (GetRootResponse);
   rpc DeleteFso(DeleteFsoRequest) returns (EmptyMessage);
   rpc RemoveFrenchLanguagePack(EmptyMessage) returns (EmptyMessage);
   rpc ReplaceFile(ReplaceFileRequest) returns (EmptyMessage);
-  rpc ExistsOwnerId(ExistsOwnerIdRequest) returns (ExistsOwnerIdResponse);
 }
