@@ -60,7 +60,6 @@ public class Program {
         });
         builder.Services.AddGrpcReflection();
         builder.Services.AddScoped<IIO, IO>();
-        builder.Services.AddScoped<ISecurityHelper, SecurityHelper>();
         builder.Services.AddScoped<IUserService, UserService>();
 
 

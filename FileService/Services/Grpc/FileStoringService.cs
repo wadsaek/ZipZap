@@ -12,7 +12,6 @@ using Microsoft.Extensions.Logging;
 using ZipZap.Classes;
 using ZipZap.Classes.Extensions;
 using ZipZap.Classes.Helpers;
-using ZipZap.FileService.Extensions;
 using ZipZap.FileService.Helpers;
 using ZipZap.Grpc;
 using ZipZap.Persistance.Models;
@@ -29,24 +28,18 @@ namespace ZipZap.FileService.Services;
 public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBase {
     private readonly ILogger<FilesStoringServiceImpl> _logger;
     private readonly IIO _io;
-    private readonly ISecurityHelper _securityHelper;
     private readonly IFsosRepository _fsosRepo;
-    private readonly IConfiguration _config;
     private readonly IUserService _userService;
 
     public FilesStoringServiceImpl(
             ILogger<FilesStoringServiceImpl> logger,
             IIO io,
-            ISecurityHelper securityHelper,
             IFsosRepository fsosRepo,
-            IConfiguration config,
             IUserService userService
 ) {
         _logger = logger;
         _io = io;
-        _securityHelper = securityHelper;
         _fsosRepo = fsosRepo;
-        _config = config;
         _userService = userService;
     }
 
@@ -81,14 +74,6 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         return fileInner;
     }
 
-    public async Task<string> GenerateValidPathAsync() {
-        string path;
-        do {
-            path = _securityHelper.GenerateString(10, _io.IsValidPathChar);
-        } while (!_io.IsValidPath(path) || await _io.PathExistsAsync(path));
-        return path;
-    }
-
     private async Task<User> GetUserOrThrowAsync(ServerCallContext context) {
         var entry = context.RequestHeaders.Get("Authorization") ?? ThrowUnauthenticated<Entry>();
         if (entry.IsBinary) ThrowUnauthenticated<Unit>("Authorization header can't be binary");
@@ -109,7 +94,6 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
     public override async Task<SaveFileResponse> SaveFile(SaveFileRequest request, ServerCallContext context) {
         var user = await GetUserOrThrowAsync(context);
         var parentDir = (await GetFsoOrFailAsync(request.ParentId, user, fso => fso is Directory, context.CancellationToken) as Directory)!;
-        var path = await GenerateValidPathAsync();
         var file = new File(default, new FsData(parentDir.AsMaybe(), Permissions.FileDefault, request.Name, 1000, 100));
         var createResult = await _fsosRepo.CreateAsync(file);
         file = createResult switch {
@@ -118,8 +102,8 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
             Ok<Fso, DbError>(var fso) => (File)fso,
             _ => throw new InvalidEnumArgumentException(nameof(createResult))
         };
-        await _io.WriteAsync(path, new MemoryStream(request.Content.ToByteArray()));
         return new SaveFileResponse() { FileId = file.Id.Value.ToString() };
+        await _io.WriteAsync(file.PhysicalPath, new MemoryStream(request.Content.ToByteArray()));
     }
 
     public override async Task<GetRootResponse> GetRoot(GetRootRequest request, ServerCallContext context) {
