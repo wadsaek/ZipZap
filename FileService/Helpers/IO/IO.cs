@@ -47,8 +47,8 @@ public class IO : IIO {
         fileName = GetFullPath(fileName);
         var output = new MemoryStream();
 
-        using var stream = File.OpenRead(fileName);
-        using var decompressor = new GZipStream(stream, CompressionMode.Decompress);
+        await using var stream = File.OpenRead(fileName);
+        await using var decompressor = new GZipStream(stream, CompressionMode.Decompress);
         await decompressor.CopyToAsync(output);
         output.Position = 0;
 
@@ -60,7 +60,8 @@ public class IO : IIO {
         var fullPath = GetFullPath(fileName);
 
         using Mutex mut = new(false, fileName);
-        _logger.LogInformation($"Created named mutex for the file {fullPath}");
+        if (_logger.IsEnabled(LogLevel.Information))
+            _logger.LogInformation("Created named mutex for the file {fullPath}", fullPath);
 
 
         await RemoveAsync(fileName);
