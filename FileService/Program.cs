@@ -8,7 +8,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-using ZipZap.FileService.Extensions;
+using ZipZap.Classes;
 using ZipZap.FileService.Helpers;
 using ZipZap.FileService.Services;
 using ZipZap.Persistance;

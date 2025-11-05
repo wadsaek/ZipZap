@@ -1,4 +1,4 @@
-namespace ZipZap.FileService.Extensions;
+namespace ZipZap.Classes;
 
 public record struct FileSize(long Bytes) {
     public static FileSize FromBytes(long bytes) => new(bytes);

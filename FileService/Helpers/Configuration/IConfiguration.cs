@@ -1,4 +1,4 @@
-using ZipZap.FileService.Extensions;
+using ZipZap.Classes;
 
 namespace ZipZap.FileService.Helpers;
 
