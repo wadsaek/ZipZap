@@ -187,8 +187,18 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         var user = await GetUserOrThrowAsync(context);
         var entries = await _fsosRepo.GetAllByDirectory(user.Root, context.CancellationToken);
         if (_logger.IsEnabled(LogLevel.Information))
-            _logger.LogInformation("deleting {user}'s root :)", user);
+            _logger.LogInformation("deleting {user}'s [{id}] root :)", user.Username, user.Id);
         await _fsosRepo.DeleteRangeAsync(entries, context.CancellationToken);
         return new EmptyMessage { };
+    }
+
+    public override async Task<EmptyMessage> ReplaceFile(ReplaceFileRequest request, ServerCallContext context) {
+        var user = await GetUserOrThrowAsync(context);
+        var file = (File)await GetFsoOrFailAsync(request.Path.ToPathData(user.Root.Id), user, fso => fso is File, context.CancellationToken);
+        using var content = new MemoryStream();
+        request.Content.WriteTo(content);
+        content.Position = 0;
+        await _io.WriteAsync(file.PhysicalPath, content);
+        return new EmptyMessage();
     }
 }
