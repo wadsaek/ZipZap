@@ -12,4 +12,6 @@ public record User(
          MaybeEntity<Directory, FsoId> Root
 ) : IEntity<UserId>;
 
-public record struct UserId(Guid Value);
+public record struct UserId(Guid Value) {
+    public override readonly string ToString() => Value.ToString();
+}

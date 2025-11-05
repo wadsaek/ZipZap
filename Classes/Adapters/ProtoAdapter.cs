@@ -29,7 +29,7 @@ public static class ProtoAdapter {
         public static DirectoryData NewDirectoryData(IDictionary<string, Guid> dict) {
             var data = new DirectoryData();
             data.Entries.Add(dict
-                    .Select(pair => KeyValuePair.Create(pair.Key, new Grpc.Guid { Value = pair.Value.ToString() }))
+                    .Select(pair => KeyValuePair.Create(pair.Key, new Grpc.Guid { Value = pair.ToString() }))
                     .ToDictionary());
             return data;
         }
