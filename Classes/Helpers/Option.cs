@@ -1,13 +1,25 @@
 namespace ZipZap.Classes.Helpers;
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Threading.Tasks;
 
 using static Constructors;
 
-public abstract record Option<T> {
+public abstract record Option<T> : IEnumerable<T> {
+    public IEnumerator<T> GetEnumerator() {
+        if (this is Some<T>(var data))
+            yield return data;
+
+        yield break;
+    }
+
+    IEnumerator IEnumerable.GetEnumerator() {
+        return GetEnumerator();
+    }
+
     public abstract bool IsSome();
     public static implicit operator Option<T>(T? t) =>
             t is null
@@ -48,11 +60,6 @@ public static class OptionExt {
         public Option<U> SelectMany<U>(Func<T, Option<U>> selector) => option switch {
             Some<T>(T data) => selector(data),
             None<T> => new None<U>(),
-            _ => throw new InvalidEnumArgumentException(nameof(Option<>))
-        };
-        public IEnumerable<U> SelectMany<U>(Func<T, IEnumerable<U>> selector) => option switch {
-            Some<T>(T data) => selector(data),
-            None<T> => [],
             _ => throw new InvalidEnumArgumentException(nameof(Option<>))
         };
         public Option<T> Where(Func<T, bool> filter) =>
