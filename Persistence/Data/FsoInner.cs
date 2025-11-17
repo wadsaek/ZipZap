@@ -42,8 +42,8 @@ public class FsoInner : ITranslatable<Fso>, ISqlRetrievable {
     public Fso Into() {
         var virtualLocation = VirtualLocationId
         .ToOption()
-        .Select(id => new FsoId(id))
-        .Select(Directory.WithId);
+        .Select(id => id.ToFsoId())
+        .Select(id => id.AsIdOf<Directory>());
 
         var data = new FsData(
         virtualLocation,

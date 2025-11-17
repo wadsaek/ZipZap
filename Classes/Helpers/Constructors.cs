@@ -9,7 +9,9 @@ public static class Constructors {
             return new None<T>();
         }
     }
-    extension<T, TId>(MaybeEntity<T, TId> maybeEntity) where T : IEntity<TId> {
+    extension<T, TId>(MaybeEntity<T, TId> maybeEntity)
+    where T : IEntity<TId>
+    where TId : IStrongId {
         public static MaybeEntity<T, TId> OnlyId(TId id) => new OnlyId<T, TId>(id);
         public static MaybeEntity<T, TId> ExistsEntity(T entity) => new ExistsEntity<T, TId>(entity);
     }

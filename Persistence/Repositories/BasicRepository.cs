@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 
 using Npgsql;
 
-using ZipZap.Classes;
 using ZipZap.Classes.Extensions;
 using ZipZap.Classes.Helpers;
 using ZipZap.Persistance.Data;

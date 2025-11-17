@@ -28,7 +28,9 @@ internal class FsosRepository : IFsosRepository {
 
     private string TName => _fsoHelper.TableName;
     private string IdCol => _fsoHelper.GetColumnName(nameof(FsoInner.Id));
-    public FsosRepository(EntityHelper<FsoInner, Fso, Guid> fsoHelper, ExceptionConverter<DbError> converter, IBasicRepository<Fso, FsoInner, Guid> basic) {
+    public FsosRepository(
+            EntityHelper<FsoInner, Fso, Guid> fsoHelper,
+            ExceptionConverter<DbError> converter, IBasicRepository<Fso, FsoInner, Guid> basic) {
         _fsoHelper = fsoHelper;
         _converter = converter;
         _basic = basic;

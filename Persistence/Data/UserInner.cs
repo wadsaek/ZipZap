@@ -30,7 +30,7 @@ public class UserInner : ITranslatable<User>, ISqlRetrievable {
 
     public User Into() {
         Assertions.AssertEq(PasswordHash.Length, SHA512.HashSizeInBytes);
-        return new(new(Id), Username, PasswordHash, Email, OnlyId<Directory, FsoId>(new FsoId(Root)));
+        return new(new(Id), Username, PasswordHash, Email, new FsoId(Root).AsIdOf<Directory>());
     }
     public static UserInner From(User user) {
         Assertions.AssertEq(user.PasswordHash.Length, SHA512.HashSizeInBytes);

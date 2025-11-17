@@ -9,14 +9,10 @@ using System.Threading.Tasks;
 
 using Npgsql;
 
-using ZipZap.Classes;
 using ZipZap.Classes.Extensions;
 using ZipZap.Classes.Helpers;
 using ZipZap.Persistance.Attributes;
 using ZipZap.Persistance.Data;
-using ZipZap.Persistance.Extensions;
-
-using static ZipZap.Classes.Helpers.Constructors;
 
 namespace ZipZap.Persistance.Repositories;
 

@@ -14,13 +14,13 @@ using ZipZap.Classes;
 using ZipZap.Classes.Adapters;
 using ZipZap.Classes.Extensions;
 using ZipZap.Classes.Helpers;
+using ZipZap.FileService.Extensions;
 using ZipZap.FileService.Helpers;
 using ZipZap.Grpc;
 using ZipZap.Persistance.Models;
 using ZipZap.Persistance.Repositories;
 
 using static Grpc.Core.Metadata;
-using static ZipZap.Classes.Helpers.Constructors;
 
 using Directory = ZipZap.Classes.Directory;
 using File = ZipZap.Classes.File;
@@ -129,7 +129,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
             ExistsEntity<Directory, FsoId>(var dir) => dir,
             _ => throw new InvalidEnumArgumentException(nameof(user.Root))
         };
-        root = root with { MaybeChildren = Some(await _fsosRepo.GetAllByDirectory(root)) };
+        root = root with { MaybeChildren = (await _fsosRepo.GetAllByDirectory(root)).ToOption() };
         var (sharedData, directoryData) = root.ToRpcResponse();
         return new GetRootResponse() {
             FsoId = root.Id.Value.ToGrpcGuid(),
@@ -150,7 +150,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         return fso switch {
             File file => await GetFsoResponse.FromFileAsync(file, await _io.ReadAsync(file.PhysicalPath)),
             Directory dir => GetFsoResponse.FromDirectory(dir with {
-                MaybeChildren = Some(await _fsosRepo.GetAllByDirectory(dir))
+                MaybeChildren = (await _fsosRepo.GetAllByDirectory(dir)).ToOption()
             }),
             Symlink link => GetFsoResponse.FromSymlink(link),
             _ => throw new InvalidEnumArgumentException(nameof(fso))
