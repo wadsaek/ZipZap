@@ -26,6 +26,7 @@ using Directory = ZipZap.Classes.Directory;
 using File = ZipZap.Classes.File;
 using Guid = System.Guid;
 using PathData = ZipZap.Classes.PathData;
+using User = ZipZap.Classes.User;
 
 namespace ZipZap.FileService.Services;
 
@@ -122,7 +123,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         return new SaveFileResponse() { FileId = file.Id.Value.ToGrpcGuid() };
     }
 
-    public override async Task<GetRootResponse> GetRoot(GetRootRequest request, ServerCallContext context) {
+    public override async Task<GetRootResponse> GetRoot(EmptyMessage request, ServerCallContext context) {
         var user = await GetUserOrThrowAsync(context);
         var root = user.Root switch {
             OnlyId<Directory, FsoId> => throw new RpcException(new(StatusCode.Internal, "failed to get root")),
@@ -200,5 +201,13 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         content.Position = 0;
         await _io.WriteAsync(file.PhysicalPath, content);
         return new EmptyMessage();
+    }
+
+    public override async Task<LoginResponse> Login(LoginRequest request, ServerCallContext context) {
+        var token = await _userService.Login(request.Username, request.Password);
+        return new LoginResponse { Token = token.UnwrapOrElse(() => ThrowUnauthenticated<string>("Wrong credentials")) };
+    }
+    public override async Task<Grpc.User> GetSelf(EmptyMessage message, ServerCallContext context){
+        return (await GetUserOrThrowAsync(context)).ToGrpcUser();
     }
 }

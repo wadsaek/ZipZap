@@ -37,29 +37,12 @@ internal class UserReposirory : IUserRepository {
     public Task<IEnumerable<User>> GetAll(CancellationToken token = default)
         => _basic.GetAll(token);
 
-    public async Task<Option<User>> GetByIdAsync(UserId id, CancellationToken token = default) {
-        await using var _disposable = await _conn.OpenAsyncDisposable(token);
-        var cmdBuilder = new StringBuilder($"""
-                    SELECT {_userHelper.SqlFieldsInOrder}, {_fsoHelper.SqlFieldsInOrder} FROM {_userHelper.TableName}
-                    LEFT JOIN {FTName} ON
-                    {_userHelper.TableName}.{_userHelper.GetColumnName(nameof(UserInner.Root))} =
-                    {_fsoHelper.TableName}.{_fsoHelper.GetColumnName(nameof(FsoInner.Id))}
-                    WHERE {UTName}.{_userHelper.GetColumnName(nameof(UserInner.Id))} = $1
-                    LIMIT 1
-                    """);
-        var cmd = _conn.CreateCommand(cmdBuilder.ToString());
-        cmd.Parameters.Add(new() { Value = id.Value });
-        await using var reader = await cmd.ExecuteReaderAsync(token);
-        User? user = null;
-        while (await reader.ReadAsync(token)) {
-            if (user is not null)
-                throw new System.IO.InvalidDataException();
-            user = await _userHelper.Parse(reader, token);
-            user = user with { Root = (await _fsoHelper.Parse(reader, token) as Directory)! };
-        }
-        return user;
-
-    }
+    public async Task<Option<User>> GetByIdAsync(UserId id, CancellationToken token = default)
+        => await GetByParameter(
+            $"{UTName}.{_userHelper.GetColumnName(nameof(UserInner.Id))}",
+            new NpgsqlParameter<Guid> { Value = id.Value },
+            token
+        );
 
     public Task<Result<Unit, DbError>> DeleteAsync(User entity, CancellationToken token = default)
         => DeleteAsync(entity.Id, token);
@@ -81,4 +64,35 @@ internal class UserReposirory : IUserRepository {
 
     public Task<Result<IEnumerable<User>, DbError>> CreateRangeAsync(IEnumerable<User> entities, CancellationToken token = default)
         => _basic.CreateRangeAsync(entities, token);
+
+    public async Task<Option<User>> GetUserByUsername(string username, CancellationToken token = default)
+        => await GetByParameter(
+            $"{UTName}.{_userHelper.GetColumnName(nameof(UserInner.Username))}",
+            new NpgsqlParameter<string> { Value = username },
+            token
+        );
+
+    private async Task<Option<User>> GetByParameter<T>(string filterColumn, NpgsqlParameter<T> npgsqlParameter, CancellationToken cancellationToken = default) {
+        await using var _disposable = await _conn.OpenAsyncDisposable(cancellationToken);
+        var cmdBuilder = new StringBuilder($"""
+                    SELECT {_userHelper.SqlFieldsInOrder}, {_fsoHelper.SqlFieldsInOrder} FROM {_userHelper.TableName}
+                    LEFT JOIN {FTName} ON
+                    {_userHelper.TableName}.{_userHelper.GetColumnName(nameof(UserInner.Root))} =
+                    {_fsoHelper.TableName}.{_fsoHelper.GetColumnName(nameof(FsoInner.Id))}
+                    WHERE {filterColumn} = $1
+                    LIMIT 1
+                    """);
+        var cmd = _conn.CreateCommand(cmdBuilder.ToString());
+        cmd.Parameters.Add(npgsqlParameter);
+        await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+        User? user = null;
+        while (await reader.ReadAsync(cancellationToken)) {
+            if (user is not null)
+                throw new System.IO.InvalidDataException();
+            user = await _userHelper.Parse(reader, cancellationToken);
+            user = user with { Root = (await _fsoHelper.Parse(reader, cancellationToken) as Directory)! };
+        }
+        return user;
+    }
+
 }

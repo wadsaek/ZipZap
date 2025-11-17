@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -13,6 +14,27 @@ namespace ZipZap.Classes.Adapters;
 
 
 public static class ProtoAdapter {
+    extension(Fso fso) {
+        public FsoWithType ToFsoWithType() => fso switch {
+            File => new() {
+                Type = FileType.RegularFile,
+                Data = fso.ToRpcSharedData(),
+                Id = fso.Id.Value.ToGrpcGuid()
+            },
+            Directory => new() {
+                Type = FileType.Directory,
+                Data = fso.ToRpcSharedData(),
+                Id = fso.Id.Value.ToGrpcGuid()
+            },
+            Symlink { Target: var target } => new() {
+                Type = FileType.Symlink,
+                Data = fso.ToRpcSharedData(),
+                Id = fso.Id.Value.ToGrpcGuid(),
+                SymlinkData = new() { Target = target },
+            },
+            _ => throw new InvalidEnumArgumentException(nameof(fso))
+        };
+    }
     extension(FileData _) {
         public static FileData NewFileData(ByteString content) =>
             new() {
@@ -25,13 +47,13 @@ public static class ProtoAdapter {
                 Target = target
             };
     }
-    extension(DirectoryData _) {
-        public static DirectoryData NewDirectoryData(IDictionary<string, Guid> dict) {
-            var data = new DirectoryData();
-            data.Entries.Add(dict
-                    .Select(pair => KeyValuePair.Create(pair.Key, new Grpc.Guid { Value = pair.ToString() }))
-                    .ToDictionary());
-            return data;
+    extension(DirectoryData data) {
+        public static DirectoryData NewDirectoryData(IEnumerable<Fso> fsos) {
+            var dirData = new DirectoryData();
+            dirData.Entries.Add(fsos
+                    .Select(fso => fso.ToFsoWithType())
+                    );
+            return dirData;
         }
     }
     extension(GetFsoResponse _) {
@@ -67,5 +89,22 @@ public static class ProtoAdapter {
     extension(Grpc.Guid guid) {
         public Guid ToGuid() => Guid.Parse(guid.Value);
         public bool TryToGuid(out Guid result) => Guid.TryParse(guid.Value, out result);
+    }
+    extension(Grpc.User user) {
+        public User ToUser() => new(
+            user.Id.ToGuid().ToUserId(),
+            user.Username,
+            [],
+            user.Email,
+            user.RootId.ToGuid().ToFsoId().AsIdOf<Directory>()
+        );
+    }
+    extension(User user) {
+        public Grpc.User ToGrpcUser() => new() {
+            RootId = user.Root.Id.Value.ToGrpcGuid(),
+            Id = user.Id.Value.ToGrpcGuid(),
+            Email = user.Email,
+            Username = user.Username
+        };
     }
 }

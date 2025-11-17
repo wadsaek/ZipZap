@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -11,18 +10,17 @@ using ZipZap.Grpc;
 namespace ZipZap.Classes.Extensions;
 
 public static class FsoExt {
-    extension(FsData fso) {
-        public FsoSharedData ToRpcSharedData() {
-            var data = new FsoSharedData {
-                Group = fso.FsoGroup,
-                Name = fso.Name,
-                Owner = fso.FsoOwner,
-                Permissions = (int)fso.Permissions.Inner,
-            };
-            if (fso.VirtualLocation is Some<MaybeEntity<Directory, FsoId>>(var location))
-                data.RootId = location.Id.Value.ToGrpcGuid();
-            return data;
-        }
+    extension(Fso fso) {
+        public FsoSharedData ToRpcSharedData() => new() {
+            Group = fso.Data.FsoGroup,
+            Name = fso.Data.Name,
+            Owner = fso.Data.FsoOwner,
+            Permissions = (int)fso.Data.Permissions.Inner,
+            RootId = fso.Data.VirtualLocation
+                .Select(d => d.Id)
+                .UnwrapOr(fso.Id)
+                .Value.ToGrpcGuid()
+        };
     }
     extension(File file) {
         public static async Task<FileData> ToRpcFileDataAsync(Stream stream) {
@@ -31,18 +29,19 @@ public static class FsoExt {
             );
             return data;
         }
-        public async Task<(FsoSharedData, FileData)> ToRpcResponse(Stream stream) => (file.Data.ToRpcSharedData(), await File.ToRpcFileDataAsync(stream));
+        public async Task<(FsoSharedData, FileData)> ToRpcResponse(Stream stream) => (file.ToRpcSharedData(), await File.ToRpcFileDataAsync(stream));
     }
     extension(Directory dir) {
         public DirectoryData ToRpcDirectoryData() {
             var data = new DirectoryData();
             data.Entries.Add(
-                dir.MaybeChildren.UnwrapOr([])
-               .Select(f => new KeyValuePair<string, Guid>(f.Data.Name, f.Id.Value.ToGrpcGuid()))
-               .ToDictionary());
+                dir.MaybeChildren
+                .UnwrapOr([])
+               .Select(fso => fso.ToFsoWithType())
+           );
             return data;
         }
-        public (FsoSharedData, DirectoryData) ToRpcResponse() => (dir.Data.ToRpcSharedData(), dir.ToRpcDirectoryData());
+        public (FsoSharedData, DirectoryData) ToRpcResponse() => (dir.ToRpcSharedData(), dir.ToRpcDirectoryData());
     }
     extension(Symlink link) {
         public SymlinkData ToRpcLinkData() {
@@ -51,6 +50,6 @@ public static class FsoExt {
             );
             return data;
         }
-        public (FsoSharedData, SymlinkData) ToRpcResponse() => (link.Data.ToRpcSharedData(), link.ToRpcLinkData());
+        public (FsoSharedData, SymlinkData) ToRpcResponse() => (link.ToRpcSharedData(), link.ToRpcLinkData());
     }
 }

@@ -15,7 +15,7 @@ message FileData {
 }
 
 message DirectoryData {
-  map<string, Guid> entries = 1;
+ repeated FsoWithType entries = 1;
 }
 
 message SymlinkData {
@@ -28,4 +28,11 @@ message FsoSharedData {
   int32 permissions = 3;
   int32 owner = 6;
   int32 group = 7;
+}
+
+message FsoWithType {
+  Guid id = 1;
+  FileType type = 2;
+  FsoSharedData data = 3;
+  optional SymlinkData symlinkData = 4;
 }

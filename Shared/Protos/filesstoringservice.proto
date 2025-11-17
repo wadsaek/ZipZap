@@ -6,6 +6,7 @@ import "guid.proto";
 import "fsotypes.proto";
 import "emptyrequest.proto";
 import "pathdata.proto";
+import "user.proto";
 
 message SaveFileRequest {
   PathData path = 1;
@@ -30,6 +31,7 @@ message GetFsoRequest{
 }
 
 message GetFsoResponse{
+  Guid fsoId = 5;
   FsoSharedData data = 1;
   oneof specificData {
     FileData fileData = 2;
@@ -66,13 +68,24 @@ message ExistsOwnerIdResponse{
   bool exists = 1;
 }
 
+message LoginRequest {
+  string username = 1;
+  string password = 2;
+}
+message LoginResponse {
+  string token = 1;
+}
+
 service FilesStoringService {
   rpc SaveFile(SaveFileRequest) returns (SaveFileResponse);
   rpc MakeDirectory(MakeDirectoryRequest) returns (SaveFileResponse);
   rpc MakeLink(MakeLinkRequest) returns (SaveFileResponse);
   rpc GetFso(GetFsoRequest) returns (GetFsoResponse);
-  rpc GetRoot(GetRootRequest) returns (GetRootResponse);
+  rpc GetRoot(EmptyMessage) returns (GetRootResponse);
   rpc DeleteFso(DeleteFsoRequest) returns (EmptyMessage);
   rpc RemoveFrenchLanguagePack(EmptyMessage) returns (EmptyMessage);
   rpc ReplaceFile(ReplaceFileRequest) returns (EmptyMessage);
+
+  rpc Login(LoginRequest) returns (LoginResponse);
+  rpc GetSelf(EmptyMessage) returns (User);
 }
