@@ -25,5 +25,5 @@ csharp_style_prefer_primary_constructors = false
 
 
 # IDE0305: Simplify collection initialization
-dotnet_style_prefer_collection_expression = when_types_exactly_match
+dotnet_style_prefer_collection_expression = never
 
