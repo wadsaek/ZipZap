@@ -2,13 +2,27 @@ using System.Collections;
 using System.IO;
 using System.Linq;
 
+using ZipZap.Classes.Extensions;
+
 using static ZipZap.Classes.Helpers.Assertions;
 
 namespace ZipZap.Classes;
 
 using M = UnixFileMode;
 
-public record struct Permissions(M Inner);
+public record struct Permissions(M Inner) {
+    public override readonly string ToString() => (new[] {
+        (Inner | M.UserRead) != M.None ? "r" : "-",
+        (Inner | M.UserWrite) != M.None ? "w" : "-",
+        (Inner | M.UserExecute) != M.None ? "x" : "-",
+        (Inner | M.GroupRead) != M.None ? "r" : "-",
+        (Inner | M.GroupWrite) != M.None ? "w" : "-",
+        (Inner | M.GroupExecute) != M.None ? "x" : "-",
+        (Inner | M.OtherRead) != M.None ? "r" : "-",
+        (Inner | M.OtherWrite) != M.None ? "w" : "-",
+        (Inner | M.OtherExecute) != M.None ? "x" : "-",
+    }).ConcatenateWith(string.Empty);
+}
 
 public static class UnixFileModeExt {
     extension(M mode) {
@@ -32,6 +46,7 @@ public static class PermissionsExt {
                         )
                     );
         }
+        public static Permissions FromBitMask(int mask) => new((M)mask);
 
         public BitArray ToBitArray() {
             var arr = new BitArray(12);
