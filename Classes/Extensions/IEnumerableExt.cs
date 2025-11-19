@@ -8,7 +8,10 @@ namespace ZipZap.Classes.Extensions;
 
 public static class IEnumerableExt {
     extension(IEnumerable<string> strings) {
-        public string ConcatenateWith(string str) => strings.Aggregate((acc, next) => $"{acc}{str}{next}");
+        public string ConcatenateWith(string str) => strings.ToList() switch {
+            [] => "",
+            var list => list.Aggregate((acc, next) => $"{acc}{str}{next}")
+        };
     }
     extension<T>(IEnumerable<T> enumerable) {
         public IEnumerable<T> Assert(Func<T, bool> predicate) {
@@ -18,5 +21,8 @@ public static class IEnumerableExt {
             }
             yield break;
         }
+    }
+    extension<T>(IEnumerable<IEnumerable<T>> enumerable) {
+        public IEnumerable<T> Flatten() => enumerable.SelectMany(i => i);
     }
 }

@@ -9,6 +9,14 @@ public static class Constructors {
             return new None<T>();
         }
     }
+    extension<T, E>(Result<T, E> option) {
+        public static Result<T, E> Ok(T arg) {
+            return new Ok<T, E>(arg);
+        }
+        public static Result<T, E> Err(E err) {
+            return new Err<T, E>(err);
+        }
+    }
     extension<T, TId>(MaybeEntity<T, TId> maybeEntity)
     where T : IEntity<TId>
     where TId : IStrongId {
