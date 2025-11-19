@@ -81,8 +81,8 @@ public static class ProtoAdapter {
     }
     extension(Grpc.PathData data) {
         public PathData ToPathData(FsoId workingDirectory) => data.IdCase switch {
-            Grpc.PathData.IdOneofCase.FilePath => new PathDataWithPath(data.Name, data.FilePath.Split('/').Where(string.IsNullOrEmpty)),
             Grpc.PathData.IdOneofCase.ParentId => new PathDataWithId(data.Name, new(data.ParentId.ToGuid())),
+            Grpc.PathData.IdOneofCase.FilePath => new PathDataWithPath(data.Name, data.FilePath.Split('/').Where(s => !string.IsNullOrEmpty(s))),
             Grpc.PathData.IdOneofCase.None or _ => new PathDataWithId(data.Name, workingDirectory),
         };
     }
