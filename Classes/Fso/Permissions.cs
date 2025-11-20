@@ -12,15 +12,15 @@ using M = UnixFileMode;
 
 public record struct Permissions(M Inner) {
     public override readonly string ToString() => (new[] {
-        (Inner | M.UserRead) != M.None ? "r" : "-",
-        (Inner | M.UserWrite) != M.None ? "w" : "-",
-        (Inner | M.UserExecute) != M.None ? "x" : "-",
-        (Inner | M.GroupRead) != M.None ? "r" : "-",
-        (Inner | M.GroupWrite) != M.None ? "w" : "-",
-        (Inner | M.GroupExecute) != M.None ? "x" : "-",
-        (Inner | M.OtherRead) != M.None ? "r" : "-",
-        (Inner | M.OtherWrite) != M.None ? "w" : "-",
-        (Inner | M.OtherExecute) != M.None ? "x" : "-",
+        (Inner & M.UserRead) != M.None ? "r" : "-",
+        (Inner & M.UserWrite) != M.None ? "w" : "-",
+        (Inner & M.UserExecute) == M.None ?  "-" : (Inner & M.SetUser) != M.None ? "s" : "x",
+        (Inner & M.GroupRead) != M.None ? "r" : "-",
+        (Inner & M.GroupWrite) != M.None ? "w" : "-",
+        (Inner & M.GroupExecute) == M.None ? "-" : (Inner & M.SetGroup) != M.None ? "s" : "x",
+        (Inner & M.OtherRead) != M.None ? "r" : "-",
+        (Inner & M.OtherWrite) != M.None ? "w" : "-",
+        (Inner & M.OtherExecute) != M.None ? "x" : "-",
     }).ConcatenateWith(string.Empty);
 }
 
