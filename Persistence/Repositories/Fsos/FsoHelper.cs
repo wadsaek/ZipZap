@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
@@ -26,7 +25,7 @@ internal class FsoHelper : EntityHelper<FsoInner, Fso, Guid> {
             Id = await reader.GetFieldValueAsync<Guid>($"{TableName}_{GetColumnName(nameof(FsoInner.Id))}", token),
             FsoName = await reader.GetFieldValueAsync<string>($"{TableName}_{GetColumnName(nameof(FsoInner.FsoName))}", token),
             VirtualLocationId = await reader.GetFieldValueAsync<Guid?>($"{TableName}_{GetColumnName(nameof(FsoInner.VirtualLocationId))}", token),
-            Permissions = await reader.GetFieldValueAsync<BitArray>($"{TableName}_{GetColumnName(nameof(FsoInner.Permissions))}", token),
+            Permissions = await reader.GetFieldValueAsync<short>($"{TableName}_{GetColumnName(nameof(FsoInner.Permissions))}", token),
             FsoOwner = await reader.GetFieldValueAsync<int>($"{TableName}_{GetColumnName(nameof(FsoInner.FsoOwner))}", token),
             FsoGroup = await reader.GetFieldValueAsync<int>($"{TableName}_{GetColumnName(nameof(FsoInner.FsoGroup))}", token),
             FsoType = await reader.GetFieldValueAsync<FsoType>($"{TableName}_{GetColumnName(nameof(FsoInner.FsoType))}", token),

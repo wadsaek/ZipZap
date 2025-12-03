@@ -25,7 +25,7 @@ public class FsoInner : ITranslatable<Fso>, ISqlRetrievable {
     public required Guid? VirtualLocationId { get; set; }
 
     [SqlColumn("permissions")]
-    public required BitArray Permissions { get; set; }
+    public required short Permissions { get; set; }
 
     [SqlColumn("fso_owner")]
     public required int FsoOwner { get; set; }
@@ -47,7 +47,7 @@ public class FsoInner : ITranslatable<Fso>, ISqlRetrievable {
 
         var data = new FsData(
         virtualLocation,
-        Classes.Permissions.FromBitArray(Permissions),
+        Classes.Permissions.FromBitMask(Permissions),
         FsoName,
         FsoOwner,
         FsoGroup
@@ -66,7 +66,7 @@ public class FsoInner : ITranslatable<Fso>, ISqlRetrievable {
         FsoName = fso.Data.Name,
         FsoOwner = fso.Data.FsoOwner,
         LinkRef = (fso as Symlink)?.Target,
-        Permissions = fso.Data.Permissions.ToBitArray(),
+        Permissions = (short)fso.Data.Permissions.Inner,
         VirtualLocationId = fso.Data.VirtualLocation.Select(dir => dir.Id.Value),
         FsoType = fso switch {
             File => FsoType.RegularFile,

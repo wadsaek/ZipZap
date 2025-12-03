@@ -147,4 +147,16 @@ BEGIN
             CHECK(virtual_location_id IS NOT NULL OR (fso_type = 'directory' AND fso_name = '/'));
     END IF;
 END $MIGRATION$;
+
+DO
+$MIGRATION$
+BEGIN
+    IF NOT EXISTS (SELECT * FROM migrations WHERE migration_name = 'use_smallint_for_permissions') THEN
+
+        INSERT INTO migrations VALUES ('use_smallint_for_permissions');
+
+        ALTER TABLE fsos
+        ALTER permissions TYPE smallint USING (permissions::integer);
+    END IF;
+END $MIGRATION$;
 COMMIT;
