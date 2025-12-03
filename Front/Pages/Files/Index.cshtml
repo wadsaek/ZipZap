@@ -1,0 +1,33 @@
+﻿@page "/Files/{*path}"
+@using ZipZap.Classes
+@using ZipZap.Classes.Helpers
+@using ZipZap.Classes.Extensions
+@model ZipZap.Front.IndexModel
+@{
+    ViewData["Title"] = Model.Path;
+}
+
+<div>
+    @if (Model.Item is Some<Fso>(var fso))
+    {
+        <div>@fso</div>
+        @if (fso is Directory dir)
+        {
+
+            <h1>Children</h1>
+            @foreach (var child in dir.MaybeChildren.Flatten())
+            {
+                <div>
+                    @{
+                        string link = "/Files/";
+                        if(Model.Path != "/")
+                            link=$"{link}{Model.Path.NormalizePath()}/";
+                    }
+                    <a href="@link@(child.Data.Name.NormalizePath())">
+                        @child
+                    </a>
+                </div>
+            }
+        }
+    }
+</div>

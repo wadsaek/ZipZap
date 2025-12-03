@@ -1,29 +1,68 @@
+using System;
+
+using Grpc.Core;
+
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-var builder = WebApplication.CreateBuilder(args);
+using ZipZap.Classes;
+using ZipZap.Classes.Helpers;
+using ZipZap.Front.Factories;
+using ZipZap.Front.Services;
 
-// Add services to the container.
-builder.Services.AddRazorPages();
+namespace ZipZap.Front;
 
-var app = builder.Build();
+public class Program {
+    public static void Main(string[] args) {
 
-// Configure the HTTP request pipeline.
-if (!app.Environment.IsDevelopment()) {
-    app.UseExceptionHandler("/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-    app.UseHsts();
+        var builder = WebApplication.CreateBuilder(args);
+
+        // Add services to the container.
+        builder.Services.AddRazorPages();
+        builder.Services.AddGrpcClient<Grpc.FilesStoringService.FilesStoringServiceClient>(options => {
+            options.Address = new Uri("http://localhost:5210");
+            options.ChannelOptionsActions.Add(chOptions
+                    => chOptions.MaxReceiveMessageSize = (int)FileSize.FromMegaBytes(16).Bytes);
+        });
+        builder.Services.AddScoped<IFactory<IBackend, BackendConfiguration>, BackendFactory>();
+        builder.Services.AddScoped<ExceptionConverter<ServiceError>>(_ => new SimpleExceptionConverter<ServiceError>(ex => ex switch {
+            RpcException { StatusCode: StatusCode.Unauthenticated } => new Unathorized(),
+            _ => new Unknown(ex)
+
+        }));
+        builder.Services.AddScoped<ILoginSerivce, LoginService>();
+
+        builder.Services
+            .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+            .AddCookie(options=>{
+                    options.SlidingExpiration = true;
+                    options.ExpireTimeSpan = TimeSpan.FromMinutes(40);
+                    options.AccessDeniedPath = "/Forbidden";
+                    });
+
+        var app = builder.Build();
+
+        // Configure the HTTP request pipeline.
+        if (!app.Environment.IsDevelopment()) {
+            app.UseExceptionHandler("/Error");
+            // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
+            app.UseHsts();
+        }
+
+        // app.UseHttpsRedirection();
+
+        app.UseRouting();
+
+        app.UseAuthorization();
+        app.UseAuthentication();
+
+        app.MapStaticAssets();
+        app.MapRazorPages()
+            .WithStaticAssets();
+        app.MapDefaultControllerRoute();
+
+        app.Run();
+    }
 }
-
-app.UseHttpsRedirection();
-
-app.UseRouting();
-
-app.UseAuthorization();
-
-app.MapStaticAssets();
-app.MapRazorPages()
-   .WithStaticAssets();
-
-app.Run();

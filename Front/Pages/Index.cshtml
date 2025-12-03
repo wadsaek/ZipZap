@@ -1,10 +1,45 @@
 ﻿@page
+@using ZipZap.Classes.Helpers
+@using ZipZap.Classes.Extensions
+@using ZipZap.Classes
 @model IndexModel
 @{
     ViewData["Title"] = "Home page";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div class="d-flex flex-column justify-content-start align-items-center">
+    @{
+        string welcomeMessage = "Welcome";
+        User? user = Model.User;
+    }
+    @if (user is not null)
+    {
+        welcomeMessage = $"{welcomeMessage}, {user.Username}";
+    }
+    <h1 class="display-4">@welcomeMessage</h1>
+    @if (user is not null)
+    {
+        <h2 class="display-6">
+            <a href="/Files/">Browse your files!</a>
+        </h2>
+    }
+    @if (user is null)
+    {
+        <form method="post" class="text-start w-50">
+            <div class="mb-3">
+                <label asp-for="Username" class="form-label"></label>
+                <input asp-for="Username" class="form-control" />
+            </div>
+            <div class="mb-3">
+                <label asp-for="Password" class="form-label"></label>
+                <input asp-for="Password" class="form-control" />
+            </div>
+            <input type="submit" value="Login" class="mb-2 text-lg-center btn btn-primary form-control" />
+
+        @if (Model.Error is not null)
+        {
+            <div class="alert alert-danger" >@Model.Error</div>
+        }
+        </form>
+    }
 </div>

@@ -1,0 +1,21 @@
+:root {
+	--eminence: #55286fff;
+	--poppy: #da2c38ff;
+	--dark-spring-green: #226f54ff;
+	--blue-munsell: #62929eff;
+	--baby-powder: #fffcf9ff;
+}
+
+
+body {
+	background-color: var(--baby-powder);
+}
+html{
+	position: relative;
+	min-height: 100%;
+}
+
+.navbar {
+	background-color: var(--eminence);
+	height: 5.5em;
+}
