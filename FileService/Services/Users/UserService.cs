@@ -21,10 +21,14 @@ public class UserService : IUserService {
         _repo = repo;
     }
 
+    private static bool UserHasPassword(User user, string password) {
+        var passwordHash = HashPassword(password);
+        return user.PasswordHash.SequenceCompareTo(passwordHash) == 0;
+    }
+
     public async Task<Option<string>> Login(string username, string password) {
         var user = await _repo.GetUserByUsername(username);
-        var passwordHash = HashPassword(password);
-        var filteredUser = user.Where(user => user.PasswordHash.SequenceCompareTo(passwordHash) == 0);
+        user = user.Where(user => UserHasPassword(user, password));
         return user.Select(user => $"Bearer {user.Id} {password}");
     }
 
@@ -33,11 +37,9 @@ public class UserService : IUserService {
         if (split.Length < 3 || split[0] != "Bearer") return None<User>();
         if (!Guid.TryParse(split[1], out var id)) return None<User>();
         var uId = new UserId(id);
-        var hash = HashPassword(split[2]);
+        var password = split[2];
         return (await _repo.GetByIdAsync(uId))
-            .Where(user =>
-                user.PasswordHash.SequenceCompareTo(hash) == 0
-            );
+            .Where(user => UserHasPassword(user, password));
     }
 }
 
