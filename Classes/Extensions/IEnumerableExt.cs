@@ -21,6 +21,8 @@ public static class IEnumerableExt {
             }
             yield break;
         }
+        public IEnumerable<T> WhereNot(Func<T, bool> predicate)
+            => enumerable.Where(x => !predicate(x));
     }
     extension<T>(IEnumerable<IEnumerable<T>> enumerable) {
         public IEnumerable<T> Flatten() => enumerable.SelectMany(i => i);

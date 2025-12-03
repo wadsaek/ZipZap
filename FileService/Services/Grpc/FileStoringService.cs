@@ -37,11 +37,11 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
     private readonly IUserService _userService;
 
     public FilesStoringServiceImpl(
-            ILogger<FilesStoringServiceImpl> logger,
-            IIO io,
-            IFsosRepository fsosRepo,
-            IUserService userService
-) {
+        ILogger<FilesStoringServiceImpl> logger,
+        IIO io,
+        IFsosRepository fsosRepo,
+        IUserService userService
+    ) {
         _logger = logger;
         _io = io;
         _fsosRepo = fsosRepo;
@@ -85,14 +85,14 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         ThrowNotFoundIfNull((pathData switch {
             PathDataWithId { ParentId: var parentId, Name: var name }
                 => await _fsosRepo.GetByDirectoryAndName(parentId, name, cancellationToken),
-            PathDataWithPath { Path: var paths, Name: var name }
-                => await _fsosRepo.GetByPath(owner.Root, paths.Append(name), cancellationToken),
+            PathDataWithPath { Path: var path}
+                => await _fsosRepo.GetByPath(owner.Root, path, cancellationToken),
             _
                 => throw new InvalidEnumArgumentException(nameof(pathData))
         }).Where(predicate ?? (_ => true)));
 
     private async Task<User> GetUserOrThrowAsync(ServerCallContext context) {
-        var entry = context.RequestHeaders.Get("Authorization") ?? ThrowUnauthenticated<Entry>();
+        var entry = context.RequestHeaders.Get(Constants.AUTHORIZATION) ?? ThrowUnauthenticated<Entry>($"No {Constants.AUTHORIZATION} header");
         if (entry.IsBinary) ThrowUnauthenticated<Unit>("Authorization header can't be binary");
         var maybeUser = await _userService.MaybeGetUser(entry.Value);
         return maybeUser.UnwrapOrElse(() => ThrowUnauthenticated<User>());
@@ -207,7 +207,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         var token = await _userService.Login(request.Username, request.Password);
         return new LoginResponse { Token = token.UnwrapOrElse(() => ThrowUnauthenticated<string>("Wrong credentials")) };
     }
-    public override async Task<Grpc.User> GetSelf(EmptyMessage message, ServerCallContext context){
+    public override async Task<Grpc.User> GetSelf(EmptyMessage message, ServerCallContext context) {
         return (await GetUserOrThrowAsync(context)).ToGrpcUser();
     }
 }

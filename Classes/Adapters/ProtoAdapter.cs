@@ -10,7 +10,10 @@ using ZipZap.Classes.Extensions;
 using ZipZap.Classes.Helpers;
 using ZipZap.Grpc;
 
+using DataCase = ZipZap.Grpc.GetFsoResponse.SpecificDataOneofCase;
+using IdCase = ZipZap.Grpc.PathData.IdOneofCase;
 using Guid = System.Guid;
+
 namespace ZipZap.Classes.Adapters;
 
 
@@ -97,12 +100,12 @@ public static class ProtoAdapter {
             var id = new FsoId(response.FsoId.ToGuid());
             var data = response.Data.ToFsData();
             return response.SpecificDataCase switch {
-                GetFsoResponse.SpecificDataOneofCase.FileData => new File(id, data),
-                GetFsoResponse.SpecificDataOneofCase.SymlinkData => new Symlink(id, data, response.SymlinkData.Target),
-                GetFsoResponse.SpecificDataOneofCase.DirectoryData => new Directory(id, data) {
+                DataCase.FileData => new File(id, data),
+                DataCase.SymlinkData => new Symlink(id, data, response.SymlinkData.Target),
+                DataCase.DirectoryData => new Directory(id, data) {
                     MaybeChildren = response.DirectoryData.ToFsos().ToOption()
                 },
-                GetFsoResponse.SpecificDataOneofCase.None or _ => throw new InvalidEnumArgumentException(nameof(response.SpecificDataCase))
+                DataCase.None or _ => throw new InvalidEnumArgumentException(nameof(response.SpecificDataCase))
 
             };
         }
@@ -117,9 +120,9 @@ public static class ProtoAdapter {
     }
     extension(Grpc.PathData data) {
         public PathData ToPathData(FsoId workingDirectory) => data.IdCase switch {
-            Grpc.PathData.IdOneofCase.FilePath => new PathDataWithPath(data.Name, data.FilePath.Split('/').Where(s => !string.IsNullOrEmpty(s))),
-            Grpc.PathData.IdOneofCase.ParentId => new PathDataWithId(data.Name, data.ParentId.ToGuid().ToFsoId()),
-            Grpc.PathData.IdOneofCase.None or _ => new PathDataWithId(data.Name, workingDirectory),
+            IdCase.FilePath => new PathDataWithPath(data.FilePath),
+            IdCase.ParentId => new PathDataWithId(data.Name, data.ParentId.ToGuid().ToFsoId()),
+            IdCase.None or _ => new PathDataWithId(data.Name, workingDirectory),
         };
     }
     extension(PathData pathData) {
@@ -129,9 +132,7 @@ public static class ProtoAdapter {
                 Name = pathData.Name,
             };
             if (pathData is PathDataWithPath { Path: var path }) {
-                var pathList = path.ToList();
-                if (pathList.Count != 0)
-                    grpcPathData.FilePath = pathList.ConcatenateWith("/");
+                    grpcPathData.FilePath = path;
             }
             if (pathData is PathDataWithId { ParentId: var id })
                 grpcPathData.ParentId = id.Value.ToGrpcGuid();
