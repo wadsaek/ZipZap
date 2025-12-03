@@ -8,14 +8,14 @@
 }
 
 <div>
-    @if (Model.Item is Some<Fso>(var fso))
+    @if (Model.Item is not null)
     {
-        <div>@fso</div>
-        @if (fso is Directory dir)
+        <h1>@Model.Item.ToString(Fso.ShortListingFormat)</h1>
+        @if (Model.Item is Directory dir)
         {
 
-            <h1>Children</h1>
-            @foreach (var child in dir.MaybeChildren.Flatten())
+            <h2>Children</h2>
+            @foreach (var child in dir.MaybeChildren)
             {
                 <div>
                     @{
@@ -24,10 +24,11 @@
                             link=$"{link}{Model.Path.NormalizePath()}/";
                     }
                     <a href="@link@(child.Data.Name.NormalizePath())">
-                        @child
+                        @child.ToString(Fso.ShortListingFormat)
                     </a>
                 </div>
             }
+        } else if (Model.Item is File file){
         }
     }
 </div>

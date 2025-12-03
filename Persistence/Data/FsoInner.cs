@@ -41,9 +41,8 @@ public class FsoInner : ITranslatable<Fso>, ISqlRetrievable {
 
     public Fso Into() {
         var virtualLocation = VirtualLocationId
-        .ToOption()
-        .Select(id => id.ToFsoId())
-        .Select(id => id.AsIdOf<Directory>());
+        ?.ToFsoId()
+        .AsIdOf<Directory>();
 
         var data = new FsData(
         virtualLocation,
@@ -67,7 +66,7 @@ public class FsoInner : ITranslatable<Fso>, ISqlRetrievable {
         FsoOwner = fso.Data.FsoOwner,
         LinkRef = (fso as Symlink)?.Target,
         Permissions = (short)fso.Data.Permissions.Inner,
-        VirtualLocationId = fso.Data.VirtualLocation.Select(dir => dir.Id.Value),
+        VirtualLocationId = fso.Data.VirtualLocation?.Id.Value,
         FsoType = fso switch {
             File => FsoType.RegularFile,
             Directory => FsoType.Directory,

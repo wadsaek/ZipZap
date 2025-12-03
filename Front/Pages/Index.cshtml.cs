@@ -24,7 +24,7 @@ public class IndexModel : PageModel {
         _loginService = loginService;
         _logger = logger;
     }
-    public new Option<User> User { get; set; } = None<User>();
+    public new User? User { get; set; }
 
     public async Task OnGet(CancellationToken cancellationToken) {
         var token = Request.Cookies[Constants.AUTHORIZATION];
@@ -35,8 +35,8 @@ public class IndexModel : PageModel {
 
         var backend = _backendFactory.Create(new(token));
         User = await backend.GetSelf(cancellationToken) switch {
-            Ok<User, ServiceError>(var user) => Some(user),
-            _ => None<User>()
+            Ok<User, ServiceError>(var user) => user,
+            _ => null
         };
     }
 

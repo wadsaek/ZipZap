@@ -16,9 +16,9 @@ public static class FsoExt {
             Name = fso.Data.Name,
             Owner = fso.Data.FsoOwner,
             Permissions = (int)fso.Data.Permissions.Inner,
-            RootId = fso.Data.VirtualLocation
-                .Select(d => d.Id)
-                .UnwrapOr(fso.Id)
+            RootId = (fso.Data.VirtualLocation
+                ?.Id
+                ?? fso.Id)
                 .Value.ToGrpcGuid()
         };
     }
@@ -35,8 +35,10 @@ public static class FsoExt {
         public DirectoryData ToRpcDirectoryData() {
             var data = new DirectoryData();
             data.Entries.Add(
-                dir.MaybeChildren
-                .UnwrapOr([])
+                    (
+                     dir.MaybeChildren
+                     ?? []
+                    )
                .Select(fso => fso.ToFsoWithType())
            );
             return data;

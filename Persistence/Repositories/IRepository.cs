@@ -19,7 +19,7 @@ where TId : IEquatable<TId> {
     public Task<Result<Unit, DbError>> DeleteAsync(TEntity entity, CancellationToken token = default);
     public Task<Result<int, DbError>> DeleteRangeAsync(IEnumerable<TEntity> entities, CancellationToken token = default);
     public Task<Result<Unit, DbError>> UpdateAsync(TEntity entity, CancellationToken token = default);
-    public Task<Option<TEntity>> GetByIdAsync(TId id, CancellationToken token = default);
+    public Task<TEntity?> GetByIdAsync(TId id, CancellationToken token = default);
     public Task<Result<Unit, DbError>> DeleteAsync(TId id, CancellationToken token = default);
     public Task<Result<int, DbError>> DeleteRangeAsync(IEnumerable<TId> ids, CancellationToken token = default);
 }

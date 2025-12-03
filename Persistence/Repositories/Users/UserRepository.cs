@@ -37,7 +37,7 @@ internal class UserReposirory : IUserRepository {
     public Task<IEnumerable<User>> GetAll(CancellationToken token = default)
         => _basic.GetAll(token);
 
-    public async Task<Option<User>> GetByIdAsync(UserId id, CancellationToken token = default)
+    public async Task<User?> GetByIdAsync(UserId id, CancellationToken token = default)
         => await GetByParameter(
             $"{UTName}.{_userHelper.GetColumnName(nameof(UserInner.Id))}",
             new NpgsqlParameter<Guid> { Value = id.Value },
@@ -65,14 +65,14 @@ internal class UserReposirory : IUserRepository {
     public Task<Result<IEnumerable<User>, DbError>> CreateRangeAsync(IEnumerable<User> entities, CancellationToken token = default)
         => _basic.CreateRangeAsync(entities, token);
 
-    public async Task<Option<User>> GetUserByUsername(string username, CancellationToken token = default)
+    public async Task<User?> GetUserByUsername(string username, CancellationToken token = default)
         => await GetByParameter(
             $"{UTName}.{_userHelper.GetColumnName(nameof(UserInner.Username))}",
             new NpgsqlParameter<string> { Value = username },
             token
         );
 
-    private async Task<Option<User>> GetByParameter<T>(string filterColumn, NpgsqlParameter<T> npgsqlParameter, CancellationToken cancellationToken = default) {
+    private async Task<User?> GetByParameter<T>(string filterColumn, NpgsqlParameter<T> npgsqlParameter, CancellationToken cancellationToken = default) {
         await using var _disposable = await _conn.OpenAsyncDisposable(cancellationToken);
         var cmdBuilder = new StringBuilder($"""
                     SELECT {_userHelper.SqlFieldsInOrder}, {_fsoHelper.SqlFieldsInOrder} FROM {_userHelper.TableName}

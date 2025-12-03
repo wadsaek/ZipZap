@@ -1,11 +1,9 @@
-using System.Collections.Generic;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
 
 using ZipZap.Classes;
-using static ZipZap.Classes.Helpers.Constructors;
 using ZipZap.Classes.Helpers;
 using ZipZap.Front.Factories;
 using ZipZap.Front.Services;
@@ -15,8 +13,9 @@ namespace ZipZap.Front;
 
 public class IndexModel : PageModel {
     required public string Path { get; set; }
-    required public string Name { get; set; }
-    public Option<Fso> Item { get; set; } = None<Fso>();
+
+    public Fso? Item { get; set; }
+    public string? Text { get; set; }
     private readonly ILogger<IndexModel> _logger;
     private readonly IFactory<IBackend, BackendConfiguration> _backendFactory;
 
@@ -34,9 +33,12 @@ public class IndexModel : PageModel {
             return NotFound();
         var backend = _backendFactory.Create(new(token));
         Item = (await backend.GetFsoByPathAsync(new PathDataWithPath(Path)))
-            .UnwrapOrElse(_ => None<Fso>()!);
-        if (Item is Some<Fso>(Symlink { Target: var target }))
+            .UnwrapOr(null!);
+        if (Item is Symlink { Target: var target })
             return Redirect(target);
+        else if (Item is File { Content: var bytes }) {
+
+        }
         return Page();
     }
 }

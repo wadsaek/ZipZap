@@ -59,11 +59,11 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
             throw new RpcException(new(StatusCode.InvalidArgument, "Invalid guid"));
     }
 
-    private static T ThrowNotFoundIfNull<T>(Option<T> obj, string message = "Resource not found")
-        => obj.UnwrapOrElse(() => throw new RpcException(new(StatusCode.NotFound, message)));
+    private static T ThrowNotFoundIfNull<T>(T? obj, string message = "Resource not found")
+        => obj ?? throw new RpcException(new(StatusCode.NotFound, message));
 
     private Func<Fso, Task<bool>> OwnedBy(User owner) =>
-            async fso => (await _fsosRepo.GetRootDirectory(fso.Id)).IsSomeAnd(fso => fso.Id == owner.Root.Id);
+            async fso => (await _fsosRepo.GetRootDirectory(fso.Id))?.Id == owner.Root.Id;
 
 
     private Task<Fso> GetFsoOrFailAsync(Grpc.Guid key, User owner, CancellationToken cancellationToken = default)
@@ -77,7 +77,10 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         var file = await _fsosRepo.GetByIdAsync(
                 guid.ToFsoId(),
                 cancellationToken
-                ).WhereAsync(predicate.ToOption().UnwrapOr(_ => true)).WhereAsync(OwnedBy(owner));
+                );
+        file = file.Where(predicate ?? Predicates.AlwaysTrue);
+        file = await file.WhereAsync(OwnedBy(owner));
+        // .WhereAsync((predicate ?? (_ => true)).WhereAsync(OwnedBy(owner));
         var fileInner = ThrowNotFoundIfNull(file, "Fso not found for this owner id");
         return fileInner;
     }
@@ -85,7 +88,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         ThrowNotFoundIfNull((pathData switch {
             PathDataWithId { ParentId: var parentId, Name: var name }
                 => await _fsosRepo.GetByDirectoryAndName(parentId, name, cancellationToken),
-            PathDataWithPath { Path: var path}
+            PathDataWithPath { Path: var path }
                 => await _fsosRepo.GetByPath(owner.Root, path, cancellationToken),
             _
                 => throw new InvalidEnumArgumentException(nameof(pathData))
@@ -94,8 +97,8 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
     private async Task<User> GetUserOrThrowAsync(ServerCallContext context) {
         var entry = context.RequestHeaders.Get(Constants.AUTHORIZATION) ?? ThrowUnauthenticated<Entry>($"No {Constants.AUTHORIZATION} header");
         if (entry.IsBinary) ThrowUnauthenticated<Unit>("Authorization header can't be binary");
-        var maybeUser = await _userService.MaybeGetUser(entry.Value);
-        return maybeUser.UnwrapOrElse(() => ThrowUnauthenticated<User>());
+        var user = await _userService.GetUser(entry.Value);
+        return user ?? ThrowUnauthenticated<User>();
     }
 
     public override async Task<EmptyMessage> DeleteFso(DeleteFsoRequest request, ServerCallContext context) {
@@ -130,7 +133,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
             ExistsEntity<Directory, FsoId>(var dir) => dir,
             _ => throw new InvalidEnumArgumentException(nameof(user.Root))
         };
-        root = root with { MaybeChildren = (await _fsosRepo.GetAllByDirectory(root)).ToOption() };
+        root = root with { MaybeChildren = await _fsosRepo.GetAllByDirectory(root) };
         var (sharedData, directoryData) = root.ToRpcResponse();
         return new GetRootResponse() {
             FsoId = root.Id.Value.ToGrpcGuid(),
@@ -151,7 +154,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         return fso switch {
             File file => await GetFsoResponse.FromFileAsync(file, await _io.ReadAsync(file.PhysicalPath)),
             Directory dir => GetFsoResponse.FromDirectory(dir with {
-                MaybeChildren = (await _fsosRepo.GetAllByDirectory(dir)).ToOption()
+                MaybeChildren = await _fsosRepo.GetAllByDirectory(dir)
             }),
             Symlink link => GetFsoResponse.FromSymlink(link),
             _ => throw new InvalidEnumArgumentException(nameof(fso))
@@ -205,9 +208,13 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
 
     public override async Task<LoginResponse> Login(LoginRequest request, ServerCallContext context) {
         var token = await _userService.Login(request.Username, request.Password);
-        return new LoginResponse { Token = token.UnwrapOrElse(() => ThrowUnauthenticated<string>("Wrong credentials")) };
+        return new LoginResponse { Token = token ?? ThrowUnauthenticated<string>("Wrong credentials") };
     }
     public override async Task<Grpc.User> GetSelf(EmptyMessage message, ServerCallContext context) {
         return (await GetUserOrThrowAsync(context)).ToGrpcUser();
     }
+}
+
+internal class Predicates {
+    public static Func<object, bool> AlwaysTrue => _ => true;
 }

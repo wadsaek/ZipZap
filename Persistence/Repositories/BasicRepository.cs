@@ -13,8 +13,6 @@ using ZipZap.Persistance.Data;
 using ZipZap.Persistance.Extensions;
 using ZipZap.Persistance.Models;
 
-using static ZipZap.Classes.Helpers.Constructors;
-
 namespace ZipZap.Persistance.Repositories;
 
 interface IBasicRepository<TEntity, TInner, TId>
@@ -27,10 +25,10 @@ where TId : struct {
     Task<Result<Unit, DbError>> DeleteAsync(TId id, CancellationToken token = default);
     Task<Result<int, DbError>> DeleteRangeAsync(IEnumerable<TId> ids, CancellationToken token = default);
     Task<Result<int, DbError>> DeleteRangeAsyncWithOpenConn(IEnumerable<TId> ids, CancellationToken token = default);
-    Task<IEnumerable<TEntity>> Get(Option<string> condition, Option<string> postCondition, Option<Action<NpgsqlCommand>> commandCallback, CancellationToken token = default);
+    Task<IEnumerable<TEntity>> Get(string? condition, string? postCondition, Action<NpgsqlCommand>? commandCallback, CancellationToken token = default);
     Task<IEnumerable<TEntity>> Get(Func<NpgsqlConnection, NpgsqlCommand> commandInitalizer, CancellationToken token = default);
     Task<IEnumerable<TEntity>> GetAll(CancellationToken token = default);
-    Task<Option<TEntity>> GetByIdAsync(TId id, CancellationToken token = default);
+    Task<TEntity?> GetByIdAsync(TId id, CancellationToken token = default);
     Task<Result<Unit, DbError>> UpdateAsync(TEntity entity, CancellationToken token = default);
 }
 
@@ -48,22 +46,23 @@ where TId : struct {
     }
 
     private string TName => _helper.TableName;
-    private NpgsqlCommand BuildCommand(Option<Action<NpgsqlCommand>> commandCallback, Option<string> condition, Option<string> postCondition) {
+    private NpgsqlCommand BuildCommand(Action<NpgsqlCommand>? commandCallback, string? condition, string? postCondition) {
         var cmdBuilder = new StringBuilder();
         cmdBuilder.AppendLine($"SELECT {_helper.SqlFieldsInOrder} FROM {TName} ");
-        condition.Select(condition => cmdBuilder.AppendLine($"WHERE {condition}"));
-        postCondition.Select(cmdBuilder.AppendLine);
+        if (condition is not null) cmdBuilder.AppendLine($"WHERE {condition}");
+        if (postCondition is not null) cmdBuilder.AppendLine(postCondition);
         cmdBuilder.Append(';');
 
         var cmdText = cmdBuilder.ToString();
         var cmd = _conn.CreateCommand(cmdText);
-        commandCallback.Select(callback => { callback(cmd); return new Unit(); });
+        if (commandCallback is not null)
+            commandCallback(cmd);
         return cmd;
     }
 
     public async Task<IEnumerable<TEntity>> Get(
-            Option<string> condition, Option<string> postCondition,
-            Option<Action<NpgsqlCommand>> commandCallback, CancellationToken token = default
+            string? condition, string? postCondition,
+            Action<NpgsqlCommand>? commandCallback, CancellationToken token = default
         )
         => await Get(_ => BuildCommand(commandCallback, condition, postCondition), token);
 
@@ -79,7 +78,7 @@ where TId : struct {
         return fsos;
     }
     public async Task<IEnumerable<TEntity>> GetAll(CancellationToken token = default)
-        => await Get(None<string>(), None<string>(), None<Action<NpgsqlCommand>>(), token);
+        => await Get(null, null, null, token);
 
 
     public Task<Result<TEntity, DbError>> CreateAsync(TEntity createEntity, CancellationToken token = default) => CreateAsync((TInner)TInner.From(createEntity), token);
@@ -155,10 +154,10 @@ where TId : struct {
         return DbHelper.EnsureSingle(count);
     }
 
-    public async Task<Option<TEntity>> GetByIdAsync(TId id, CancellationToken token = default)
+    public async Task<TEntity?> GetByIdAsync(TId id, CancellationToken token = default)
         =>
             (await Get($"{TName}.{_helper.IdCol} = $1", "LIMIT 1",
-                Some<Action<NpgsqlCommand>>(cmd => cmd.Parameters.Add(new NpgsqlParameter<TId> { Value = id })), token))
+                cmd => cmd.Parameters.Add(new NpgsqlParameter<TId> { Value = id }), token))
             .FirstOrDefault();
 
     public async Task<Result<int, DbError>> DeleteRangeAsyncWithOpenConn(IEnumerable<TId> ids, CancellationToken token = default) {

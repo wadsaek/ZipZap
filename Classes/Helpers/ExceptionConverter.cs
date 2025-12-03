@@ -16,16 +16,15 @@ sealed public class SimpleExceptionConverter<Err> : ExceptionConverter<Err> {
 }
 
 sealed public class ChainedExceptionConverter<Err> : ExceptionConverter<Err> {
-    private readonly Func<Exception, Option<Err>> _selector;
+    private readonly Func<Exception, Err?> _selector;
     private readonly ExceptionConverter<Err> _next;
 
     public ChainedExceptionConverter(
-            Func<Exception, Option<Err>> selector,
+            Func<Exception, Err?> selector,
             ExceptionConverter<Err> next) {
         _selector = selector;
         _next = next;
     }
 
-    override public Err Convert(Exception e) => _selector(e)
-        .UnwrapOrElse(() => _next.Convert(e));
+    override public Err Convert(Exception e) => _selector(e) ?? _next.Convert(e);
 }

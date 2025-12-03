@@ -6,7 +6,7 @@ using ZipZap.Classes.Helpers;
 namespace ZipZap.FileService.Services;
 
 public interface IUserService {
-    Task<Option<string>> Login(string username, string password);
-    Task<Option<User>> MaybeGetUser(string token);
+    Task<string?> Login(string username, string password);
+    Task<User?> GetUser(string token);
 }
 

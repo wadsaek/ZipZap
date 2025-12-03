@@ -103,7 +103,7 @@ public static class ProtoAdapter {
                 DataCase.FileData => new File(id, data),
                 DataCase.SymlinkData => new Symlink(id, data, response.SymlinkData.Target),
                 DataCase.DirectoryData => new Directory(id, data) {
-                    MaybeChildren = response.DirectoryData.ToFsos().ToOption()
+                    MaybeChildren = response.DirectoryData.ToFsos()
                 },
                 DataCase.None or _ => throw new InvalidEnumArgumentException(nameof(response.SpecificDataCase))
 
@@ -115,7 +115,7 @@ public static class ProtoAdapter {
                 response.FsoId.ToGuid().ToFsoId(),
                 response.Data.ToFsData()
                 ) {
-            MaybeChildren = response.DirectoryData.ToFsos().ToOption()
+            MaybeChildren = response.DirectoryData.ToFsos()
         };
     }
     extension(Grpc.PathData data) {

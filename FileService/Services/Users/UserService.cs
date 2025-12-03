@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 using ZipZap.Classes;
 using ZipZap.Classes.Helpers;
+using ZipZap.Classes.Extensions;
 using ZipZap.Persistance.Repositories;
 
 using static ZipZap.Classes.Helpers.Constructors;
@@ -26,16 +27,17 @@ public class UserService : IUserService {
         return user.PasswordHash.SequenceCompareTo(passwordHash) == 0;
     }
 
-    public async Task<Option<string>> Login(string username, string password) {
+    public async Task<string?> Login(string username, string password) {
         var user = await _repo.GetUserByUsername(username);
         user = user.Where(user => UserHasPassword(user, password));
-        return user.Select(user => $"Bearer {user.Id} {password}");
+        if (user is null) return null;
+        return $"Bearer {user.Id} {password}";
     }
 
-    public async Task<Option<User>> MaybeGetUser(string token) {
+    public async Task<User?> GetUser(string token) {
         var split = token.Split(' ');
-        if (split.Length < 3 || split[0] != "Bearer") return None<User>();
-        if (!Guid.TryParse(split[1], out var id)) return None<User>();
+        if (split.Length < 3 || split[0] != "Bearer") return null;
+        if (!Guid.TryParse(split[1], out var id)) return null;
         var uId = new UserId(id);
         var password = split[2];
         return (await _repo.GetByIdAsync(uId))

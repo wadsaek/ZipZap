@@ -75,7 +75,7 @@ public class Backend : IBackend {
     public async Task<Result<Directory, ServiceError>> GetRoot(CancellationToken cancellationToken = default) {
         try {
             var response = await _filesStoringService.GetRootAsync(new EmptyMessage(), _configuration.ToMetadata(), cancellationToken: cancellationToken);
-            return Ok<Directory, ServiceError>(new(response.FsoId.ToGuid().ToFsoId(), response.Data.ToFsData()) { MaybeChildren = response.DirectoryData.ToFsos().ToOption() });
+            return Ok<Directory, ServiceError>(new(response.FsoId.ToGuid().ToFsoId(), response.Data.ToFsData()) { MaybeChildren = response.DirectoryData.ToFsos() });
         } catch (RpcException exception) {
             return Err<Directory, ServiceError>(_exceptionConverter.Convert(exception));
         }

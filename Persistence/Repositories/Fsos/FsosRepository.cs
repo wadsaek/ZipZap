@@ -55,7 +55,7 @@ internal class FsosRepository : IFsosRepository {
         {_fsoHelper.SqlFields.Select(f => $"{TName}_{f}").ConcatenateWith(", ")}
         FROM ctename order by level desc;
         """;
-    public async Task<Option<Directory>> GetRootDirectory(FsoId id, CancellationToken token = default) {
+    public async Task<Directory?> GetRootDirectory(FsoId id, CancellationToken token = default) {
         var fsos = await _basic.Get(conn => {
             var cmd = conn.CreateCommand($"{GetRootQuery} LIMIT 1");
 
@@ -76,7 +76,7 @@ internal class FsosRepository : IFsosRepository {
         return fsos.Assert(fso => fso is Directory).Cast<Directory>();
     }
 
-    public async Task<Option<Fso>> GetByPath(MaybeEntity<Directory, FsoId> root, string path, CancellationToken token = default) => 
+    public async Task<Fso?> GetByPath(MaybeEntity<Directory, FsoId> root, string path, CancellationToken token = default) => 
         (await _basic.Get( conn => {
             var cmd = conn.CreateCommand();
             var builder = new StringBuilder(
@@ -133,7 +133,7 @@ internal class FsosRepository : IFsosRepository {
     public Task<IEnumerable<Fso>> GetAllByDirectory(MaybeEntity<Directory, FsoId> location, CancellationToken token = default)
         => _basic.Get(
                 $"{TName}.{_fsoHelper.GetColumnName(nameof(FsoInner.VirtualLocationId))} = $1",
-                None<string>(),
+                null,
                 new Action<NpgsqlCommand>(
                     cmd => cmd.Parameters.Add(new NpgsqlParameter<Guid> { Value = location.Id.Value })
                 ), token);
@@ -153,7 +153,7 @@ internal class FsosRepository : IFsosRepository {
     public Task<Result<Unit, DbError>> UpdateAsync(Fso entity, CancellationToken token = default)
         => _basic.UpdateAsync(entity, token);
 
-    public Task<Option<Fso>> GetByIdAsync(FsoId id, CancellationToken token = default)
+    public Task<Fso?> GetByIdAsync(FsoId id, CancellationToken token = default)
         => _basic.GetByIdAsync(id.Value, token);
 
     public Task<Result<Unit, DbError>> DeleteAsync(FsoId id, CancellationToken token = default)
@@ -165,7 +165,7 @@ internal class FsosRepository : IFsosRepository {
     public Task<IEnumerable<Fso>> GetAll(CancellationToken token = default)
         => _basic.GetAll(token);
 
-    public async Task<Option<Fso>> GetByDirectoryAndName(MaybeEntity<Directory, FsoId> location, string name, CancellationToken token = default)
+    public async Task<Fso?> GetByDirectoryAndName(MaybeEntity<Directory, FsoId> location, string name, CancellationToken token = default)
         => (await _basic.Get(
                     $"""
                     {TName}.{_fsoHelper.GetColumnName(nameof(FsoInner.VirtualLocationId))} = $1
