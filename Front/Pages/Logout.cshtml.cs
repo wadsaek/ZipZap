@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 using ZipZap.Classes.Helpers;
 
-namespace ZipZap.Front;
+namespace ZipZap.Front.Pages;
 
 public class LogoutModel : PageModel {
     public IActionResult OnGet() {

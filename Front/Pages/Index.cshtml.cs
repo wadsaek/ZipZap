@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 using ZipZap.Classes;
 using ZipZap.Classes.Helpers;
-using static ZipZap.Classes.Helpers.Constructors;
 using ZipZap.Front.Factories;
 using ZipZap.Front.Services;
 using System.Threading;
@@ -47,13 +46,15 @@ public class IndexModel : PageModel {
             Response.Cookies.Append(Constants.AUTHORIZATION, token);
             return Redirect("/");
 
-        } else if (response is Err<string, LoginError>(var error)) {
+        }
+
+        if (response is Err<string, LoginError>(var error)) {
             Error = error.ToString();
         }
         return Page();
     }
 
-    public string? Error { get; set; } = null;
+    public string? Error { get; set; }
 
     [Required]
     [BindProperty]

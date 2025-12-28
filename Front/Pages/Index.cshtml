@@ -1,7 +1,4 @@
 ﻿@page
-@using ZipZap.Classes.Helpers
-@using ZipZap.Classes.Extensions
-@using ZipZap.Classes
 @model IndexModel
 @{
     ViewData["Title"] = "Home page";
@@ -9,8 +6,8 @@
 
 <div class="d-flex flex-column justify-content-start align-items-center">
     @{
-        string welcomeMessage = "Welcome";
-        User? user = Model.User;
+        var welcomeMessage = "Welcome";
+        var user = Model.User;
     }
     @if (user is not null)
     {

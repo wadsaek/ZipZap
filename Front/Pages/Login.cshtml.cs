@@ -7,7 +7,7 @@ using ZipZap.Classes;
 using ZipZap.Classes.Helpers;
 using ZipZap.Front.Services;
 
-namespace ZipZap.Front;
+namespace ZipZap.Front.Pages;
 
 public class LoginModel : PageModel {
     private readonly ILoginSerivce _loginService;

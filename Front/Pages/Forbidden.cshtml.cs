@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
-namespace ZipZap.Front;
+namespace ZipZap.Front.Pages;
 
 public class ForbiddenModel : PageModel
 {
