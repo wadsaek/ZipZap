@@ -22,6 +22,41 @@ public record struct Permissions(M Inner) {
         (Inner & M.OtherWrite) != M.None ? "w" : "-",
         (Inner & M.OtherExecute) != M.None ? "x" : "-"
     }.ConcatenateWith(string.Empty);
+
+    public static bool TryParse(string input, out Permissions permissions) {
+        permissions = new(default);
+        if (input.Length != 9 && input.Length != 10) return false;
+        var mode = M.None;
+        if (input[0] == 'r') mode |= M.UserRead;
+        else if (input[0] != '-') return false;
+        if (input[1] == 'w') mode |= M.UserWrite;
+        else if (input[1] != '-') return false;
+        if (input[2] == 'x') mode |= M.UserExecute;
+        else if (input[2] == 'S') mode |= M.SetUser;
+        else if (input[2] == 's') mode |= M.SetUser | M.UserExecute;
+        else if (input[2] != '-') return false;
+        if (input[3] == 'r') mode |= M.GroupRead;
+        else if (input[3] != '-') return false;
+        if (input[4] == 'w') mode |= M.GroupWrite;
+        else if (input[4] != '-') return false;
+        if (input[5] == 'x') mode |= M.GroupExecute;
+        else if (input[5] == 'S') mode |= M.SetGroup;
+        else if (input[5] == 's') mode |= M.SetGroup | M.GroupExecute;
+        else if (input[5] != '-') return false;
+        if (input[6] == 'r') mode |= M.OtherRead;
+        else if (input[6] != '-') return false;
+        if (input[7] == 'w') mode |= M.OtherWrite;
+        else if (input[7] != '-') return false;
+        if (input[8] == 'x') mode |= M.OtherExecute;
+        else if (input[8] == 's') mode |= M.SetUser | M.UserExecute;
+        else if (input[8] != '-') return false;
+        if (input.Length == 10) {
+            if (input[9] == 'T') mode |= M.StickyBit;
+            else return false;
+        }
+        permissions = new(mode);
+        return true;
+    }
 }
 
 public static class UnixFileModeExt {

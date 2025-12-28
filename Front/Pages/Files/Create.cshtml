@@ -1,0 +1,44 @@
+﻿@page
+@using ZipZap.Classes
+@model ZipZap.Front.Pages.Files.CreateModel
+@{
+    ViewData["Title"] = "Create an Fso";
+}
+
+<h1>Create</h1>
+@if(Model.GetHandler is not null){
+
+}
+<form method="post" enctype="multipart/form-data">
+    @foreach(var type in new[] { FsoType.Symlink, FsoType.RegularFile, FsoType.Directory }){
+        @Html.RadioButtonFor(model => model.FsoType, type, new { id =$"radio{type}", onclick="setRadioButtons()"}) @type <br />
+    }
+    <span class="text-danger">@Model.FormError</span><br />
+    <label>Name: <input asp-for="Name" /></label> <br />
+    <label>User Id: <input asp-for="UId" /></label><br />
+    <label>Group Id: <input asp-for="GId" /></label><br />
+    <label>UNIX Permissions: <input asp-for="Perms" /></label><br />
+    <div id="fileSpecific">
+        @if(!string.IsNullOrWhiteSpace(Model.FileError)){
+            <span class="text-danger">@Model.FileError</span><br/>
+        }
+        <label>File: <input asp-for="File" /></label><br />
+    </div>
+    <div id="symlinkSpecific">
+        <label>Target: <input asp-for="Target" required /></label><br />
+    </div>
+    <script>
+        function setRadioButtons(){
+            if(!radioSymlink.checked)
+                symlinkSpecific.style.display = "none"
+            else
+                symlinkSpecific.style.display = "block"
+            if(!radioRegularFile.checked)
+                fileSpecific.style.display = "none"
+            else
+                fileSpecific.style.display = "block"
+        }
+        setRadioButtons()
+    </script>
+    <input type="submit" />
+</form>
