@@ -1,3 +1,4 @@
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -9,9 +10,12 @@ using ZipZap.Classes.Helpers;
 namespace ZipZap.Front.Services;
 
 public interface IBackend {
-    public Task<Result<File, ServiceError>> SaveFile(ByteString bytes, PathData pathData, File file, CancellationToken cancellationToken = default);
-    public Task<Result<Directory, ServiceError>> MakeDirectory(PathData pathData, Directory dir, CancellationToken cancellationToken = default);
-    public Task<Result<Symlink, ServiceError>> MakeLink(PathData pathData, Symlink link, CancellationToken cancellationToken = default);
+    public Task<Result<File, ServiceError>> SaveFile(ByteString bytes, File file, CancellationToken cancellationToken = default);
+    public Task<Result<File, ServiceError>> SaveFile(ByteString bytes, File file, string path, CancellationToken cancellationToken = default);
+    public Task<Result<Directory, ServiceError>> MakeDirectory(Directory dir, CancellationToken cancellationToken = default);
+    public Task<Result<Directory, ServiceError>> MakeDirectory(Directory dir, string path, CancellationToken cancellationToken = default);
+    public Task<Result<Symlink, ServiceError>> MakeLink(Symlink link, CancellationToken cancellationToken = default);
+    public Task<Result<Symlink, ServiceError>> MakeLink(Symlink link, string path, CancellationToken cancellationToken = default);
     public Task<Result<Fso, ServiceError>> GetFsoByIdAsync(FsoId fsoId, CancellationToken cancellationToken = default);
     public Task<Result<Fso, ServiceError>> GetFsoByPathAsync(PathData pathData, CancellationToken cancellationToken = default);
     public Task<Result<Directory, ServiceError>> GetRoot(CancellationToken cancellationToken = default);
@@ -25,14 +29,17 @@ public interface IBackend {
 }
 
 public abstract record LoginError;
-public sealed record WrongCredentials: LoginError{
+public sealed record WrongCredentials : LoginError {
     public override string ToString() => "One or more fields is wrong";
 }
-public sealed record EmptyCredentials: LoginError{
+public sealed record EmptyCredentials : LoginError {
     public override string ToString() => "One or more fields is empty";
 }
-public sealed record LoginServiceError(ServiceError ServiceError): LoginError;
+public sealed record LoginServiceError(ServiceError ServiceError) : LoginError;
 
 
-public class DeleteFlags {
+[Flags]
+public enum DeleteFlags {
+    Empty = 0
+
 }

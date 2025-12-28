@@ -1,0 +1,48 @@
+﻿@page "/Files/View/{*path}"
+@using ZipZap.Classes
+@model ZipZap.Front.Pages.Files.FileViewModel
+@{
+    ViewData["Title"] = Model.GetHandler?.Specification.Identifier ?? "View Files";
+}
+
+<div class="pb-5">
+    @if (Model.GetHandler is not null)
+    {
+
+        <div class="d-flex justify-content-between">
+            @{var item = Model.GetHandler!.Item;}
+            <div>
+                <h1> @item.ToString(Fso.ShortListingFormat) </h1>
+                <h4 class="text-secondary">@item.Data.Permissions @item.Data.FsoOwner:@item.Data.FsoGroup </h4>
+            </div>
+            <a class="text" href="@Model.GetHandler!.ParentUrl">Up</a>
+        </div>
+        @if (Model.GetHandler.Item is Directory dir)
+        {
+
+            <div class="d-flex justify-content-between">
+                <h2>Items</h2>
+                <a class="text fs-4" asp-page="/Files/Create" asp-route-id="@Model.GetHandler.Item.Id.Value">Create a new
+                    file</a>
+            </div>
+            @foreach (var child in dir.MaybeChildren)
+            {
+                <div>
+                    <form method="post" onsubmit="return confirm('Are you sure you want to delete this file?')"
+                    asp-page-handler="Delete"
+                    asp-route-path="@child.Id" asp-route-type="id"
+                    >
+                        <button class="btn text-danger border border-1 p-1 m-1">X</button>
+                        <a href="@Model.GetHandler.GetChildLink(child)">
+                            @child.ToString(Fso.ShortListingFormat)
+                        </a>
+                    </form>
+                </div>
+            }
+        }
+        else if (Model.GetHandler.Item is File)
+        {
+            <p style="white-space: pre-wrap;" class="border border-1 rounded p-3">@Model.GetHandler.Text</p>
+        }
+    }
+</div>
