@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging;
 using ZipZap.Classes;
 using ZipZap.FileService.Helpers;
 using ZipZap.FileService.Services;
-using ZipZap.Persistance;
+using ZipZap.Persistence;
 
 using Directory = System.IO.Directory;
 using IConfiguration = ZipZap.FileService.Helpers.IConfiguration;
@@ -20,7 +20,7 @@ namespace ZipZap.FileService;
 
 public class Program {
     private static string GetDataPath() {
-        string basePath = Environment.CurrentDirectory;
+        var basePath = Environment.CurrentDirectory;
         var envPath = Environment.GetEnvironmentVariable("FILE_SERVICE_FILES");
         if (envPath is not null)
             basePath = envPath;
@@ -38,12 +38,12 @@ public class Program {
     public static void Main(string[] args) {
         var builder = WebApplication.CreateBuilder(args);
 
-        var connectionStringEnvVar = "NpgsqlConnectionString";
+        const string connectionStringEnvVar = "NpgsqlConnectionString";
         var connectionString =
                 builder.Configuration
                     .GetConnectionString(connectionStringEnvVar)
-                ?? throw new Exception(nameof(connectionStringEnvVar));
-        builder.AddPersistance(connectionString);
+                ?? throw new(nameof(connectionStringEnvVar));
+        builder.AddPersistence(connectionString);
 
         builder.Logging.AddConsole();
         var config = new Configuration(

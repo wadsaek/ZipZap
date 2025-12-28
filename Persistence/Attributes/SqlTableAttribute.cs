@@ -1,8 +1,8 @@
 using System;
 
-namespace ZipZap.Persistance.Attributes;
+namespace ZipZap.Persistence.Attributes;
 
 [AttributeUsage(AttributeTargets.Class)]
 public class SqlTableAttribute(string table) : Attribute {
-    public string Table { get; set; } = table;
+    public string Table { get; } = table;
 }

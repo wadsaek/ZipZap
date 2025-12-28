@@ -1,6 +1,6 @@
 namespace ZipZap.Classes;
 
-public record struct FileSize(long Bytes) {
+public readonly record struct FileSize(long Bytes) {
     public static FileSize FromBytes(long bytes) => new(bytes);
     public static FileSize FromKiloBytes(long kb) => FromBytes(kb << 10);
     public static FileSize FromMegaBytes(long mb) => FromKiloBytes(mb << 10);

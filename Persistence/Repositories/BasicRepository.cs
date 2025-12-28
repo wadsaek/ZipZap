@@ -9,13 +9,13 @@ using Npgsql;
 
 using ZipZap.Classes.Extensions;
 using ZipZap.Classes.Helpers;
-using ZipZap.Persistance.Data;
-using ZipZap.Persistance.Extensions;
-using ZipZap.Persistance.Models;
+using ZipZap.Persistence.Extensions;
+using ZipZap.Persistence.Data;
+using ZipZap.Persistence.Models;
 
-namespace ZipZap.Persistance.Repositories;
+namespace ZipZap.Persistence.Repositories;
 
-interface IBasicRepository<TEntity, TInner, TId>
+internal interface IBasicRepository<TEntity, in TInner, in TId>
 where TInner : ITranslatable<TEntity>, ISqlRetrievable
 where TId : struct {
     Task<Result<TEntity, DbError>> CreateAsync(TEntity createEntity, CancellationToken token = default);
@@ -32,7 +32,7 @@ where TId : struct {
     Task<Result<Unit, DbError>> UpdateAsync(TEntity entity, CancellationToken token = default);
 }
 
-class BasicRepository<TEntity, TInner, TId> : IBasicRepository<TEntity, TInner, TId>
+internal class BasicRepository<TEntity, TInner, TId> : IBasicRepository<TEntity, TInner, TId>
 where TInner : ITranslatable<TEntity>, ISqlRetrievable
 where TId : struct {
     private readonly EntityHelper<TInner, TEntity, TId> _helper;
@@ -45,18 +45,17 @@ where TId : struct {
         _conn = conn;
     }
 
-    private string TName => _helper.TableName;
+    private string TableName => _helper.TableName;
     private NpgsqlCommand BuildCommand(Action<NpgsqlCommand>? commandCallback, string? condition, string? postCondition) {
         var cmdBuilder = new StringBuilder();
-        cmdBuilder.AppendLine($"SELECT {_helper.SqlFieldsInOrder} FROM {TName} ");
+        cmdBuilder.AppendLine($"SELECT {_helper.SqlFieldsInOrder} FROM {TableName} ");
         if (condition is not null) cmdBuilder.AppendLine($"WHERE {condition}");
         if (postCondition is not null) cmdBuilder.AppendLine(postCondition);
         cmdBuilder.Append(';');
 
         var cmdText = cmdBuilder.ToString();
         var cmd = _conn.CreateCommand(cmdText);
-        if (commandCallback is not null)
-            commandCallback(cmd);
+        commandCallback?.Invoke(cmd);
         return cmd;
     }
 
@@ -68,7 +67,7 @@ where TId : struct {
 
     public async Task<IEnumerable<TEntity>> Get(Func<NpgsqlConnection, NpgsqlCommand> commandInitalizer, CancellationToken token = default) {
         await using var cmd = commandInitalizer(_conn);
-        await using var _disposable = await _conn.OpenAsyncDisposable(token);
+        await using var disposable = await _conn.OpenAsyncDisposable(token);
         await using var reader = await cmd.ExecuteReaderAsync(token);
         var fsos = new List<TEntity>();
         while (await reader.ReadAsync(token)) {
@@ -88,34 +87,40 @@ where TId : struct {
             .Select(index => $"${index}")
             .ConcatenateWith(", ");
         await using var cmd = _conn.CreateCommand($"""
-                INSERT INTO {TName}
+                INSERT INTO {TableName}
                 ({fields.Select(f => f.sqlName).ConcatenateWith(", ")})
                 VALUES ( {parameters} )
                 RETURNING {_helper.IdCol};
                 """);
         EntityHelper<TInner, TEntity, TId>.FillParameters(cmd, createEntity, fields);
-        await using var _disposable = await _conn.OpenAsyncDisposable(token);
-        var id = await cmd.ExecuteScalarAsync(token) as TId?;
-        if (id is null) return new Err<TEntity, DbError>(new DbError());
-        return new Ok<TEntity, DbError>(_helper.CloneWithId(createEntity, id.Value).Into());
+        await using var disposable = await _conn.OpenAsyncDisposable(token);
+        try {
+            if (await cmd.ExecuteScalarAsync(token) is not TId id)
+                return new Err<TEntity, DbError>(new DbError.ScalarNotReturned());
+            return new Ok<TEntity, DbError>(_helper.CloneWithId(createEntity, id).Into());
+        } catch (PostgresException exception) {
+            return exception switch {
+                { SqlState: PostgresErrorCodes.UniqueViolation }
+                    => new(new DbError.UniqueViolation()),
+                _ => new Err<TEntity, DbError>(new DbError.Unknown())
+            };
+        }
     }
     public async Task<Result<IEnumerable<TEntity>, DbError>> CreateRangeAsync(IEnumerable<TInner> entities, CancellationToken token = default) {
         var fields = _helper.SqlFieldsList.Where(field => field.sqlName != _helper.IdCol).ToList();
         var entityList = entities.ToList();
         var cmdBuilder = new StringBuilder(
                 $"""
-                INSERT INTO {TName}
+                INSERT INTO {TableName}
                 ({fields.Select(f => f.sqlName).ConcatenateWith(", ")})
                 VALUES
 
                 """
                 );
         await using var cmd = _conn.CreateCommand();
-        foreach ((var i, var fso) in entityList.Index()) {
+        foreach (var (i, fso) in entityList.Index()) {
             var offset = i * fields.Count;
-            cmdBuilder.AppendFormat("""
-                ( ${0} ),
-                """,
+            cmdBuilder.AppendFormat("( ${0} ),",
                     fields
                     .Select((_, index) => index + offset + 1)
                     .Select(ind => $"${ind}")
@@ -127,23 +132,23 @@ where TId : struct {
         cmd.CommandText = cmdBuilder.ToString();
         await using var _ = await _conn.OpenAsyncDisposable(token);
         var reader = await cmd.ExecuteReaderAsync(token);
-        int j = 0; // i is used in the foreach loop
+        var j = 0; // `i` is used in the foreach loop
         while (await reader.ReadAsync(token)) {
-            var id = await reader.GetFieldValueAsync<TId>(0);
+            var id = await reader.GetFieldValueAsync<TId>(0, token);
             entityList[j] = _helper.CloneWithId(entityList[j], id);
             j++;
         }
-        await using var _disposable = await _conn.OpenAsyncDisposable(token);
+        await using var disposable = await _conn.OpenAsyncDisposable(token);
         return new Ok<IEnumerable<TEntity>, DbError>(entityList.Select(e => e.Into()));
     }
     public Task<Result<IEnumerable<TEntity>, DbError>> CreateRangeAsync(IEnumerable<TEntity> entities, CancellationToken token = default) => CreateRangeAsync(entities.Select(e => (TInner)TInner.From(e)), token);
 
     public async Task<Result<Unit, DbError>> UpdateAsync(TEntity entity, CancellationToken token = default) {
 
-        await using var _disp = await _conn.OpenAsyncDisposable(token);
+        await using var disp = await _conn.OpenAsyncDisposable(token);
         await using var transaction = await _conn.BeginTransactionAsync(token);
         await using var cmd = _conn.CreateCommand($"""
-                UPDATE {TName} SET
+                UPDATE {TableName} SET
                 {_helper.SqlFieldsList.Select((field, ind) => $"{field.sqlName}={ind + 1}")}
                 WHERE 
                 RETURNING {_helper.IdCol};
@@ -156,16 +161,16 @@ where TId : struct {
 
     public async Task<TEntity?> GetByIdAsync(TId id, CancellationToken token = default)
         =>
-            (await Get($"{TName}.{_helper.IdCol} = $1", "LIMIT 1",
+            (await Get($"{TableName}.{_helper.IdCol} = $1", "LIMIT 1",
                 cmd => cmd.Parameters.Add(new NpgsqlParameter<TId> { Value = id }), token))
             .FirstOrDefault();
 
     public async Task<Result<int, DbError>> DeleteRangeAsyncWithOpenConn(IEnumerable<TId> ids, CancellationToken token = default) {
         var cmdBuilder = new StringBuilder();
-        cmdBuilder.AppendLine($"DELETE FROM {TName}");
-        cmdBuilder.Append($"WHERE {TName}.{_helper.IdCol} IN (");
+        cmdBuilder.AppendLine($"DELETE FROM {TableName}");
+        cmdBuilder.Append($"WHERE {TableName}.{_helper.IdCol} IN (");
         List<NpgsqlParameter> parameters = [];
-        foreach ((var i, var id) in ids.Index()) {
+        foreach (var (i, id) in ids.Index()) {
             cmdBuilder.Append($"${i + 1}, ");
             parameters.Add(new NpgsqlParameter<TId> { Value = id });
 
@@ -176,17 +181,17 @@ where TId : struct {
         cmdBuilder.Append(");");
         await using var cmd = _conn.CreateCommand(cmdBuilder.ToString());
         cmd.Parameters.AddRange(parameters.ToArray());
-        int result = await cmd.ExecuteNonQueryAsync(token);
+        var result = await cmd.ExecuteNonQueryAsync(token);
         return new Ok<int, DbError>(result);
     }
     public async Task<Result<int, DbError>> DeleteRangeAsync(IEnumerable<TId> ids, CancellationToken token = default) {
-        await using var _disp = await _conn.OpenAsyncDisposable(token);
+        await using var disp = await _conn.OpenAsyncDisposable(token);
         var result = await DeleteRangeAsyncWithOpenConn(ids, token);
         return result;
     }
 
     public async Task<Result<Unit, DbError>> DeleteAsync(TId id, CancellationToken token = default) {
-        await using var _disp = await _conn.OpenAsyncDisposable(token);
+        await using var disp = await _conn.OpenAsyncDisposable(token);
         await using var transaction = await _conn.BeginTransactionAsync(token);
         var deleteResult = await DeleteRangeAsyncWithOpenConn([id], token);
         await transaction.CommitAsync(token);

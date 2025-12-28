@@ -4,7 +4,7 @@ using static ZipZap.Classes.Helpers.Constructors;
 
 namespace ZipZap.Classes.Extensions;
 
-public static class IEntityExt {
+public static class EntityExt {
     extension<F>(F fso)
     where F : Fso {
         public MaybeEntity<F, FsoId> AsMaybe() => ExistsEntity<F, FsoId>(fso);

@@ -6,7 +6,7 @@ using ZipZap.Classes.Helpers;
 
 namespace ZipZap.Classes.Extensions;
 
-public static class IEnumerableExt {
+public static class EnumerableExt {
     extension(IEnumerable<string> strings) {
         public string ConcatenateWith(string str) => strings.ToList() switch {
             [] => "",
@@ -15,11 +15,10 @@ public static class IEnumerableExt {
     }
     extension<T>(IEnumerable<T> enumerable) {
         public IEnumerable<T> Assert(Func<T, bool> predicate) {
-            foreach (T t in enumerable) {
+            foreach (var t in enumerable) {
                 Assertions.Assert(predicate(t));
                 yield return t;
             }
-            yield break;
         }
         public IEnumerable<T> WhereNot(Func<T, bool> predicate)
             => enumerable.Where(x => !predicate(x));

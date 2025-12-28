@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using Google.Protobuf;
 
 using ZipZap.Classes.Adapters;
-using ZipZap.Classes.Helpers;
 using ZipZap.Grpc;
 namespace ZipZap.Classes.Extensions;
 
@@ -35,11 +34,8 @@ public static class FsoExt {
         public DirectoryData ToRpcDirectoryData() {
             var data = new DirectoryData();
             data.Entries.Add(
-                    (
-                     dir.MaybeChildren
-                     ?? []
-                    )
-               .Select(fso => fso.ToFsoWithType())
+                dir.MaybeChildren
+                    .Select(fso => fso.ToFsoWithType())
            );
             return data;
         }

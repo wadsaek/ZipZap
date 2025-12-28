@@ -1,15 +1,11 @@
 using System;
-using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
 using ZipZap.Classes;
-using ZipZap.Classes.Helpers;
 using ZipZap.Classes.Extensions;
-using ZipZap.Persistance.Repositories;
-
-using static ZipZap.Classes.Helpers.Constructors;
+using ZipZap.Persistence.Repositories;
 
 namespace ZipZap.FileService.Services;
 
@@ -29,8 +25,10 @@ public class UserService : IUserService {
 
     public async Task<string?> Login(string username, string password) {
         var user = await _repo.GetUserByUsername(username);
-        user = user.Where(user => UserHasPassword(user, password));
-        if (user is null) return null;
+        user = user.Where(u => UserHasPassword(u, password));
+        if (user is null)
+            return null;
+
         return $"Bearer {user.Id} {password}";
     }
 

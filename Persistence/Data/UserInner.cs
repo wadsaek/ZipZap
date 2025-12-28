@@ -3,48 +3,61 @@ using System;
 using System.Security.Cryptography;
 
 using ZipZap.Classes;
+using ZipZap.Classes.Extensions;
 using ZipZap.Classes.Helpers;
-using ZipZap.Persistance.Attributes;
+using ZipZap.Persistence.Attributes;
 
-using static ZipZap.Classes.Helpers.Constructors;
-
-namespace ZipZap.Persistance.Data;
+namespace ZipZap.Persistence.Data;
 
 [SqlTable("users")]
 public class UserInner : ITranslatable<User>, ISqlRetrievable {
+    public UserInner(Guid id, string username, byte[] passwordHash, string email, Guid root) {
+        Id = id;
+        Username = username;
+        PasswordHash = passwordHash;
+        Email = email;
+        Root = root;
+    }
+
+    public UserInner(UserInner other) : this(
+            other.Id,
+            other.Username,
+            other.PasswordHash,
+            other.Email,
+            other.Root) { }
 
     [SqlColumn("id")]
-    public Guid Id { get; set; }
+    public Guid Id { get; init; }
 
     [SqlColumn("username")]
-    public required string Username { get; set; }
+    public string Username { get; init; }
 
     [SqlColumn("password_hash")]
-    public required byte[] PasswordHash { get; set; }
+    public byte[] PasswordHash { get; init; }
 
     [SqlColumn("email")]
-    public required string Email { get; set; }
+    public string Email { get; init; }
 
     [SqlColumn("root")]
-    public required Guid Root { get; set; }
+    public Guid Root { get; init; }
 
     public User Into() {
-        Assertions.AssertEq(PasswordHash.Length, SHA512.HashSizeInBytes);
-        return new(new(Id), Username, PasswordHash, Email, new FsoId(Root).AsIdOf<Directory>());
+        PasswordHash.Length.AssertEq(SHA512.HashSizeInBytes);
+        return new(new(Id), Username, PasswordHash, Email, Root.ToFsoId().AsIdOf<Directory>());
     }
     public static UserInner From(User user) {
-        Assertions.AssertEq(user.PasswordHash.Length, SHA512.HashSizeInBytes);
+        user.PasswordHash.Length.AssertEq(SHA512.HashSizeInBytes);
 
-        return new() {
-            Email = user.Email,
-            PasswordHash = user.PasswordHash,
-            Root = user.Root.Id.Value,
-            Username = user.Username,
-            Id = user.Id.Value
-        };
+        return new(
+            user.Id.Value,
+            user.Username,
+            user.PasswordHash,
+            user.Email,
+            user.Root.Id.Value
+        );
     }
 
-    public UserInner Copy() => From(Into());
+    public UserInner Copy() => new(this);
 
     static ITranslatable<User> ITranslatable<User>.From(User entity)
         => From(entity);

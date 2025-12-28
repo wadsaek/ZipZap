@@ -11,3 +11,13 @@ public sealed record PathDataWithPath(string Path) : PathData(
     .LastOrDefault("/")
 );
 public sealed record PathDataWithId(string Name, FsoId ParentId) : PathData(Name);
+
+public static class PathDataExt {
+    extension(PathData) {
+        public static PathDataWithPath CreatePathDataWithPath(string? name) {
+            if (string.IsNullOrEmpty(name))
+                name = "/";
+            return new(name);
+        }
+    }
+}

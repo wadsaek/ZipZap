@@ -5,11 +5,11 @@ using System.Threading.Tasks;
 
 using ZipZap.Classes;
 using ZipZap.Classes.Helpers;
-using ZipZap.Persistance.Models;
+using ZipZap.Persistence.Models;
 
-namespace ZipZap.Persistance.Repositories;
+namespace ZipZap.Persistence.Repositories;
 
-public interface IRepository<TEntity, TId>
+public interface IRepository<TEntity, in TId>
 where TEntity : IEntity<TId>
 where TId : IEquatable<TId> {
 

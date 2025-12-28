@@ -1,15 +1,13 @@
 using System;
 
-using Grpc.Core;
-
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 using ZipZap.Classes;
-using ZipZap.Classes.Helpers;
 using ZipZap.Front.Factories;
+using ZipZap.Front.Handlers.Exceptions;
 using ZipZap.Front.Services;
 
 namespace ZipZap.Front;
@@ -22,7 +20,7 @@ public class Program {
         // Add services to the container.
         builder.Services.AddRazorPages();
         builder.Services.AddGrpcClient<Grpc.FilesStoringService.FilesStoringServiceClient>(options => {
-            options.Address = new Uri("http://localhost:5210");
+            options.Address = new("http://localhost:5210");
             options.ChannelOptionsActions.Add(chOptions
                     => chOptions.MaxReceiveMessageSize = (int)FileSize.FromMegaBytes(16).Bytes);
         });
@@ -36,11 +34,11 @@ public class Program {
 
         builder.Services
             .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-            .AddCookie(options=>{
-                    options.SlidingExpiration = true;
-                    options.ExpireTimeSpan = TimeSpan.FromMinutes(40);
-                    options.AccessDeniedPath = "/Forbidden";
-                    });
+            .AddCookie(options => {
+                options.SlidingExpiration = true;
+                options.ExpireTimeSpan = TimeSpan.FromMinutes(40);
+                options.AccessDeniedPath = "/Forbidden";
+            });
 
         var app = builder.Build();
 

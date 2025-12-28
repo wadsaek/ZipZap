@@ -1,43 +1,59 @@
 using System;
-using System.Collections;
 using System.ComponentModel;
 
 using ZipZap.Classes;
 using ZipZap.Classes.Extensions;
-using ZipZap.Classes.Helpers;
-using ZipZap.Persistance.Attributes;
+using ZipZap.Persistence.Attributes;
 
-namespace ZipZap.Persistance.Data;
+namespace ZipZap.Persistence.Data;
 
 [SqlTable("fsos")]
 public class FsoInner : ITranslatable<Fso>, ISqlRetrievable {
-    public FsoInner() {
+    public FsoInner(Guid id, string fsoName, Guid? virtualLocationId, short permissions, int fsoOwner, int fsoGroup, FsoType fsoType, string? linkRef) {
+        Id = id;
+        FsoName = fsoName;
+        VirtualLocationId = virtualLocationId;
+        Permissions = permissions;
+        FsoOwner = fsoOwner;
+        FsoGroup = fsoGroup;
+        FsoType = fsoType;
+        LinkRef = linkRef;
     }
-    public FsoInner Copy() => From(Into());
+    public FsoInner(FsoInner other) : this(
+        other.Id,
+        other.FsoName,
+        other.VirtualLocationId,
+        other.Permissions,
+        other.FsoOwner,
+        other.FsoGroup,
+        other.FsoType,
+        other.LinkRef
+        ) { }
+    public FsoInner Copy() => new(this);
 
     [SqlColumn("id")]
-    public required Guid Id { get; set; }
+    public Guid Id { get; init; }
 
     [SqlColumn("fso_name")]
-    public required string FsoName { get; set; }
+    public string FsoName { get; init; }
 
     [SqlColumn("virtual_location_id")]
-    public required Guid? VirtualLocationId { get; set; }
+    public Guid? VirtualLocationId { get; init; }
 
     [SqlColumn("permissions")]
-    public required short Permissions { get; set; }
+    public short Permissions { get; init; }
 
     [SqlColumn("fso_owner")]
-    public required int FsoOwner { get; set; }
+    public int FsoOwner { get; init; }
 
     [SqlColumn("fso_group")]
-    public required int FsoGroup { get; set; }
+    public int FsoGroup { get; init; }
 
     [SqlColumn("fso_type")]
-    public required FsoType FsoType { get; set; }
+    public FsoType FsoType { get; init; }
 
     [SqlColumn("link_ref")]
-    public required string? LinkRef { get; set; }
+    public string? LinkRef { get; init; }
 
     public Fso Into() {
         var virtualLocation = VirtualLocationId
@@ -59,21 +75,21 @@ public class FsoInner : ITranslatable<Fso>, ISqlRetrievable {
         };
     }
 
-    public static FsoInner From(Fso fso) => new() {
-        Id = fso.Id.Value,
-        FsoGroup = fso.Data.FsoGroup,
-        FsoName = fso.Data.Name,
-        FsoOwner = fso.Data.FsoOwner,
-        LinkRef = (fso as Symlink)?.Target,
-        Permissions = (short)fso.Data.Permissions.Inner,
-        VirtualLocationId = fso.Data.VirtualLocation?.Id.Value,
-        FsoType = fso switch {
+    public static FsoInner From(Fso fso) => new(
+        fso.Id.Value,
+        fso.Data.Name,
+        fso.Data.VirtualLocation?.Id.Value,
+        (short)fso.Data.Permissions.Inner,
+        fso.Data.FsoOwner,
+        fso.Data.FsoGroup,
+        fso switch {
             File => FsoType.RegularFile,
             Directory => FsoType.Directory,
             Symlink => FsoType.Symlink,
             _ => throw new InvalidEnumArgumentException(nameof(fso))
-        }
-    };
+        },
+        (fso as Symlink)?.Target
+    );
 
     static ITranslatable<Fso> ITranslatable<Fso>.From(Fso entity) {
         return From(entity);

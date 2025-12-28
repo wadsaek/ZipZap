@@ -1,12 +1,12 @@
 using ZipZap.Classes.Helpers;
-using ZipZap.Persistance.Models;
+using ZipZap.Persistence.Models;
 
-namespace ZipZap.Persistance.Data;
+namespace ZipZap.Persistence.Data;
 
 public static class DbHelper {
     public static Result<Unit, DbError> EnsureSingle(int n)
  => n switch {
-     0 => new Err<Unit, DbError>(new DbError()),
+     0 => new Err<Unit, DbError>(new DbError.NothingCreated()),
      1 => new Ok<Unit, DbError>(new Unit()),
      _ => throw new System.IO.InvalidDataException()
  };

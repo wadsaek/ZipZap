@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using ZipZap.Classes;
 using ZipZap.Classes.Helpers;
 
-namespace ZipZap.Persistance.Repositories;
+namespace ZipZap.Persistence.Repositories;
 
 public interface IFsosRepository : IRepository<Fso, FsoId> {
     // not an `FsoID`, to signify that it's a directory

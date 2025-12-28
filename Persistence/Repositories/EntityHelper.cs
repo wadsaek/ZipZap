@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Data;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
@@ -10,11 +9,10 @@ using System.Threading.Tasks;
 using Npgsql;
 
 using ZipZap.Classes.Extensions;
-using ZipZap.Classes.Helpers;
-using ZipZap.Persistance.Attributes;
-using ZipZap.Persistance.Data;
+using ZipZap.Persistence.Attributes;
+using ZipZap.Persistence.Data;
 
-namespace ZipZap.Persistance.Repositories;
+namespace ZipZap.Persistence.Repositories;
 
 internal abstract class EntityHelper<TInner, TEntity, TId>
 where TInner : ITranslatable<TEntity>, ISqlRetrievable {
@@ -30,9 +28,9 @@ where TInner : ITranslatable<TEntity>, ISqlRetrievable {
                         ?? throw new Exception($"{nameof(TInner)} lacks the {nameof(SqlTableAttribute)} attribute");
 
     }
-    public string TableName { get; private init; }
+    public string TableName { get; }
 
-    public IImmutableList<(PropertyInfo Key, string sqlName)> SqlFieldsList { get; private init; }
+    public IImmutableList<(PropertyInfo Key, string sqlName)> SqlFieldsList { get; }
 
     public IEnumerable<string> SqlFields => SqlFieldsList.Select(pair => pair.sqlName);
     public IEnumerable<string> SqlFieldsPrefixed => SqlFields.Select(f => $"{TableName}.{f} as {TableName}_{f}");

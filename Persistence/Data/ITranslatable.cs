@@ -1,4 +1,4 @@
-namespace ZipZap.Persistance.Data;
+namespace ZipZap.Persistence.Data;
 
 public interface ITranslatable<T> {
     public T Into();

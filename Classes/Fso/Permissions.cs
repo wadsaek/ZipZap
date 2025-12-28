@@ -11,21 +11,21 @@ namespace ZipZap.Classes;
 using M = UnixFileMode;
 
 public record struct Permissions(M Inner) {
-    public override readonly string ToString() => (new[] {
+    public readonly override string ToString() => new[] {
         (Inner & M.UserRead) != M.None ? "r" : "-",
         (Inner & M.UserWrite) != M.None ? "w" : "-",
-        (Inner & M.UserExecute) == M.None ?  "-" : (Inner & M.SetUser) != M.None ? "s" : "x",
+        (Inner & M.UserExecute) == M.None ?  (Inner & M.SetUser) != M.None ? "S" : "-" : (Inner & M.SetUser) != M.None ? "s" : "x",
         (Inner & M.GroupRead) != M.None ? "r" : "-",
         (Inner & M.GroupWrite) != M.None ? "w" : "-",
-        (Inner & M.GroupExecute) == M.None ? "-" : (Inner & M.SetGroup) != M.None ? "s" : "x",
+        (Inner & M.GroupExecute) == M.None ?  (Inner & M.SetGroup) != M.None ? "S" : "-" : (Inner & M.SetGroup) != M.None ? "s" : "x",
         (Inner & M.OtherRead) != M.None ? "r" : "-",
         (Inner & M.OtherWrite) != M.None ? "w" : "-",
-        (Inner & M.OtherExecute) != M.None ? "x" : "-",
-    }).ConcatenateWith(string.Empty);
+        (Inner & M.OtherExecute) != M.None ? "x" : "-"
+    }.ConcatenateWith(string.Empty);
 }
 
 public static class UnixFileModeExt {
-    extension(M mode) {
+    extension(M) {
         public static M AllRead => M.UserRead | M.GroupRead | M.OtherRead;
         public static M AllWrite => M.UserWrite | M.GroupWrite | M.OtherWrite;
         public static M AllExecute => M.UserExecute | M.GroupExecute | M.OtherExecute;
@@ -50,7 +50,7 @@ public static class PermissionsExt {
 
         public BitArray ToBitArray() {
             var arr = new BitArray(12);
-            for (int i = 0; i < arr.Length; i++) {
+            for (var i = 0; i < arr.Length; i++) {
                 arr[i] = ((int)permissions.Inner >> i & 1) == 1;
             }
             return arr;

@@ -6,7 +6,7 @@ using Npgsql;
 
 using ZipZap.Classes.Helpers;
 
-namespace ZipZap.Persistance.Extensions;
+namespace ZipZap.Persistence.Extensions;
 
 public static class NpgsqlConnectionExt {
     extension(NpgsqlConnection connection) {

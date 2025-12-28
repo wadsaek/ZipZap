@@ -9,11 +9,11 @@ using Npgsql;
 
 using ZipZap.Classes;
 using ZipZap.Classes.Helpers;
-using ZipZap.Persistance.Data;
-using ZipZap.Persistance.Extensions;
-using ZipZap.Persistance.Models;
+using ZipZap.Persistence.Extensions;
+using ZipZap.Persistence.Data;
+using ZipZap.Persistence.Models;
 
-namespace ZipZap.Persistance.Repositories;
+namespace ZipZap.Persistence.Repositories;
 
 internal class UserReposirory : IUserRepository {
     private readonly NpgsqlConnection _conn;
@@ -31,15 +31,15 @@ internal class UserReposirory : IUserRepository {
         _fsoHelper = fsoHelper;
         _basic = basic;
     }
-    private string UTName => _userHelper.TableName;
-    private string FTName => _fsoHelper.TableName;
+    private string UserTableName => _userHelper.TableName;
+    private string FileTableName => _fsoHelper.TableName;
 
     public Task<IEnumerable<User>> GetAll(CancellationToken token = default)
         => _basic.GetAll(token);
 
     public async Task<User?> GetByIdAsync(UserId id, CancellationToken token = default)
         => await GetByParameter(
-            $"{UTName}.{_userHelper.GetColumnName(nameof(UserInner.Id))}",
+            $"{UserTableName}.{_userHelper.GetColumnName(nameof(UserInner.Id))}",
             new NpgsqlParameter<Guid> { Value = id.Value },
             token
         );
@@ -67,16 +67,16 @@ internal class UserReposirory : IUserRepository {
 
     public async Task<User?> GetUserByUsername(string username, CancellationToken token = default)
         => await GetByParameter(
-            $"{UTName}.{_userHelper.GetColumnName(nameof(UserInner.Username))}",
+            $"{UserTableName}.{_userHelper.GetColumnName(nameof(UserInner.Username))}",
             new NpgsqlParameter<string> { Value = username },
             token
         );
 
     private async Task<User?> GetByParameter<T>(string filterColumn, NpgsqlParameter<T> npgsqlParameter, CancellationToken cancellationToken = default) {
-        await using var _disposable = await _conn.OpenAsyncDisposable(cancellationToken);
+        await using var disposable = await _conn.OpenAsyncDisposable(cancellationToken);
         var cmdBuilder = new StringBuilder($"""
                     SELECT {_userHelper.SqlFieldsInOrder}, {_fsoHelper.SqlFieldsInOrder} FROM {_userHelper.TableName}
-                    LEFT JOIN {FTName} ON
+                    LEFT JOIN {FileTableName} ON
                     {_userHelper.TableName}.{_userHelper.GetColumnName(nameof(UserInner.Root))} =
                     {_fsoHelper.TableName}.{_fsoHelper.GetColumnName(nameof(FsoInner.Id))}
                     WHERE {filterColumn} = $1

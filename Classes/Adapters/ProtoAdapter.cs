@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using Google.Protobuf;
 
 using ZipZap.Classes.Extensions;
-using ZipZap.Classes.Helpers;
 using ZipZap.Grpc;
 
 using DataCase = ZipZap.Grpc.GetFsoResponse.SpecificDataOneofCase;
@@ -34,7 +33,7 @@ public static class ProtoAdapter {
                 Type = FileType.Symlink,
                 Data = fso.ToRpcSharedData(),
                 Id = fso.Id.Value.ToGrpcGuid(),
-                SymlinkData = new() { Target = target },
+                SymlinkData = new() { Target = target }
             },
             _ => throw new InvalidEnumArgumentException(nameof(fso))
         };
@@ -74,7 +73,7 @@ public static class ProtoAdapter {
     extension(GetFsoResponse response) {
         public static async Task<GetFsoResponse> FromFileAsync(File file, Stream stream) {
             var (shared, fileData) = await file.ToRpcResponse(stream);
-            return new GetFsoResponse() {
+            return new() {
                 FsoId = file.Id.Value.ToGrpcGuid(),
                 Data = shared,
                 FileData = fileData
@@ -82,7 +81,7 @@ public static class ProtoAdapter {
         }
         public static GetFsoResponse FromDirectory(Directory dir) {
             var (shared, dirData) = dir.ToRpcResponse();
-            return new GetFsoResponse() {
+            return new() {
                 FsoId = dir.Id.Value.ToGrpcGuid(),
                 Data = shared,
                 DirectoryData = dirData
@@ -90,7 +89,7 @@ public static class ProtoAdapter {
         }
         public static GetFsoResponse FromSymlink(Symlink symlink) {
             var (shared, linkData) = symlink.ToRpcResponse();
-            return new GetFsoResponse() {
+            return new() {
                 FsoId = symlink.Id.Value.ToGrpcGuid(),
                 Data = shared,
                 SymlinkData = linkData
@@ -100,7 +99,7 @@ public static class ProtoAdapter {
             var id = new FsoId(response.FsoId.ToGuid());
             var data = response.Data.ToFsData();
             return response.SpecificDataCase switch {
-                DataCase.FileData => new File(id, data),
+                DataCase.FileData => new File(id, data) { Content = response.FileData.Content.ToByteArray() },
                 DataCase.SymlinkData => new Symlink(id, data, response.SymlinkData.Target),
                 DataCase.DirectoryData => new Directory(id, data) {
                     MaybeChildren = response.DirectoryData.ToFsos()
@@ -122,20 +121,25 @@ public static class ProtoAdapter {
         public PathData ToPathData(FsoId workingDirectory) => data.IdCase switch {
             IdCase.FilePath => new PathDataWithPath(data.FilePath),
             IdCase.ParentId => new PathDataWithId(data.Name, data.ParentId.ToGuid().ToFsoId()),
-            IdCase.None or _ => new PathDataWithId(data.Name, workingDirectory),
+            IdCase.None or _ => new PathDataWithId(data.Name, workingDirectory)
         };
     }
     extension(PathData pathData) {
         public Grpc.PathData ToRpcPathData() {
 
-            var grpcPathData = new Grpc.PathData() {
-                Name = pathData.Name,
+            var grpcPathData = new Grpc.PathData {
+                Name = pathData.Name
             };
-            if (pathData is PathDataWithPath { Path: var path }) {
+            switch (pathData)
+            {
+                case PathDataWithPath { Path: var path }:
                     grpcPathData.FilePath = path;
+                    break;
+                case PathDataWithId { ParentId: var id }:
+                    grpcPathData.ParentId = id.Value.ToGrpcGuid();
+                    break;
             }
-            if (pathData is PathDataWithId { ParentId: var id })
-                grpcPathData.ParentId = id.Value.ToGrpcGuid();
+
             return grpcPathData;
         }
     }

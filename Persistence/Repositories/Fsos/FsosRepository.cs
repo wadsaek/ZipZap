@@ -10,23 +10,22 @@ using Npgsql;
 using ZipZap.Classes;
 using ZipZap.Classes.Extensions;
 using ZipZap.Classes.Helpers;
-using ZipZap.Persistance.Data;
-using ZipZap.Persistance.Extensions;
-using ZipZap.Persistance.Models;
+using ZipZap.Persistence.Extensions;
+using ZipZap.Persistence.Data;
+using ZipZap.Persistence.Models;
 
 using static ZipZap.Classes.Helpers.Assertions;
-using static ZipZap.Classes.Helpers.Constructors;
 
 using Directory = ZipZap.Classes.Directory;
 
-namespace ZipZap.Persistance.Repositories;
+namespace ZipZap.Persistence.Repositories;
 
 internal class FsosRepository : IFsosRepository {
     private readonly EntityHelper<FsoInner, Fso, Guid> _fsoHelper;
     private readonly ExceptionConverter<DbError> _converter;
     private readonly IBasicRepository<Fso, FsoInner, Guid> _basic;
 
-    private string TName => _fsoHelper.TableName;
+    private string TableName => _fsoHelper.TableName;
     private string IdCol => _fsoHelper.GetColumnName(nameof(FsoInner.Id));
     public FsosRepository(
             EntityHelper<FsoInner, Fso, Guid> fsoHelper,
@@ -41,23 +40,23 @@ internal class FsosRepository : IFsosRepository {
                 SELECT
                 {_fsoHelper.SqlFieldsInOrder},
                 0 AS level
-                FROM {TName}
-                WHERE {TName}.{IdCol} = $1
+                FROM {TableName}
+                WHERE {TableName}.{IdCol} = $1
                 UNION ALL
                 SELECT
                 {_fsoHelper.SqlFieldsInOrder},
                 ctename.level + 1
-                FROM {TName}
-                JOIN ctename ON {TName}.{IdCol} =
-                {TName}_{_fsoHelper.GetColumnName(nameof(FsoInner.VirtualLocationId))}
+                FROM {TableName}
+                JOIN ctename ON {TableName}.{IdCol} =
+                {TableName}_{_fsoHelper.GetColumnName(nameof(FsoInner.VirtualLocationId))}
                 )
         SELECT
-        {_fsoHelper.SqlFields.Select(f => $"{TName}_{f}").ConcatenateWith(", ")}
-        FROM ctename order by level desc;
+        {_fsoHelper.SqlFields.Select(f => $"{TableName}_{f}").ConcatenateWith(", ")}
+        FROM ctename order by level desc
         """;
     public async Task<Directory?> GetRootDirectory(FsoId id, CancellationToken token = default) {
         var fsos = await _basic.Get(conn => {
-            var cmd = conn.CreateCommand($"{GetRootQuery} LIMIT 1");
+            var cmd = conn.CreateCommand($"{GetRootQuery} LIMIT 1;");
 
             cmd.Parameters.Add(new NpgsqlParameter<Guid> { Value = id.Value });
             return cmd;
@@ -68,7 +67,7 @@ internal class FsosRepository : IFsosRepository {
     }
     public async Task<IEnumerable<Directory>> GetFullPathTree(FsoId id, CancellationToken token = default) {
         var fsos = await _basic.Get(conn => {
-            var cmd = conn.CreateCommand(GetRootQuery);
+            var cmd = conn.CreateCommand($"{GetRootQuery};");
 
             cmd.Parameters.Add(new NpgsqlParameter<Guid> { Value = id.Value });
             return cmd;
@@ -88,11 +87,11 @@ internal class FsosRepository : IFsosRepository {
 
             cmd.Parameters.Add(new NpgsqlParameter<Guid> { Value = root.Id.Value });
             // Parameter 1 is reserved for the query
-            int i = 0;
+            var i = 0;
             foreach (var (index, pathPart) in path.SplitPath().Index()) {
                 var level = index + 1;
                 var paramIndex = index + 2;
-                builder.Append($"({index + 1},${index + 2}),");
+                builder.Append($"({level},${paramIndex}),");
                 cmd.Parameters.Add(new NpgsqlParameter<string> { Value = pathPart });
                 i = level;
             }
@@ -117,9 +116,9 @@ internal class FsosRepository : IFsosRepository {
                 LIMIT 1;
                 """,
             _fsoHelper.SqlFieldsInOrder,
-            TName,
+            TableName,
             IdCol,
-            _fsoHelper.SqlFields.Select(f => $"{TName}_{f}").ConcatenateWith(", "),
+            _fsoHelper.SqlFields.Select(f => $"{TableName}_{f}").ConcatenateWith(", "),
             _fsoHelper.GetColumnName(nameof(FsoInner.VirtualLocationId)),
             _fsoHelper.GetColumnName(nameof(FsoInner.FsoName)),
             i
@@ -132,11 +131,9 @@ internal class FsosRepository : IFsosRepository {
 
     public Task<IEnumerable<Fso>> GetAllByDirectory(MaybeEntity<Directory, FsoId> location, CancellationToken token = default)
         => _basic.Get(
-                $"{TName}.{_fsoHelper.GetColumnName(nameof(FsoInner.VirtualLocationId))} = $1",
+                $"{TableName}.{_fsoHelper.GetColumnName(nameof(FsoInner.VirtualLocationId))} = $1",
                 null,
-                new Action<NpgsqlCommand>(
-                    cmd => cmd.Parameters.Add(new NpgsqlParameter<Guid> { Value = location.Id.Value })
-                ), token);
+                cmd => cmd.Parameters.Add(new NpgsqlParameter<Guid> { Value = location.Id.Value }), token);
 
     public Task<Result<Fso, DbError>> CreateAsync(Fso createEntity, CancellationToken token = default)
         => _basic.CreateAsync(createEntity, token);
@@ -168,15 +165,15 @@ internal class FsosRepository : IFsosRepository {
     public async Task<Fso?> GetByDirectoryAndName(MaybeEntity<Directory, FsoId> location, string name, CancellationToken token = default)
         => (await _basic.Get(
                     $"""
-                    {TName}.{_fsoHelper.GetColumnName(nameof(FsoInner.VirtualLocationId))} = $1
+                    {TableName}.{_fsoHelper.GetColumnName(nameof(FsoInner.VirtualLocationId))} = $1
                     AND
-                    {TName}.{_fsoHelper.GetColumnName(nameof(FsoInner.FsoName))} = $2
+                    {TableName}.{_fsoHelper.GetColumnName(nameof(FsoInner.FsoName))} = $2
                     """,
                     "LIMIT 1",
-                    new Action<NpgsqlCommand>(cmd => {
+                    cmd => {
                         cmd.Parameters.Add(new NpgsqlParameter<Guid> { Value = location.Id.Value });
                         cmd.Parameters.Add(new NpgsqlParameter<string> { Value = name });
-                    }),
+                    },
                     token)).FirstOrDefault();
 
 }

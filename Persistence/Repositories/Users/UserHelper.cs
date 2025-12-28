@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
@@ -7,35 +6,30 @@ using System.Threading.Tasks;
 using Npgsql;
 
 using ZipZap.Classes;
-using ZipZap.Classes.Extensions;
-using ZipZap.Classes.Helpers;
-using ZipZap.Persistance.Data;
+using ZipZap.Persistence.Data;
 
-using static ZipZap.Classes.Helpers.Constructors;
-namespace ZipZap.Persistance.Repositories;
+namespace ZipZap.Persistence.Repositories;
 
 internal class UserHelper : EntityHelper<UserInner, User, Guid> {
     public override string IdCol => GetColumnName(nameof(UserInner.Id));
 
     public override UserInner CloneWithId(UserInner entity, Guid id) {
-        var copy = entity.Copy();
-        copy.Id = id;
-        return copy;
+        return new(entity) { Id = id };
     }
 
     public override async Task<User> Parse(NpgsqlDataReader reader, CancellationToken token = default) {
-        var Id = await reader.GetFieldValueAsync<Guid>($"{TableName}_{IdCol}", token);
-        var Username = await reader.GetFieldValueAsync<string>($"{TableName}_{GetColumnName(nameof(UserInner.Username))}", token);
-        var PasswordHash = await reader.GetFieldValueAsync<byte[]>($"{TableName}_{GetColumnName(nameof(UserInner.PasswordHash))}", token);
-        var Email = await reader.GetFieldValueAsync<string>($"{TableName}_{GetColumnName(nameof(UserInner.Email))}", token);
-        var Root = await reader.GetFieldValueAsync<Guid>($"{TableName}_{GetColumnName(nameof(UserInner.Root))}", token);
-        var user = new UserInner() {
-            Root = Root,
-            Email = Email,
-            PasswordHash = PasswordHash,
-            Username = Username,
-            Id = Id
-        }.Into();
+        var id = await reader.GetFieldValueAsync<Guid>($"{TableName}_{IdCol}", token);
+        var username = await reader.GetFieldValueAsync<string>($"{TableName}_{GetColumnName(nameof(UserInner.Username))}", token);
+        var passwordHash = await reader.GetFieldValueAsync<byte[]>($"{TableName}_{GetColumnName(nameof(UserInner.PasswordHash))}", token);
+        var email = await reader.GetFieldValueAsync<string>($"{TableName}_{GetColumnName(nameof(UserInner.Email))}", token);
+        var root = await reader.GetFieldValueAsync<Guid>($"{TableName}_{GetColumnName(nameof(UserInner.Root))}", token);
+        var user = new UserInner(
+            id,
+            username,
+            passwordHash,
+            email,
+            root
+        ).Into();
 
 
         return user;

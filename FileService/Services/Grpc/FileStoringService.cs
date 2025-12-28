@@ -103,12 +103,12 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
 
     public override async Task<EmptyMessage> DeleteFso(DeleteFsoRequest request, ServerCallContext context) {
         var user = await GetUserOrThrowAsync(context);
-        Fso fso = await GetFsoOrFailAsync(request.FsoId, user, context.CancellationToken);
+        var fso = await GetFsoOrFailAsync(request.FsoId, user, context.CancellationToken);
         if (fso is File file && await _io.PathExistsAsync(file.PhysicalPath)) {
             await _io.RemoveAsync(file.PhysicalPath);
         }
         await _fsosRepo.DeleteAsync(fso);
-        return new EmptyMessage { };
+        return new();
     }
 
     public override async Task<SaveFileResponse> SaveFile(SaveFileRequest request, ServerCallContext context) {
@@ -135,7 +135,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         };
         root = root with { MaybeChildren = await _fsosRepo.GetAllByDirectory(root) };
         var (sharedData, directoryData) = root.ToRpcResponse();
-        return new GetRootResponse() {
+        return new() {
             FsoId = root.Id.Value.ToGrpcGuid(),
             Data = sharedData,
             DirectoryData = directoryData
@@ -143,13 +143,13 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
     }
     public override async Task<GetFsoResponse> GetFso(GetFsoRequest request, ServerCallContext context) {
         var user = await GetUserOrThrowAsync(context);
-        Fso fso = request.IdentifierCase switch {
+        var fso = request.IdentifierCase switch {
             GetFsoRequest.IdentifierOneofCase.FsoId
                 => await GetFsoOrFailAsync(request.FsoId, user, context.CancellationToken),
             GetFsoRequest.IdentifierOneofCase.Path
                 => await GetFsoOrFailAsync(request.Path.ToPathData(user.Root.Id), user, context.CancellationToken),
             _ or GetFsoRequest.IdentifierOneofCase.None
-                => throw new RpcException(new Status(StatusCode.InvalidArgument, nameof(request.IdentifierCase)))
+                => throw new RpcException(new(StatusCode.InvalidArgument, nameof(request.IdentifierCase)))
         };
         return fso switch {
             File file => await GetFsoResponse.FromFileAsync(file, await _io.ReadAsync(file.PhysicalPath)),
@@ -193,7 +193,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         if (_logger.IsEnabled(LogLevel.Information))
             _logger.LogInformation("deleting {user}'s [{id}] root :)", user.Username, user.Id);
         await _fsosRepo.DeleteRangeAsync(entries, context.CancellationToken);
-        return new EmptyMessage { };
+        return new();
     }
 
     public override async Task<EmptyMessage> ReplaceFile(ReplaceFileRequest request, ServerCallContext context) {
@@ -203,18 +203,18 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         request.Content.WriteTo(content);
         content.Position = 0;
         await _io.WriteAsync(file.PhysicalPath, content);
-        return new EmptyMessage();
+        return new();
     }
 
     public override async Task<LoginResponse> Login(LoginRequest request, ServerCallContext context) {
         var token = await _userService.Login(request.Username, request.Password);
-        return new LoginResponse { Token = token ?? ThrowUnauthenticated<string>("Wrong credentials") };
+        return new() { Token = token ?? ThrowUnauthenticated<string>("Wrong credentials") };
     }
     public override async Task<Grpc.User> GetSelf(EmptyMessage message, ServerCallContext context) {
         return (await GetUserOrThrowAsync(context)).ToGrpcUser();
     }
 }
 
-internal class Predicates {
+internal static class Predicates {
     public static Func<object, bool> AlwaysTrue => _ => true;
 }

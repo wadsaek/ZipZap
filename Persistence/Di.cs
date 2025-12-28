@@ -5,16 +5,16 @@ using Microsoft.Extensions.DependencyInjection;
 
 using ZipZap.Classes;
 using ZipZap.Classes.Helpers;
-using ZipZap.Persistance.Data;
-using ZipZap.Persistance.Models;
-using ZipZap.Persistance.Repositories;
+using ZipZap.Persistence.Data;
+using ZipZap.Persistence.Models;
+using ZipZap.Persistence.Repositories;
 
-namespace ZipZap.Persistance;
+namespace ZipZap.Persistence;
 
-public static class DI {
+public static class Di {
     extension(WebApplicationBuilder builder) {
-        public WebApplicationBuilder AddPersistance(string connectionString) {
-            builder.Services.AddSingleton<ExceptionConverter<DbError>>(new SimpleExceptionConverter<DbError>(err => new DbError()));
+        public WebApplicationBuilder AddPersistence(string connectionString) {
+            builder.Services.AddSingleton<ExceptionConverter<DbError>>(new SimpleExceptionConverter<DbError>(_ => new DbError.Unknown()));
             builder.Services.AddScoped(typeof(IBasicRepository<,,>), typeof(BasicRepository<,,>));
             builder.Services.AddScoped<IFsosRepository, FsosRepository>();
             builder.Services.AddScoped<IUserRepository, UserReposirory>();

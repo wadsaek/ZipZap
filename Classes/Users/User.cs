@@ -13,5 +13,5 @@ public record User(
 ) : IEntity<UserId>;
 
 public record struct UserId(Guid Value) : IStrongId {
-    public override readonly string ToString() => Value.ToString();
+    public readonly override string ToString() => Value.ToString();
 }

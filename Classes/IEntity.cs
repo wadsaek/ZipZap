@@ -1,5 +1,5 @@
 namespace ZipZap.Classes;
 
-public interface IEntity<TId> {
+public interface IEntity<out TId> {
     public TId Id { get; }
 }

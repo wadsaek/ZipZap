@@ -2,20 +2,20 @@ using System;
 
 namespace ZipZap.Classes.Helpers;
 
-public abstract class ExceptionConverter<Err> {
-    public abstract Err Convert(Exception e);
+public abstract class ExceptionConverter<TErr> {
+    public abstract TErr Convert(Exception e);
 }
-sealed public class SimpleExceptionConverter<Err> : ExceptionConverter<Err> {
-    private readonly Func<Exception, Err> _selector;
+public sealed class SimpleExceptionConverter<TErr> : ExceptionConverter<TErr> {
+    private readonly Func<Exception, TErr> _selector;
     public SimpleExceptionConverter(
-        Func<Exception, Err> selector) {
+        Func<Exception, TErr> selector) {
         _selector = selector;
     }
 
-    override public Err Convert(Exception e) => _selector(e);
+    public override TErr Convert(Exception e) => _selector(e);
 }
 
-sealed public class ChainedExceptionConverter<Err> : ExceptionConverter<Err> {
+public sealed class ChainedExceptionConverter<Err> : ExceptionConverter<Err> {
     private readonly Func<Exception, Err?> _selector;
     private readonly ExceptionConverter<Err> _next;
 
@@ -26,5 +26,5 @@ sealed public class ChainedExceptionConverter<Err> : ExceptionConverter<Err> {
         _next = next;
     }
 
-    override public Err Convert(Exception e) => _selector(e) ?? _next.Convert(e);
+    public override Err Convert(Exception e) => _selector(e) ?? _next.Convert(e);
 }
