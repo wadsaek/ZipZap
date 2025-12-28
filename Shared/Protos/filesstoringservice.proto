@@ -8,18 +8,16 @@ import "emptyrequest.proto";
 import "pathdata.proto";
 import "user.proto";
 
-message SaveFileRequest {
-  PathData path = 1;
-  bytes content = 2;
+message SaveFsoRequest {
+  FsoSharedData data = 1;
+  oneof specificData{
+    FileData fileData = 2;
+    DirectoryData directoryData = 3;
+    SymlinkData symlinkData = 4;
+  }
+  optional string filePath = 5;
 }
-message MakeLinkRequest {
-  PathData path = 1;
-  string target = 2;
-}
-message MakeDirectoryRequest {
-  PathData path = 1;
-}
-message SaveFileResponse{
+message SaveFsoResponse{
   Guid fileId = 1;
 }
 
@@ -77,9 +75,7 @@ message LoginResponse {
 }
 
 service FilesStoringService {
-  rpc SaveFile(SaveFileRequest) returns (SaveFileResponse);
-  rpc MakeDirectory(MakeDirectoryRequest) returns (SaveFileResponse);
-  rpc MakeLink(MakeLinkRequest) returns (SaveFileResponse);
+  rpc SaveFso(SaveFsoRequest) returns (SaveFsoResponse);
   rpc GetFso(GetFsoRequest) returns (GetFsoResponse);
   rpc GetRoot(EmptyMessage) returns (GetRootResponse);
   rpc DeleteFso(DeleteFsoRequest) returns (EmptyMessage);
