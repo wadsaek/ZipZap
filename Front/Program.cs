@@ -25,11 +25,7 @@ public class Program {
                     => chOptions.MaxReceiveMessageSize = (int)FileSize.FromMegaBytes(16).Bytes);
         });
         builder.Services.AddScoped<IFactory<IBackend, BackendConfiguration>, BackendFactory>();
-        builder.Services.AddScoped<ExceptionConverter<ServiceError>>(_ => new SimpleExceptionConverter<ServiceError>(ex => ex switch {
-            RpcException { StatusCode: StatusCode.Unauthenticated } => new Unathorized(),
-            _ => new Unknown(ex)
-
-        }));
+        builder.Services.AddScoped(_ => ServiceExceptionHandler.GetExceptionConverter());
         builder.Services.AddScoped<ILoginSerivce, LoginService>();
 
         builder.Services
