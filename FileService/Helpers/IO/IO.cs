@@ -67,10 +67,9 @@ public class IO : IIO {
         await RemoveAsync(fileName);
         mut.WaitOne();
 
-        using FileStream file = File.OpenWrite(fullPath);
-        using var gzipStream = new GZipStream(file, CompressionMode.Compress);
-        await content.CopyToAsync(gzipStream);
-
+        await using var file = File.OpenWrite(fullPath);
+        await using var gzipStream = new GZipStream(file, CompressionMode.Compress);
+        content.CopyTo(gzipStream);
 
         mut.ReleaseMutex();
     }
