@@ -2,9 +2,9 @@ using System.Collections;
 using System.IO;
 using System.Linq;
 
-using ZipZap.Classes.Extensions;
+using ZipZap.LangExt.Extensions;
 
-using static ZipZap.Classes.Helpers.Assertions;
+using static ZipZap.LangExt.Helpers.Assertions;
 
 namespace ZipZap.Classes;
 

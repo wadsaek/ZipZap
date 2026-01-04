@@ -14,9 +14,10 @@ using ZipZap.Persistence.Extensions;
 using ZipZap.Persistence.Data;
 using ZipZap.Persistence.Models;
 
-using static ZipZap.Classes.Helpers.Assertions;
+using static ZipZap.LangExt.Helpers.Assertions;
 
 using Directory = ZipZap.Classes.Directory;
+using ZipZap.LangExt.Extensions;
 
 namespace ZipZap.Persistence.Repositories;
 

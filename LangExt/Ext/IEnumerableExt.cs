@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-using ZipZap.Classes.Helpers;
+using ZipZap.LangExt.Helpers;
 
-namespace ZipZap.Classes.Extensions;
+namespace ZipZap.LangExt.Extensions;
 
 public static class EnumerableExt {
     extension(IEnumerable<string> strings) {

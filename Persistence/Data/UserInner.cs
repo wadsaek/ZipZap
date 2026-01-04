@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using ZipZap.Classes;
 using ZipZap.Classes.Extensions;
 using ZipZap.Classes.Helpers;
+using ZipZap.LangExt.Helpers;
 using ZipZap.Persistence.Attributes;
 
 namespace ZipZap.Persistence.Data;

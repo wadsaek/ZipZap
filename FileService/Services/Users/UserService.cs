@@ -4,7 +4,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 using ZipZap.Classes;
-using ZipZap.Classes.Extensions;
+using ZipZap.LangExt.Extensions;
 using ZipZap.Persistence.Repositories;
 
 namespace ZipZap.FileService.Services;

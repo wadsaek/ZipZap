@@ -1,7 +1,7 @@
 using System;
 using System.Threading.Tasks;
 
-namespace ZipZap.Classes.Extensions;
+namespace ZipZap.LangExt.Extensions;
 
 public static class NullableExt {
     extension<T>(T? t) where T : class {

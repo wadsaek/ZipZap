@@ -1,6 +1,6 @@
 using System;
 
-namespace ZipZap.Classes.Helpers;
+namespace ZipZap.LangExt.Helpers;
 
 public static class Assertions {
     public static void Assert(bool expression, string message = "Assserion failed") {

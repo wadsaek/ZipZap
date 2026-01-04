@@ -1,6 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <ProjectReference Include="..\LangExt\LangExt.csproj" />
     <ProjectReference Include="..\Classes\Classes.csproj" />
   </ItemGroup>
 

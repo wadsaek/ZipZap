@@ -18,6 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\LangExt\LangExt.csproj" />
     <ProjectReference Include="..\Classes\Classes.csproj" />
     <ProjectReference Include="..\Persistence\Persistence.csproj" />
   </ItemGroup>

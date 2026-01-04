@@ -8,11 +8,10 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
 using ZipZap.Classes.Helpers;
-using ZipZap.FileService.Extensions;
 
 namespace ZipZap.FileService.Helpers;
 
-using static Assertions;
+using static LangExt.Helpers.Assertions;
 
 public class IO : IIO {
     private readonly IConfiguration _config;

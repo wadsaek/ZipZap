@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace ZipZap.Classes.Extensions;
+namespace ZipZap.LangExt.Extensions;
 
 public static class StringBuilderExt {
     extension(StringBuilder builder) {
