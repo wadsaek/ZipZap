@@ -1,0 +1,58 @@
+namespace ZipZap.Sftp.Ssh.Numbers;
+
+public enum Message : byte {
+    DIsconnect = 1,
+    Ignore = 2,
+    Unimplemented = 3,
+    Debug = 4,
+    ServiceRequest = 5,
+    ServiceAccept = 6,
+    Kexinit = 20,
+    Newkeys = 21,
+    UserauthRequest = 50,
+    UserauthFailure = 51,
+    UserauthSuccess = 52,
+    UserauthBanner = 53,
+    GlobalRequest = 80,
+    RequestSuccess = 81,
+    RequestFailure = 82,
+    ChannelOpen = 90,
+    ChannelOpenConfirmation = 91,
+    ChannelOpenFailure = 92,
+    ChannelWindowAdjust = 93,
+    ChannelData = 94,
+    ChannelExtendedData = 95,
+    ChannelEof = 96,
+    ChannelClose = 97,
+    ChannelRequest = 98,
+    ChannelSuccess = 99,
+    ChannelFailure = 100
+}
+enum Disconnect : uint {
+    HostNotAllowedToConnect = 1,
+    ProtocolError = 2,
+    KeyExchangeFailed = 3,
+    Reserved = 4,
+    MacError = 5,
+    CompressionError = 6,
+    ServiceNotAvailable = 7,
+    ProtocolVersionNotSupported = 8,
+    HostKeyNotVerifiable = 9,
+    ConnectionLost = 10,
+    ByApplication = 11,
+    TooManyConnections = 12,
+    AuthCancelledByUser = 13,
+    NoMoreAuthMethodsAvailable = 14,
+    IllegalUserName = 15,
+}
+
+enum ChannelConnectionFailure : uint {
+    AdministrativelyProhibited = 1,
+    ConnectFailed = 2,
+    UnknownChannelType = 3,
+    ResourceShortage = 4
+}
+
+enum ChannelExtendedData : uint {
+    Stderr = 1
+}
