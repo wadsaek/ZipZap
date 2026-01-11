@@ -2,12 +2,10 @@
 using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
+using System.Numerics;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-
-using ZipZap.LangExt.Extensions;
 
 namespace ZipZap.Sftp.Ssh;
 
@@ -30,8 +28,8 @@ public static class SshStreamExt {
             var bytes = Encoding.UTF8.GetBytes(str);
             await stream.SshWriteByteString(bytes, cancellationToken);
         }
-        public async Task SshWriteMPInt(MPint mpint, CancellationToken cancellationToken) {
-            await stream.SshWriteByteString(mpint.Bytes, cancellationToken);
+        public async Task SshWriteBigInt(BigInteger bigint, CancellationToken cancellationToken) {
+            await stream.SshWriteByteString(bigint == 0 ? [] : bigint.ToByteArray(isBigEndian: true), cancellationToken);
         }
 
         public async Task SshWriteUint32(uint n, CancellationToken cancellationToken) {
@@ -134,11 +132,11 @@ public static class SshStreamExt {
                 return null;
             }
         }
-        public async Task<MPint?> SshTryReadMPInt(CancellationToken cancellationToken) {
+        public async Task<BigInteger?> SshTryReadBigInt(CancellationToken cancellationToken) {
             var bytes = await stream.SshTryReadByteString(cancellationToken);
             if (bytes is null)
                 return null;
-            return new(bytes);
+            return new(bytes, isBigEndian: true);
         }
         public async Task<NameList?> SshTryReadNameList(CancellationToken cancellationToken) {
             var str = await stream.SshTryReadString(cancellationToken);
