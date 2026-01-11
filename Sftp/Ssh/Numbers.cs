@@ -30,7 +30,7 @@ public enum Message : byte {
     ChannelSuccess = 99,
     ChannelFailure = 100
 }
-enum Disconnect : uint {
+internal enum Disconnect : uint {
     HostNotAllowedToConnect = 1,
     ProtocolError = 2,
     KeyExchangeFailed = 3,
@@ -45,10 +45,10 @@ enum Disconnect : uint {
     TooManyConnections = 12,
     AuthCancelledByUser = 13,
     NoMoreAuthMethodsAvailable = 14,
-    IllegalUserName = 15,
+    IllegalUserName = 15
 }
 
-enum ChannelConnectionFailure : uint {
+internal enum ChannelConnectionFailure : uint {
     AdministrativelyProhibited = 1,
     ConnectFailed = 2,
     UnknownChannelType = 3,
