@@ -34,11 +34,13 @@ public partial class SftpService : BackgroundService {
     private readonly ISftpRequestHandler _handler;
     private readonly ISftpConfiguration _configuration;
     private readonly ILogger<SftpService> _logger;
+    private readonly IServiceScopeFactory _factory;
 
-    public SftpService(ISftpRequestHandler handler, ISftpConfiguration configuration, ILogger<SftpService> logger) {
+    public SftpService(ISftpRequestHandler handler, ISftpConfiguration configuration, ILogger<SftpService> logger, IServiceScopeFactory factory) {
         _handler = handler;
         _configuration = configuration;
         _logger = logger;
+        _factory = factory;
     }
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken) {
@@ -56,30 +58,104 @@ public partial class SftpService : BackgroundService {
         }
     }
 
+    private async Task<SshState?> MakeKeyExchange(AsyncServiceScope scope, Stream stream,IdenitificationStrings idenitificationStrings, CancellationToken cancellationToken) {
+        var provider = scope.ServiceProvider;
+        IProvider<T> GetProvider<T>() where T : INamed => provider.GetRequiredService<IProvider<T>>();
+        var keyExchangeAlgorithms = GetProvider<IKeyExchangeAlgorithm>().Items;
+        var publicKeyAlgorithms = GetProvider<IServerHostKeyAlgorithm>().Items;
+        var encryptionAlgorithms = GetProvider<IEncryptionAlgorithm>().Items;
+        var macAlgorithms = GetProvider<IMacAlgorithm>().Items;
+        var compressionAlgorithms = GetProvider<ICompressionAlgorithm>().Items;
+
+        var clientKexPayloadRaw = await stream.SshTryReadPacket(new NoMacAlgorithm(), cancellationToken);
+        if (clientKexPayloadRaw is null) return null;
+        var clientKexPayload = await KeyExchange.TryFromPayload(clientKexPayloadRaw.Inner.Payload, cancellationToken);
+        if (clientKexPayload is null) return null;
+        var serverKexPayload = GenerateKeyExchangePacket(keyExchangeAlgorithms, publicKeyAlgorithms, encryptionAlgorithms, macAlgorithms, compressionAlgorithms, false);
+        if (_logger.IsEnabled(LogLevel.Information)) {
+            _logger.LogInformation("got keyExchange packet     {Packet}", clientKexPayload);
+            _logger.LogInformation("sending keyExchange packet {Packet}", serverKexPayload);
+        }
+        var keyExchangePacket = await serverKexPayload.ToPacket(cancellationToken);
+        var bytes = await keyExchangePacket.ToByteString(cancellationToken);
+        await File.WriteAllBytesAsync("packet", bytes,cancellationToken);
+        var keyExchangePacketMac = new Packet(keyExchangePacket, []);
+        await stream.SshWritePacket(keyExchangePacketMac, cancellationToken);
+
+        var keyExchangeAlgorithmName = clientKexPayload.KexAlgorithms.Names.FirstOrDefault(a => clientKexPayload.KexAlgorithms.Names.Contains(a));
+        if (keyExchangeAlgorithmName is null) return null;
+
+        var keyExchangeAlgorithm = keyExchangeAlgorithms.FirstOrDefault(a => a.Name == keyExchangeAlgorithmName)!;
+
+        var macAlgorithmClientToServerName = clientKexPayload.MacAlgorithmsClientToServer.Names.FirstOrDefault(a => clientKexPayload.KexAlgorithms.Names.Contains(a));
+        if (macAlgorithmClientToServerName is null) return null;
+
+        var macAlgorithm = macAlgorithms.FirstOrDefault(a => a.Name == macAlgorithmClientToServerName)!;
+
+        var publicKeyAlgorithmName = clientKexPayload.KexAlgorithms.Names.FirstOrDefault(a => clientKexPayload.KexAlgorithms.Names.Contains(a));
+        if (publicKeyAlgorithmName is null) return null;
+
+        var publicKeyAlgorithm = publicKeyAlgorithms.FirstOrDefault(a => a.Name == publicKeyAlgorithmName)!;
+        var sshState = new SshState(stream,0,macAlgorithm,idenitificationStrings,publicKeyAlgorithm.GetHostKeyPair(),clientKexPayloadRaw.Inner.Payload,keyExchangePacket.Payload);
+        if( await keyExchangeAlgorithm.ExchangeKeysAsync(sshState, cancellationToken) is not BigInteger secret) return null;
+        return sshState with { Secret = secret };
+    }
+
+
     private async Task HandleSocket(Socket socket, CancellationToken cancellationToken) {
         try {
             using var _ = socket;
+            await using var scope = _factory.CreateAsyncScope();
             await using var stream = new NetworkStream(socket);
 
-        var header = Encoding.ASCII.GetBytes($"SSH-2.0-{_configuration.ServerName}_0.1.0\r\n");
+            var idStrings = await ExchangeIdentificationStrings(stream, cancellationToken);
+
+            if (_logger.IsEnabled(LogLevel.Information))
+                _logger.LogInformation("handling client {ClientId}", idStrings.Client);
+
+            var state = await MakeKeyExchange(scope, stream,idStrings, cancellationToken);
+
         } catch (OperationCanceledException e) {
             if (_logger.IsEnabled(LogLevel.Information))
                 _logger.LogInformation("Operation was cancelled, {e}", e);
         }
+    }
+
+    private async Task<IdenitificationStrings> ExchangeIdentificationStrings(Stream stream, CancellationToken cancellationToken) {
+        var serverHeader = $"SSH-2.0-{_configuration.ServerName}_{_configuration.Version}";
+        var header = Encoding.ASCII.GetBytes(serverHeader);
         await stream.WriteAsync(header, cancellationToken);
+        await stream.WriteAsync(Encoding.ASCII.GetBytes("\r\n"), cancellationToken);
 
-        var clientHeader = new List<byte>();
-        while (clientHeader.Count < 2 || (clientHeader[^2] != (byte)'\r' && clientHeader[^1] != (byte)'\n'))
-            clientHeader.Add((byte)stream.ReadByte());
-        if (_logger.IsEnabled(LogLevel.Information))
-            _logger.LogInformation("handling client {client-id}", Encoding.ASCII.GetString(clientHeader.ToArray()));
+        var clientHeaderBytes = new List<byte>();
+        while (clientHeaderBytes.Count < 2 || (clientHeaderBytes[^2] != (byte)'\r' && clientHeaderBytes[^1] != (byte)'\n'))
+            clientHeaderBytes.Add((byte)stream.ReadByte());
+        clientHeaderBytes.RemoveAt(clientHeaderBytes.Count - 1);
+        clientHeaderBytes.RemoveAt(clientHeaderBytes.Count - 1);
+        var clientHeader = Encoding.ASCII.GetString(clientHeaderBytes.ToArray());
+        return new(serverHeader, clientHeader);
+    }
 
-        var firstPacket = await stream.SshTryReadPacket(0, cancellationToken);
-        if (firstPacket is null) return;
-        var kexPayload = await KeyExchange.TryFromPayload(firstPacket.Value.Payload, cancellationToken);
-        if (kexPayload is null) return;
-        if (_logger.IsEnabled(LogLevel.Information))
-            _logger.LogInformation("got keyExchange packet {packet}", kexPayload);
+    private static KeyExchange GenerateKeyExchangePacket(IEnumerable<IKeyExchangeAlgorithm> keyExchangeAlgorithms, IEnumerable<IPublicKeyAlgorithm> publicKeyAlgorithms, IEnumerable<IEncryptionAlgorithm> encryptionAlgorithms, IEnumerable<IMacAlgorithm> macAlgorithms, IEnumerable<ICompressionAlgorithm> compressionAlgorithms, bool firstPacketFollows) {
+        var cookie = RandomNumberGenerator.GetBytes(16);
+        var encryptionAlgorithmsList = encryptionAlgorithms.ToNameList();
+        var macAlgorithmsNameList = macAlgorithms.ToNameList();
+        var compressionAlgorithmsNameList = compressionAlgorithms.ToNameList();
+        return new(
+            cookie,
+            keyExchangeAlgorithms.ToNameList(),
+            publicKeyAlgorithms.ToNameList(),
+            encryptionAlgorithmsList,
+            encryptionAlgorithmsList,
+            macAlgorithmsNameList,
+            macAlgorithmsNameList,
+            compressionAlgorithmsNameList,
+            compressionAlgorithmsNameList,
+            new([]),
+            new([]),
+            firstPacketFollows,
+            0
+        );
     }
 }
 
