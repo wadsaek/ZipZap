@@ -14,10 +14,22 @@ public record struct Permissions(M Inner) {
     public readonly override string ToString() => new[] {
         (Inner & M.UserRead) != M.None ? "r" : "-",
         (Inner & M.UserWrite) != M.None ? "w" : "-",
-        (Inner & M.UserExecute) == M.None ?  (Inner & M.SetUser) != M.None ? "S" : "-" : (Inner & M.SetUser) != M.None ? "s" : "x",
+        (Inner & M.UserExecute) == M.None
+            ? (Inner & M.SetUser) != M.None
+                ? "S"
+                : "-"
+            : (Inner & M.SetUser) != M.None
+                ? "s"
+                : "x",
         (Inner & M.GroupRead) != M.None ? "r" : "-",
         (Inner & M.GroupWrite) != M.None ? "w" : "-",
-        (Inner & M.GroupExecute) == M.None ?  (Inner & M.SetGroup) != M.None ? "S" : "-" : (Inner & M.SetGroup) != M.None ? "s" : "x",
+        (Inner & M.GroupExecute) == M.None
+            ? (Inner & M.SetGroup) != M.None
+                ? "S"
+                : "-"
+            : (Inner & M.SetGroup) != M.None
+                ? "s"
+                : "x",
         (Inner & M.OtherRead) != M.None ? "r" : "-",
         (Inner & M.OtherWrite) != M.None ? "w" : "-",
         (Inner & M.OtherExecute) != M.None ? "x" : "-"
@@ -48,7 +60,6 @@ public record struct Permissions(M Inner) {
         if (input[7] == 'w') mode |= M.OtherWrite;
         else if (input[7] != '-') return false;
         if (input[8] == 'x') mode |= M.OtherExecute;
-        else if (input[8] == 's') mode |= M.SetUser | M.UserExecute;
         else if (input[8] != '-') return false;
         if (input.Length == 10) {
             if (input[9] == 'T') mode |= M.StickyBit;
