@@ -58,7 +58,7 @@ public partial class SftpService : BackgroundService {
         }
     }
 
-    private async Task<SshState?> MakeKeyExchange(AsyncServiceScope scope, Stream stream,IdenitificationStrings idenitificationStrings, CancellationToken cancellationToken) {
+    private async Task<SshState?> MakeKeyExchange(AsyncServiceScope scope, Stream stream, IdenitificationStrings idenitificationStrings, CancellationToken cancellationToken) {
         var provider = scope.ServiceProvider;
         IProvider<T> GetProvider<T>() where T : INamed => provider.GetRequiredService<IProvider<T>>();
         var keyExchangeAlgorithms = GetProvider<IKeyExchangeAlgorithm>().Items;
@@ -78,7 +78,7 @@ public partial class SftpService : BackgroundService {
         }
         var keyExchangePacket = await serverKexPayload.ToPacket(cancellationToken);
         var bytes = await keyExchangePacket.ToByteString(cancellationToken);
-        await File.WriteAllBytesAsync("packet", bytes,cancellationToken);
+        await File.WriteAllBytesAsync("packet", bytes, cancellationToken);
         var keyExchangePacketMac = new Packet(keyExchangePacket, []);
         await stream.SshWritePacket(keyExchangePacketMac, cancellationToken);
 
