@@ -48,7 +48,7 @@ public partial class SftpService : BackgroundService {
         var tasks = new List<Task>();
         listener.Start();
         while (!cancellationToken.IsCancellationRequested) {
-            using var socket = await listener.AcceptSocketAsync(cancellationToken);
+            var socket = await listener.AcceptSocketAsync(cancellationToken);
             tasks.Add(HandleSocket(socket, cancellationToken));
             var removed = await tasks.RemoveCompleted();
             if (_logger.IsEnabled(LogLevel.Information))
@@ -57,9 +57,15 @@ public partial class SftpService : BackgroundService {
     }
 
     private async Task HandleSocket(Socket socket, CancellationToken cancellationToken) {
+        try {
+            using var _ = socket;
+            await using var stream = new NetworkStream(socket);
 
-        await using var stream = new NetworkStream(socket);
         var header = Encoding.ASCII.GetBytes($"SSH-2.0-{_configuration.ServerName}_0.1.0\r\n");
+        } catch (OperationCanceledException e) {
+            if (_logger.IsEnabled(LogLevel.Information))
+                _logger.LogInformation("Operation was cancelled, {e}", e);
+        }
         await stream.WriteAsync(header, cancellationToken);
 
         var clientHeader = new List<byte>();
