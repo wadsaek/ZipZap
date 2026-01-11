@@ -6,7 +6,7 @@ using Google.Protobuf;
 using Grpc.Core;
 
 using ZipZap.Classes;
-using static ZipZap.Classes.Helpers.Constructors;
+using static ZipZap.LangExt.Helpers.ResultConstructor;
 using ZipZap.Classes.Helpers;
 using ZipZap.Grpc;
 
@@ -15,6 +15,8 @@ using ZipZap.Classes.Extensions;
 using ZipZap.Classes.Adapters;
 using User = ZipZap.Classes.User;
 using System;
+
+using ZipZap.LangExt.Helpers;
 
 namespace ZipZap.Front.Services;
 

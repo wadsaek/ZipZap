@@ -1,10 +1,22 @@
-namespace ZipZap.Classes.Helpers;
+namespace ZipZap.LangExt.Helpers;
 
 using System;
 using System.ComponentModel;
 using System.Threading.Tasks;
 
-using static Constructors;
+using static ResultConstructor;
+
+public static class ResultConstructor {
+    extension<T, E>(Result<T, E>) {
+        public static Result<T, E> Ok(T arg) {
+            return new Ok<T, E>(arg);
+        }
+
+        public static Result<T, E> Err(E err) {
+            return new Err<T, E>(err);
+        }
+    }
+}
 
 public abstract record Result<T, E> {
     public static Result<T, E> Ok(T data) {
@@ -26,14 +38,6 @@ public static class ResultExt {
     }
 
     extension<T, E>(Result<T, E> result) {
-        public static Result<T, E> Try(Func<T> function, ExceptionConverter<E> converter) {
-            try {
-                return Result<T, E>.Ok(function());
-            } catch (Exception e) {
-                return Result<T, E>.Err(converter.Convert(e));
-            }
-
-        }
         public T UnwrapOr(T fallback) => result switch {
             Ok<T, E>(T data) => data,
             Err<T, E> => fallback,

@@ -15,3 +15,12 @@ where TId : IStrongId;
 public sealed record ExistsEntity<T, TId>(T Entity) : MaybeEntity<T, TId>(Entity.Id)
 where T : IEntity<TId>
 where TId : IStrongId;
+
+public static class MaybeEntityConstructor {
+    extension<T, TId>(MaybeEntity<T, TId>)
+        where T : IEntity<TId>
+        where TId : IStrongId {
+        public static MaybeEntity<T, TId> OnlyId(TId id) => new OnlyId<T, TId>(id);
+        public static MaybeEntity<T, TId> ExistsEntity(T entity) => new ExistsEntity<T, TId>(entity);
+    }
+}

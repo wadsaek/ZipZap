@@ -6,8 +6,9 @@ using Grpc.Core;
 
 using ZipZap.Classes.Helpers;
 using ZipZap.Grpc;
+using ZipZap.LangExt.Helpers;
 
-using static ZipZap.Classes.Helpers.Constructors;
+using static ZipZap.LangExt.Helpers.ResultConstructor;
 
 namespace ZipZap.Front.Services;
 

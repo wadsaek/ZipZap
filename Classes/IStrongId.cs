@@ -1,5 +1,5 @@
 using ZipZap.Classes.Helpers;
-using static ZipZap.Classes.Helpers.Constructors;
+using static ZipZap.Classes.Helpers.MaybeEntityConstructor;
 
 namespace ZipZap.Classes;
 public interface IStrongId;

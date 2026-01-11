@@ -6,6 +6,7 @@ using Google.Protobuf;
 
 using ZipZap.Classes;
 using ZipZap.Classes.Helpers;
+using ZipZap.LangExt.Helpers;
 
 namespace ZipZap.Front.Services;
 

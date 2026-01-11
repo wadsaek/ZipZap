@@ -1,5 +1,7 @@
 using System;
 
+using ZipZap.LangExt.Helpers;
+
 namespace ZipZap.Classes.Helpers;
 
 public abstract class ExceptionConverter<TErr> {
@@ -27,4 +29,16 @@ public sealed class ChainedExceptionConverter<Err> : ExceptionConverter<Err> {
     }
 
     public override Err Convert(Exception e) => _selector(e) ?? _next.Convert(e);
+}
+
+public static class ExceptionConverterExt {
+    extension<T, E>(Result<T, E>) {
+        public static Result<T, E> Try(Func<T> function, ExceptionConverter<E> converter) {
+            try {
+                return Result<T, E>.Ok(function());
+            } catch (Exception e) {
+                return Result<T, E>.Err(converter.Convert(e));
+            }
+        }
+    }
 }
