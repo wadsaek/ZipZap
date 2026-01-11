@@ -9,6 +9,8 @@ public enum Message : byte {
     ServiceAccept = 6,
     Kexinit = 20,
     Newkeys = 21,
+    KexDhInit = 30,
+    KexDhReply = 31,
     UserauthRequest = 50,
     UserauthFailure = 51,
     UserauthSuccess = 52,
@@ -53,6 +55,6 @@ enum ChannelConnectionFailure : uint {
     ResourceShortage = 4
 }
 
-enum ChannelExtendedData : uint {
+internal enum ChannelExtendedData : uint {
     Stderr = 1
 }

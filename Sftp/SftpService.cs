@@ -58,3 +58,6 @@ public partial class SftpService : BackgroundService {
             _logger.LogInformation("got keyExchange packet {packet}", kexPayload);
     }
 }
+
+public record IdenitificationStrings(string Server, string Client);
+public record SshState(Stream Stream, BigInteger Secret, IMacAlgorithm MacAlgorithm, IdenitificationStrings IdenitificationStrings, HostKeyPair HostKeyPair, byte[] ClientKexInit, byte[] ServerKexInit) { }
