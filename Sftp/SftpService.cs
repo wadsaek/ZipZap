@@ -1,17 +1,35 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Numerics;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 using ZipZap.Sftp.Ssh;
+using ZipZap.Sftp.Ssh.Algorithms;
 
 namespace ZipZap.Sftp;
 
+internal static class TaskListExt {
+    extension(List<Task> tasks) {
+        public async Task<int> RemoveCompleted() {
+            foreach (var a in tasks.Where(t => t.IsCompleted))
+                await a;
+            return tasks.RemoveAll(t => t.IsCompleted);
+        }
+    }
+}
 public partial class SftpService : BackgroundService {
     private readonly ISftpRequestHandler _handler;
     private readonly ISftpConfiguration _configuration;
@@ -32,9 +50,9 @@ public partial class SftpService : BackgroundService {
         while (!cancellationToken.IsCancellationRequested) {
             using var socket = await listener.AcceptSocketAsync(cancellationToken);
             tasks.Add(HandleSocket(socket, cancellationToken));
-            tasks.RemoveAll(t => t.IsCompleted);
+            var removed = await tasks.RemoveCompleted();
             if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("{Count} tasks in queue", tasks.Count);
+                _logger.LogInformation("{Count} tasks in queue\n{Removed} tasks removed", tasks.Count, removed);
         }
     }
 
