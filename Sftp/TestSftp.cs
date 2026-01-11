@@ -16,6 +16,6 @@ app.Run();
 class SftpHandler : ISftpRequestHandler;
 class SftpConfiguration : SftpService.ISftpConfiguration {
     public int Port => 9999;
-
     public string ServerName => "ZipZapTestSftp";
+    public string Version => "0.1.0";
 }
