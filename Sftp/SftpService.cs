@@ -82,22 +82,55 @@ public partial class SftpService : BackgroundService {
         var keyExchangePacketMac = new Packet(keyExchangePacket, []);
         await stream.SshWritePacket(keyExchangePacketMac, cancellationToken);
 
-        var keyExchangeAlgorithmName = clientKexPayload.KexAlgorithms.Names.FirstOrDefault(a => clientKexPayload.KexAlgorithms.Names.Contains(a));
-        if (keyExchangeAlgorithmName is null) return null;
+        var keyExchangeAlgorithmName = clientKexPayload.KexAlgorithms.Names.FirstOrDefault(a => serverKexPayload.KexAlgorithms.Names.Contains(a));
+        if (keyExchangeAlgorithmName is null) {
+            if (_logger.IsEnabled(LogLevel.Information)) {
+                _logger.LogInformation("no key exchange algorithm");
+                _logger.LogInformation("our   : {KexAlgorithms}", serverKexPayload.KexAlgorithms);
+                _logger.LogInformation("their : {KexAlgorithms}", clientKexPayload.KexAlgorithms);
+            }
+            return null;
+        }
 
         var keyExchangeAlgorithm = keyExchangeAlgorithms.FirstOrDefault(a => a.Name == keyExchangeAlgorithmName)!;
+        if (_logger.IsEnabled(LogLevel.Information))
+            _logger.LogInformation("using keyExchangeAlgorithm {KeyExchangeAlgorithm}", keyExchangeAlgorithm);
 
-        var macAlgorithmClientToServerName = clientKexPayload.MacAlgorithmsClientToServer.Names.FirstOrDefault(a => clientKexPayload.KexAlgorithms.Names.Contains(a));
-        if (macAlgorithmClientToServerName is null) return null;
+        var macAlgorithmClientToServerName = clientKexPayload.MacAlgorithmsClientToServer.Names.FirstOrDefault(a => serverKexPayload.MacAlgorithmsClientToServer.Names.Contains(a));
+        if (macAlgorithmClientToServerName is null) {
+            if (_logger.IsEnabled(LogLevel.Information)) {
+                _logger.LogInformation("no mac algorithm");
+                _logger.LogInformation("our   : {MacAlgorithm}", serverKexPayload.MacAlgorithmsClientToServer);
+                _logger.LogInformation("their : {MacAlgorithm}", clientKexPayload.MacAlgorithmsClientToServer);
+            }
+            return null;
+        }
+
 
         var macAlgorithm = macAlgorithms.FirstOrDefault(a => a.Name == macAlgorithmClientToServerName)!;
+        if (_logger.IsEnabled(LogLevel.Information))
+            _logger.LogInformation("using macAlgorithm {MacAlgorithm}", macAlgorithm);
 
-        var publicKeyAlgorithmName = clientKexPayload.KexAlgorithms.Names.FirstOrDefault(a => clientKexPayload.KexAlgorithms.Names.Contains(a));
+        var publicKeyAlgorithmName = clientKexPayload.ServerHostKeyAlgorithms.Names.FirstOrDefault(a => serverKexPayload.ServerHostKeyAlgorithms.Names.Contains(a));
         if (publicKeyAlgorithmName is null) return null;
 
         var publicKeyAlgorithm = publicKeyAlgorithms.FirstOrDefault(a => a.Name == publicKeyAlgorithmName)!;
-        var sshState = new SshState(stream,0,macAlgorithm,idenitificationStrings,publicKeyAlgorithm.GetHostKeyPair(),clientKexPayloadRaw.Inner.Payload,keyExchangePacket.Payload);
-        if( await keyExchangeAlgorithm.ExchangeKeysAsync(sshState, cancellationToken) is not BigInteger secret) return null;
+
+        if (_logger.IsEnabled(LogLevel.Information)) {
+            _logger.LogInformation("Using PublicKeyAlgorithm {PublicKeyAlgorithm}", publicKeyAlgorithm);
+            _logger.LogInformation("Using MacAlgorithm {MacAlgorithm}", macAlgorithm);
+            _logger.LogInformation("sending KeyExchangeAlgorithm {KeyExchangeAlgorithm}", keyExchangeAlgorithm);
+        }
+        var sshState = new SshState(
+            stream,
+            0,
+            macAlgorithm,
+            idenitificationStrings,
+            publicKeyAlgorithm.GetHostKeyPair(),
+            clientKexPayloadRaw.Inner.Payload,
+            keyExchangePacket.Payload
+        );
+        if (await keyExchangeAlgorithm.ExchangeKeysAsync(sshState, cancellationToken) is not BigInteger secret) return null;
         return sshState with { Secret = secret };
     }
 
@@ -113,7 +146,7 @@ public partial class SftpService : BackgroundService {
             if (_logger.IsEnabled(LogLevel.Information))
                 _logger.LogInformation("handling client {ClientId}", idStrings.Client);
 
-            var state = await MakeKeyExchange(scope, stream,idStrings, cancellationToken);
+            var state = await MakeKeyExchange(scope, stream, idStrings, cancellationToken);
 
         } catch (OperationCanceledException e) {
             if (_logger.IsEnabled(LogLevel.Information))
