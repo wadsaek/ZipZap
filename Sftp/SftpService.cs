@@ -44,7 +44,7 @@ public partial class SftpService : BackgroundService {
     protected override async Task ExecuteAsync(CancellationToken cancellationToken) {
         var listener = new TcpListener(IPAddress.Any, _configuration.Port);
         if (_logger.IsEnabled(LogLevel.Information))
-            _logger.LogInformation("listening on port {port}", _configuration.Port);
+            _logger.LogInformation("listening on port {Port}", _configuration.Port);
         var tasks = new List<Task>();
         listener.Start();
         while (!cancellationToken.IsCancellationRequested) {
