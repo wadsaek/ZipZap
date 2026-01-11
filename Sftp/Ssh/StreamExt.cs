@@ -63,7 +63,7 @@ public static class SshStreamExt {
     extension(Stream stream) {
         public async Task<bool> SshTryReadArray(byte[] bytes, CancellationToken cancellationToken) {
             if (bytes.Length == 0) return true;
-            int bytesRead = await stream.ReadAsync(bytes, cancellationToken);
+            var bytesRead = await stream.ReadAsync(bytes, cancellationToken);
             return bytesRead == bytes.Length;
         }
 
@@ -109,7 +109,7 @@ public static class SshStreamExt {
             return await stream.SshTryReadByte(cancellationToken) switch {
                 null => null,
                 0 => false,
-                byte => true
+                _ => true
             };
         }
         public async Task<byte[]?> SshTryReadByteString(CancellationToken cancellationToken) {
@@ -142,7 +142,8 @@ public static class SshStreamExt {
             var str = await stream.SshTryReadString(cancellationToken);
             if (str is null)
                 return null;
-            if (str is "") return new([]);
+            if (str is "")
+                return new([]);
             var maybeNames = str.Split(',');
             var names = new List<NameList.Item>(maybeNames.Length);
             foreach (var name in maybeNames) {

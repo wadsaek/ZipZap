@@ -12,12 +12,6 @@ public record NameList(NameList.Item[] Names) {
             .ConcatenateWith(",");
 
     public abstract record Item(string Name) {
-        public sealed record GlobalName(string Name) : Item(Name) {
-            override public string ToString() => Name;
-        }
-        public sealed record LocalName(string Name, string Domain) : Item(Name) {
-            override public string ToString() => $"{Name}@{Domain}";
-        }
         public static bool TryParse(string raw, out Item name) {
             name = raw.Split("@") switch {
                 [var global] => new GlobalName(global),
@@ -26,6 +20,12 @@ public record NameList(NameList.Item[] Names) {
             };
             return name is not null;
         }
+    }
+    public sealed record GlobalName(string Name) : Item(Name) {
+        public override string ToString() => Name;
+    }
+    public sealed record LocalName(string Name, string Domain) : Item(Name) {
+        public override string ToString() => $"{Name}@{Domain}";
     }
 }
 
