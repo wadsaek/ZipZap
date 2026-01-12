@@ -14,6 +14,6 @@ public class RsaKeyAlgorithm : IServerHostKeyAlgorithm {
     }
 
     public byte[] Sign(byte[] unsigned, byte[] key) {
-        var rsa = RSA.Create(new RSAParameters{});
+        throw new System.NotImplementedException();
     }
 }

@@ -1,6 +1,8 @@
 using System.Threading;
 using System.Threading.Tasks;
 
+using ZipZap.Sftp.Ssh.Algorithms;
+
 namespace ZipZap.Sftp.Ssh;
 
 internal interface IPayload {
@@ -15,9 +17,10 @@ where T : IClientPayload<T> {
 }
 static class PayloadExt {
     extension(IServerPayload payload) {
-        public async Task<PacketWithoutMac> ToPacket(CancellationToken cancellationToken) {
+        public async Task<Packet> ToPacket(IMacAlgorithm macAlgorithm,CancellationToken cancellationToken) {
             var bytes = await payload.ToPayload(cancellationToken);
-            return new(bytes);
+            var mac = await macAlgorithm.GenerateMacFor(bytes, cancellationToken);
+            return new(bytes,mac);
         }
     }
 }
