@@ -47,7 +47,7 @@ ExchangeKeysAsync(SshState state, CancellationToken cancellationToken) {
         var secret = BigInteger.ModPow(clientExponent, exponent, Group);
         var signature = await GetSignature(state.IdenitificationStrings, state.ClientKexInit, state.ServerKexInit, state.HostKeyPair, clientExponent, exponentiated, secret, cancellationToken);
         var reply = new KeyExchangeDiffieHelmanReply(state.HostKeyPair.PublicKey, exponentiated, signature);
-        var replyPacket = await reply.ToPacket(state.MacAlgorithm);
+        var replyPacket = await reply.ToPacket(state.MacAlgorithm,cancellationToken);
         await state.Stream.SshWritePacket(replyPacket, cancellationToken);
         return secret;
     }
@@ -95,10 +95,6 @@ internal record KeyExchangeDiffieHelmanReply(byte[] PublicHostKey, BigInteger Se
     public static Message Message => Message.KexDhReply;
 
     public Task<byte[]> ToPayload(CancellationToken cancellationToken) {
-        throw new NotImplementedException();
-    }
-
-    internal Task<Packet> ToPacket(IMacAlgorithm macAlgorithm) {
         throw new NotImplementedException();
     }
 }

@@ -76,11 +76,8 @@ public partial class SftpService : BackgroundService {
             _logger.LogInformation("got keyExchange packet     {Packet}", clientKexPayload);
             _logger.LogInformation("sending keyExchange packet {Packet}", serverKexPayload);
         }
-        var keyExchangePacket = await serverKexPayload.ToPacket(cancellationToken);
-        var bytes = await keyExchangePacket.ToByteString(cancellationToken);
-        await File.WriteAllBytesAsync("packet", bytes, cancellationToken);
-        var keyExchangePacketMac = new Packet(keyExchangePacket, []);
-        await stream.SshWritePacket(keyExchangePacketMac, cancellationToken);
+        var keyExchangePacket = await serverKexPayload.ToPacket(new NoMacAlgorithm(),cancellationToken);
+        await stream.SshWritePacket(keyExchangePacket, cancellationToken);
 
         var keyExchangeAlgorithmName = clientKexPayload.KexAlgorithms.Names.FirstOrDefault(a => serverKexPayload.KexAlgorithms.Names.Contains(a));
         if (keyExchangeAlgorithmName is null) {
@@ -128,7 +125,7 @@ public partial class SftpService : BackgroundService {
             idenitificationStrings,
             publicKeyAlgorithm.GetHostKeyPair(),
             clientKexPayloadRaw.Inner.Payload,
-            keyExchangePacket.Payload
+            keyExchangePacket.Inner.Payload
         );
         if (await keyExchangeAlgorithm.ExchangeKeysAsync(sshState, cancellationToken) is not BigInteger secret) return null;
         return sshState with { Secret = secret };
