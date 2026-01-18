@@ -10,8 +10,9 @@ public abstract record Fso(FsoId Id, FsData Data) : IEntity<FsoId>, IFormattable
     public string ToString(string? format)
         => format switch {
             LongListingFormat => ToString(),
-            ShortListingFormat or _ => Data.Name
+            ShortListingFormat or _ => ToShortFormatString()
         };
+    protected virtual string ToShortFormatString() => Data.Name;
 
     public string ToString(string? format, IFormatProvider? formatProvider) 
         => ToString(format);
@@ -25,6 +26,7 @@ public sealed record File(FsoId Id, FsData Data) : Fso(Id, Data) {
 }
 public sealed record Symlink(FsoId Id, FsData Data, string Target) : Fso(Id, Data) {
     public override string ToString() => $"l{base.ToString()} -> {Target}";
+    protected override string ToShortFormatString() => $"{base.ToShortFormatString()} -> {Target}";
 
 }
 public sealed record Directory(FsoId Id, FsData Data) : Fso(Id, Data) {
