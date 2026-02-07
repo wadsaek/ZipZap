@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+option csharp_namespace = "ZipZap.Grpc";
+
+message SshKey{
+  string key = 1;
+}

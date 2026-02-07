@@ -78,5 +78,8 @@ public class UserService : IUserService {
         return await _repo.GetAll(token);
     }
 
+    public async Task<Result<User, DbError>> CreateAsync(User user, CancellationToken token) {
+        return await _repo.CreateAsync(user, token);
+    }
 }
 

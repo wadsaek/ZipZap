@@ -202,9 +202,34 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         var token = await _userService.Login(request.Username, request.Password);
         return new() { Token = token ?? ThrowUnauthenticated<string>("Wrong credentials") };
     }
+
     public override async Task<Grpc.User> GetSelf(EmptyMessage message, ServerCallContext context) {
         return (await GetUserOrThrowAsync(context)).ToGrpcUser();
     }
+
+    public override async Task<EmptyMessage> UpdateFso(UpdateFsoRequest request, ServerCallContext context) {
+        var fsData = request.Data.ToFsData();
+        var user = await GetUserOrThrowAsync(context);
+        var fso = request.IdentifierCase switch {
+            UpdateFsoRequest.IdentifierOneofCase.FsoId
+                => await GetFsoOrFailAsync(request.FsoId, user, context.CancellationToken),
+            UpdateFsoRequest.IdentifierOneofCase.Path
+                => await GetFsoOrFailAsync(request.Path.ToPathData(user.Root.Id), user, context.CancellationToken),
+            _ or UpdateFsoRequest.IdentifierOneofCase.None
+                => throw new RpcException(new(StatusCode.InvalidArgument, nameof(request.IdentifierCase)))
+        };
+        var updated = fso with { Data = fsData };
+        var result = await _fsosRepo.UpdateAsync(updated) switch {
+            Ok<Unit, DbError> => new EmptyMessage(),
+            Err<Unit, DbError>(var err) => err switch {
+                DbError.NothingChanged => throw new RpcException(new(StatusCode.NotFound, $"Was unable to update fso ${fso}")),
+                _ => throw new RpcException(new(StatusCode.Internal, $"got a weird issue {err}"))
+            },
+            _ => throw new InvalidEnumArgumentException()
+        };
+        return result;
+    }
+
     public override async Task<EmptyMessage> AdminRemoveUser(Grpc.Guid request, ServerCallContext context) {
         await EnsureAdminOrThrow(context);
         var guid = ParseGuidOrThrow(request);
@@ -219,6 +244,23 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         };
     }
 
+    public override async Task<Grpc.User> RemoveSelf(EmptyMessage request, ServerCallContext context) {
+        var user = await GetUserOrThrowAsync(context);
+        var result = await _userService.RemoveUser(user.Id);
+        return result switch {
+            Ok<Unit, DbError> => user.ToGrpcUser(),
+            Err<Unit, DbError>(var err) => err switch {
+                DbError.NothingChanged => throw new RpcException(new(StatusCode.Internal, $"Was unable to delete user with id {user.Id}")),
+                _ => throw new RpcException(new(StatusCode.Internal, $"got a weird issue {err}"))
+            },
+            _ => throw new InvalidEnumArgumentException()
+        };
+    }
+
+    public override Task<Grpc.Guid> AddSshKey(Grpc.SshKey request, ServerCallContext context) {
+        return base.AddSshKey(request, context);
+    }
+
     public override async Task<UserList> AdminGetUserList(EmptyMessage request, ServerCallContext context) {
         await EnsureAdminOrThrow(context);
         var users = await _userService.GetAllUsers(context.CancellationToken);
@@ -231,6 +273,33 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         var user = await GetUserOrThrowAsync(context);
         if (user.Role != UserRole.Admin) throw new RpcException(new(StatusCode.PermissionDenied, "You are not an admin"));
         return user;
+    }
+
+    public override async Task<LoginResponse> SignUp(SignUpRequest request, ServerCallContext context) {
+        var ownership = request.DefaultOwnership?.ToOwnership() ?? new(1000, 100);
+        var user = new User(
+            default,
+            request.Username,
+            _userService.HashPassword(request.Password),
+            request.Email,
+            UserRole.User,
+            ownership,
+            null!
+        );
+        var root = new Directory(default, new(null, Permissions.DirectoryDefault, "/", ownership));
+        root = await _fsosRepo.CreateAsync(root, context.CancellationToken) switch {
+            Ok<Fso, DbError>(var fso) => fso as Directory ?? throw new RpcException(new(StatusCode.Internal, "The created root is not a directory")),
+            Err<Fso, DbError>(var err) => throw new RpcException(new(StatusCode.Internal, err.ToString())),
+            _ => throw new InvalidEnumArgumentException()
+        };
+        user = user with { Root = root };
+        user = await _userService.CreateAsync(user, context.CancellationToken) switch {
+            Ok<User, DbError>(var returned) => returned,
+            Err<User, DbError>(var err) => throw new RpcException(new(StatusCode.Internal, err.ToString())),
+            _ => throw new InvalidEnumArgumentException()
+        };
+        var token = await _userService.Login(user.Username, request.Password);
+        return new() { Token = token ?? ThrowUnauthenticated<string>("Wrong credentials") };
     }
 }
 
