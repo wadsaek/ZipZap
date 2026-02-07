@@ -7,7 +7,7 @@ async function setLogoutButton() {
         console.log(logoutButton)
         console.log(cookie)
         const inner = document.createElement("button");
-        inner.onclick = async () => {
+        inner.onclick = () => {
             window.location.replace("/logout")
         };
         inner.className = "navlink text-light btn";
