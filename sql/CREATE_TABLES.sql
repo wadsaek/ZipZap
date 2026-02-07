@@ -174,4 +174,21 @@ BEGIN
     END IF;
 END $MIGRATION$;
 
+DO
+$MIGRATION$
+BEGIN
+    IF NOT EXISTS (SELECT * FROM migrations WHERE migration_name = 'user_root_on_delete_cascade') THEN
+
+        INSERT INTO migrations VALUES ('user_root_on_delete_cascade');
+
+        ALTER TABLE users
+        DROP CONSTRAINT users_root_fkey,
+        ADD CONSTRAINT users_root_fkey
+            FOREIGN KEY (root)
+            REFERENCES fsos (id)
+            ON DELETE CASCADE;
+
+    END IF;
+END $MIGRATION$;
+
 COMMIT;
