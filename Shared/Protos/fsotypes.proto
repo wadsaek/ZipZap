@@ -1,6 +1,7 @@
 syntax = "proto3";
 
 import "guid.proto";
+import "ownership.proto";
 
 option csharp_namespace = "ZipZap.Grpc";
 
@@ -26,8 +27,8 @@ message FsoSharedData {
   string name = 1;
   Guid rootId = 2;
   int32 permissions = 3;
-  int32 owner = 6;
-  int32 group = 7;
+  reserved 4 to 7;
+  Ownership ownership = 8;
 }
 
 message FsoWithType {

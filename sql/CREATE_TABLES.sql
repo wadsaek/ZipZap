@@ -191,4 +191,17 @@ BEGIN
     END IF;
 END $MIGRATION$;
 
+DO
+$MIGRATION$
+BEGIN
+    IF NOT EXISTS (SELECT * FROM migrations WHERE migration_name = 'user_add_ownership_data') THEN
+
+        INSERT INTO migrations VALUES ('user_add_ownership_data');
+
+        ALTER TABLE users
+        ADD COLUMN uid int NOT NULL DEFAULT(1000),
+        ADD COLUMN gid int NOT NULL DEFAULT(100);
+
+    END IF;
+END $MIGRATION$;
 COMMIT;

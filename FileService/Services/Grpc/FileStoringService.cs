@@ -122,7 +122,8 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
     public override async Task<SaveFsoResponse> SaveFso(SaveFsoRequest request, ServerCallContext context) {
         var user = await GetUserOrThrowAsync(context);
         var parentDir = await GetParentFromRequest(context, request, user);
-        var data = new FsData(parentDir.AsMaybe(), Permissions.FileDefault, request.Data.Name, 1000, 100);
+        var ownership = request.Data.Ownership.ToOwnership();
+        var data = new FsData(parentDir.AsMaybe(), Permissions.FileDefault, request.Data.Name, ownership);
         Fso fso = request.SpecificDataCase switch {
             SaveFsoRequest.SpecificDataOneofCase.FileData => new File(default, data),
             SaveFsoRequest.SpecificDataOneofCase.DirectoryData => new Directory(default, data),

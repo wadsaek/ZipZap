@@ -60,12 +60,12 @@ public class FsoInner : ITranslatable<Fso>, ISqlRetrievable, IInner<Guid> {
         ?.ToFsoId()
         .AsIdOf<Directory>();
 
+        var ownership = new Ownership(FsoOwner, FsoGroup);
         var data = new FsData(
         virtualLocation,
         Classes.Permissions.FromBitMask(Permissions),
         FsoName,
-        FsoOwner,
-        FsoGroup
+ownership
         );
         return FsoType switch {
             FsoType.RegularFile => new File(new FsoId(Id), data),
@@ -80,8 +80,8 @@ public class FsoInner : ITranslatable<Fso>, ISqlRetrievable, IInner<Guid> {
         fso.Data.Name,
         fso.Data.VirtualLocation?.Id.Value,
         (short)fso.Data.Permissions.Inner,
-        fso.Data.FsoOwner,
-        fso.Data.FsoGroup,
+        fso.Data.Ownership.FsoOwner,
+        fso.Data.Ownership.FsoGroup,
         fso switch {
             File => FsoType.RegularFile,
             Directory => FsoType.Directory,

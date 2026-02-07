@@ -2,6 +2,7 @@ syntax = "proto3";
 
 option csharp_namespace = "ZipZap.Grpc";
 import "guid.proto";
+import "ownership.proto";
 
 message User {
   Guid id = 1;
@@ -9,6 +10,7 @@ message User {
   string email = 3;
   UserRole role = 5;
   Guid RootId = 4;
+  Ownership defaultOwnership = 6;
 }
 
 enum UserRole {

@@ -13,7 +13,7 @@
             @{var item = Model.GetHandler!.Item;}
             <div>
                 <h1> @item.ToString(Fso.ShortListingFormat) </h1>
-                <h4 class="text-secondary">@item.Data.Permissions @item.Data.FsoOwner:@item.Data.FsoGroup </h4>
+                <h4 class="text-secondary">@item.Data.Permissions @item.Data.Ownership </h4>
             </div>
             <a class="text" href="@Model.GetHandler!.ParentUrl">Up</a>
         </div>

@@ -10,6 +10,7 @@ public record User(
          byte[] PasswordHash,
          string Email,
          UserRole Role,
+         Ownership DefaultOwnership,
          MaybeEntity<Directory, FsoId> Root
 ) : IEntity<UserId>;
 

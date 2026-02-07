@@ -21,7 +21,7 @@ public class GetHandler {
         if (fsoResult is Err<Fso, ServiceError>(var err)) {
             return err switch {
                 ServiceError.NotFound => Err<GetHandler, GetHandlerError>(new GetHandlerError.NotFound()),
-                ServiceError.Unathorized => Err<GetHandler, GetHandlerError>(new GetHandlerError.Unauthorized()),
+                ServiceError.Unauthorized => Err<GetHandler, GetHandlerError>(new GetHandlerError.Unauthorized()),
                 _ => Err<GetHandler, GetHandlerError>(new GetHandlerError.HandlerServiceError(err))
             };
         }

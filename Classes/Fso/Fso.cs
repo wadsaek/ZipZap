@@ -5,7 +5,7 @@ namespace ZipZap.Classes;
 
 
 public abstract record Fso(FsoId Id, FsData Data) : IEntity<FsoId>, IFormattable {
-    public override string ToString() => $"{Data.Permissions} {Data.FsoOwner}:{Data.FsoGroup} {Data.Name}";
+    public override string ToString() => $"{Data.Permissions} {Data.Ownership} {Data.Name}";
 
     public string ToString(string? format)
         => format switch {

@@ -130,8 +130,7 @@ public static class ProtoAdapter {
             var grpcPathData = new Grpc.PathData {
                 Name = pathData.Name
             };
-            switch (pathData)
-            {
+            switch (pathData) {
                 case PathDataWithPath { Path: var path }:
                     grpcPathData.FilePath = path;
                     break;
@@ -153,8 +152,7 @@ public static class ProtoAdapter {
                     fsoSharedData.RootId.ToGuid().ToFsoId().AsIdOf<Directory>(),
                     Permissions.FromBitMask(fsoSharedData.Permissions),
                     fsoSharedData.Name,
-                    fsoSharedData.Owner,
-                    fsoSharedData.Group
+         fsoSharedData.Ownership.ToOwnership()
                 );
 
         }
@@ -180,6 +178,7 @@ public static class ProtoAdapter {
             [],
             user.Email,
             user.Role.ToRole(),
+            user.DefaultOwnership.ToOwnership(),
             user.RootId.ToGuid().ToFsoId().AsIdOf<Directory>()
         );
     }
@@ -189,14 +188,22 @@ public static class ProtoAdapter {
             Id = user.Id.Value.ToGrpcGuid(),
             Email = user.Email,
             Username = user.Username,
+            DefaultOwnership = user.DefaultOwnership.ToGrpcOwnership(),
             Role = user.Role.ToGrpcRole()
         };
     }
+
     extension(IEnumerable<User> users) {
         public UserList ToUserList() {
             var userlist = new UserList();
             userlist.User.AddRange(users.Select(ToGrpcUser));
             return userlist;
         }
+    }
+    extension(Ownership ownership) {
+        public Grpc.Ownership ToGrpcOwnership() => new() { Group = ownership.FsoGroup, Owner = ownership.FsoOwner };
+    }
+    extension(Grpc.Ownership ownership) {
+        public Ownership ToOwnership() => new(ownership.Owner,ownership.Group);
     }
 }

@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+option csharp_namespace = "ZipZap.Grpc";
+
+message Ownership {
+  int32 owner = 1;
+  int32 group = 2;
+}

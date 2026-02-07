@@ -13,6 +13,7 @@ namespace ZipZap.Persistence.Data;
 public class UserInner : ITranslatable<User>, ISqlRetrievable, IInner<Guid> {
     public UserInner(
         Guid id, string username, byte[] passwordHash, string email, Guid root,
+        int uid, int gid,
         UserRole role
     ) {
         Id = id;
@@ -21,6 +22,8 @@ public class UserInner : ITranslatable<User>, ISqlRetrievable, IInner<Guid> {
         Email = email;
         Role = role;
         Root = root;
+        Uid = uid;
+        Gid = gid;
     }
 
     public UserInner(UserInner other) : this(
@@ -29,6 +32,8 @@ public class UserInner : ITranslatable<User>, ISqlRetrievable, IInner<Guid> {
             other.PasswordHash,
             other.Email,
             other.Root,
+            other.Uid,
+            other.Gid,
             other.Role
 ) { }
 
@@ -50,10 +55,17 @@ public class UserInner : ITranslatable<User>, ISqlRetrievable, IInner<Guid> {
     [SqlColumn("role")]
     public UserRole Role { get; init; }
 
+    [SqlColumn("uid")]
+    public int Uid { get; init; }
+
+    [SqlColumn("gid")]
+    public int Gid { get; init; }
+
     public User Into() {
         PasswordHash.Length.AssertEq(SHA512.HashSizeInBytes);
         return new(
             new(Id), Username, PasswordHash, Email, Role,
+            new(Uid, Gid),
             Root.ToFsoId().AsIdOf<Directory>()
         );
     }
@@ -66,6 +78,8 @@ public class UserInner : ITranslatable<User>, ISqlRetrievable, IInner<Guid> {
             user.PasswordHash,
             user.Email,
             user.Root.Id.Value,
+            user.DefaultOwnership.FsoOwner,
+            user.DefaultOwnership.FsoGroup,
             user.Role
         );
     }

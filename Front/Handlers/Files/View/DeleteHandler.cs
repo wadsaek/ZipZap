@@ -32,7 +32,7 @@ public static class DeleteHandler {
         return status switch {
             FsoStatus.ParseError => Err<Unit, DeleteHandlerError>(new DeleteHandlerError.BadRequest()),
             FsoStatus.StatusServiceError(var error) => error switch {
-                ServiceError.NotFound or ServiceError.Unathorized => Err<Unit, DeleteHandlerError>(
+                ServiceError.NotFound or ServiceError.Unauthorized => Err<Unit, DeleteHandlerError>(
                     new DeleteHandlerError.NotFound()),
                 _ => Err<Unit, DeleteHandlerError>(new DeleteHandlerError.Internal())
             },

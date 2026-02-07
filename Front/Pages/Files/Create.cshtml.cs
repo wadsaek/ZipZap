@@ -57,8 +57,7 @@ public class CreateModel : PageModel {
             id.ToFsoId().AsIdOf<Directory>(),
             permissions,
             Name,
-            UId,
-            GId
+            new(UId, GId)
         );
 
         var token = Request.Cookies[Constants.AUTHORIZATION];
@@ -77,7 +76,7 @@ public class CreateModel : PageModel {
                 ServiceError.BadRequest => HandleBadRequest(),
                 ServiceError.BadResult or ServiceError.Unknown => throw new("bad result encountered"),
                 ServiceError.NotFound => HandleNotFound(),
-                ServiceError.Unathorized => Redirect("/"),
+                ServiceError.Unauthorized => Redirect("/"),
                 ServiceError.FailedPrecondition(var message) => HandleFailedPrecondition(message),
                 _ => throw new InvalidEnumArgumentException()
             },

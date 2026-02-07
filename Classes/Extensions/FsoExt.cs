@@ -11,9 +11,8 @@ namespace ZipZap.Classes.Extensions;
 public static class FsoExt {
     extension(Fso fso) {
         public FsoSharedData ToRpcSharedData() => new() {
-            Group = fso.Data.FsoGroup,
             Name = fso.Data.Name,
-            Owner = fso.Data.FsoOwner,
+            Ownership = fso.Data.Ownership.ToGrpcOwnership(),
             Permissions = (int)fso.Data.Permissions.Inner,
             RootId = (fso.Data.VirtualLocation
                 ?.Id
