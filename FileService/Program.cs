@@ -1,12 +1,15 @@
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.IdentityModel.Tokens;
 
 using ZipZap.Classes;
 using ZipZap.FileService.Helpers;
@@ -35,6 +38,14 @@ public class Program {
             Directory.CreateDirectory(path);
         return path;
     }
+    public static RsaSecurityKey GetRsaSecurityKey() {
+
+        var pem = System.IO.File.ReadAllText("/home/wadsaek/Developing/ZipZap/FileService/rsa/grpc");
+        var rsa = RSA.Create();
+        rsa.ImportFromPem(pem);
+        var key = new RsaSecurityKey(rsa);
+        return key;
+    }
     public static void Main(string[] args) {
         var builder = WebApplication.CreateBuilder(args);
 
@@ -61,6 +72,19 @@ public class Program {
         builder.Services.AddGrpcReflection();
         builder.Services.AddScoped<IIO, IO>();
         builder.Services.AddScoped<IUserService, UserService>();
+
+        builder.Services.AddScoped(_ => GetRsaSecurityKey());
+
+        builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddJwtBearer(options => {
+                options.TokenValidationParameters = new() {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = GetRsaSecurityKey(),
+
+                    ValidateLifetime = true
+                };
+            });
+        builder.Services.AddAuthorization();
 
 
         var app = builder.Build();

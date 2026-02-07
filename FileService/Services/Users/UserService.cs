@@ -11,11 +11,13 @@ namespace ZipZap.FileService.Services;
 
 public class UserService : IUserService {
     private readonly IUserRepository _repo;
+    private readonly RsaSecurityKey _key;
 
     private static byte[] HashPassword(string password) => SHA512.HashData(Encoding.UTF8.GetBytes(password));
 
-    public UserService(IUserRepository repo) {
+    public UserService(IUserRepository repo, RsaSecurityKey key) {
         _repo = repo;
+        _key = key;
     }
 
     private static bool UserHasPassword(User user, string password) {
@@ -29,17 +31,33 @@ public class UserService : IUserService {
         if (user is null)
             return null;
 
-        return $"Bearer {user.Id} {password}";
+        var expiration = DateTime.UtcNow.AddHours(5);
+        Claim[] claims = [
+            new Claim(JwtRegisteredClaimNames.Sub, user.Id.Value.ToString()),
+            new Claim("role",user.Role.ToString())
+        ];
+        var creds = new SigningCredentials(_key, SecurityAlgorithms.RsaSha256);
+
+        var token = new JwtSecurityToken(
+            issuer: "http://localhost:5210",
+            audience: "http://localhost:5210",
+            claims,
+            expires: expiration,
+            signingCredentials: creds
+        );
+        string tokenString = new JwtSecurityTokenHandler().WriteToken(token);
+        return $"Bearer {tokenString}";
     }
 
     public async Task<User?> GetUser(string token) {
         var split = token.Split(' ');
-        if (split.Length < 3 || split[0] != "Bearer") return null;
-        if (!Guid.TryParse(split[1], out var id)) return null;
-        var uId = new UserId(id);
-        var password = split[2];
-        return (await _repo.GetByIdAsync(uId))
-            .Where(user => UserHasPassword(user, password));
+        if (split.Length != 2 || split[0] != "Bearer") return null;
+        var jwt = new JwtSecurityToken(split[1]);
+
+        if (!Guid.TryParse(jwt.Subject, out var guid)) return null;
+        var id = guid.ToUserId();
+        var user = await _repo.GetByIdAsync(id);
+        return user;
     }
 }
 
