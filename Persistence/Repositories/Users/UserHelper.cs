@@ -22,13 +22,14 @@ internal class UserHelper : EntityHelper<UserInner, User, Guid> {
         var username = await reader.GetFieldValueAsync<string>($"{TableName}_{GetColumnName(nameof(UserInner.Username))}", token);
         var passwordHash = await reader.GetFieldValueAsync<byte[]>($"{TableName}_{GetColumnName(nameof(UserInner.PasswordHash))}", token);
         var email = await reader.GetFieldValueAsync<string>($"{TableName}_{GetColumnName(nameof(UserInner.Email))}", token);
+        var role = await reader.GetFieldValueAsync<UserRole>($"{TableName}_{GetColumnName(nameof(UserInner.Role))}", token);
         var root = await reader.GetFieldValueAsync<Guid>($"{TableName}_{GetColumnName(nameof(UserInner.Root))}", token);
         var user = new UserInner(
-            id,
-            username,
+            id, username,
             passwordHash,
             email,
-            root
+            root,
+            role
         ).Into();
 
 

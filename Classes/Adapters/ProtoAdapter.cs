@@ -159,12 +159,27 @@ public static class ProtoAdapter {
 
         }
     }
+    extension(Grpc.UserRole role) {
+        public UserRole ToRole() => role switch {
+            Grpc.UserRole.Admin => UserRole.Admin,
+            Grpc.UserRole.User => UserRole.User,
+            _ => throw new InvalidEnumArgumentException()
+        };
+    }
+    extension(UserRole role) {
+        public Grpc.UserRole ToGrpcRole() => role switch {
+            UserRole.Admin => Grpc.UserRole.Admin,
+            UserRole.User => Grpc.UserRole.User,
+            _ => throw new InvalidEnumArgumentException()
+        };
+    }
     extension(Grpc.User user) {
         public User ToUser() => new(
             user.Id.ToGuid().ToUserId(),
             user.Username,
             [],
             user.Email,
+            user.Role.ToRole(),
             user.RootId.ToGuid().ToFsoId().AsIdOf<Directory>()
         );
     }
@@ -173,7 +188,15 @@ public static class ProtoAdapter {
             RootId = user.Root.Id.Value.ToGrpcGuid(),
             Id = user.Id.Value.ToGrpcGuid(),
             Email = user.Email,
-            Username = user.Username
+            Username = user.Username,
+            Role = user.Role.ToGrpcRole()
         };
+    }
+    extension(IEnumerable<User> users) {
+        public UserList ToUserList() {
+            var userlist = new UserList();
+            userlist.User.AddRange(users.Select(ToGrpcUser));
+            return userlist;
+        }
     }
 }

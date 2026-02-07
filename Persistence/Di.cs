@@ -22,6 +22,7 @@ public static class Di {
             builder.Services.AddScoped<EntityHelper<UserInner, User, Guid>, UserHelper>();
             builder.Services.AddNpgsqlDataSource(connectionString, builder => {
                 builder.MapEnum<FsoType>();
+                builder.MapEnum<UserRole>();
             });
             return builder;
         }

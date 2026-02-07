@@ -8,7 +8,7 @@ using ZipZap.Persistence.Attributes;
 namespace ZipZap.Persistence.Data;
 
 [SqlTable("fsos")]
-public class FsoInner : ITranslatable<Fso>, ISqlRetrievable {
+public class FsoInner : ITranslatable<Fso>, ISqlRetrievable, IInner<Guid> {
     public FsoInner(Guid id, string fsoName, Guid? virtualLocationId, short permissions, int fsoOwner, int fsoGroup, FsoType fsoType, string? linkRef) {
         Id = id;
         FsoName = fsoName;

@@ -7,5 +7,15 @@ message User {
   Guid id = 1;
   string username = 2;
   string email = 3;
+  UserRole role = 5;
   Guid RootId = 4;
+}
+
+enum UserRole {
+  ADMIN = 0;
+  USER = 1;
+}
+
+message UserList{
+  repeated User user = 1;
 }

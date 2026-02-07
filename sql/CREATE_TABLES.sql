@@ -159,4 +159,19 @@ BEGIN
         ALTER permissions TYPE smallint USING (permissions::integer);
     END IF;
 END $MIGRATION$;
+
+DO
+$MIGRATION$
+BEGIN
+    IF NOT EXISTS (SELECT * FROM migrations WHERE migration_name = 'add_roles') THEN
+
+        INSERT INTO migrations VALUES ('add_roles');
+
+        CREATE TYPE user_role AS ENUM ('user','admin');
+
+        ALTER TABLE users
+        ADD COLUMN role user_role NOT NULL DEFAULT 'user';
+    END IF;
+END $MIGRATION$;
+
 COMMIT;

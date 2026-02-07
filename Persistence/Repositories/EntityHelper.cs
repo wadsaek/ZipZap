@@ -37,7 +37,7 @@ where TInner : ITranslatable<TEntity>, ISqlRetrievable {
     public IEnumerable<string> SqlFieldsPrefixed => SqlFields.Select(f => $"{TableName}.{f} as {TableName}_{f}");
     public string SqlFieldsInOrder => SqlFieldsPrefixed.ConcatenateWith(", ");
     public string GetColumnName(string nameOfField) => SqlFieldsList
-        .FirstOrDefault(pair => pair.Key == typeof(TInner).GetProperty(nameOfField)!)
+        .FirstOrDefault(pair => pair.Key == typeof(TInner).GetProperty(nameOfField))
         .sqlName;
 
     public abstract Task<TEntity> Parse(NpgsqlDataReader reader, CancellationToken token = default);

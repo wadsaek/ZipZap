@@ -84,4 +84,8 @@ service FilesStoringService {
 
   rpc Login(LoginRequest) returns (LoginResponse);
   rpc GetSelf(EmptyMessage) returns (User);
+  rpc RemoveSelf(EmptyMessage) returns (User);
+  
+  rpc AdminGetUserList(EmptyMessage) returns (UserList);
+  rpc AdminRemoveUser(Guid) returns (EmptyMessage);
 }

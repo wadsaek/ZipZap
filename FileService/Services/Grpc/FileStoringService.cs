@@ -28,6 +28,7 @@ using File = ZipZap.Classes.File;
 using Guid = System.Guid;
 using PathData = ZipZap.Classes.PathData;
 using User = ZipZap.Classes.User;
+using UserRole = ZipZap.Classes.UserRole;
 
 namespace ZipZap.FileService.Services;
 
@@ -50,7 +51,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
     }
 
     /// typeparam name="T"
-    /// Does not change the behaviour in any way
+    /// Does not change the behavior in any way
     [DoesNotReturn]
     private static T ThrowUnauthenticated<T>(string detail = "Unauthenticated")
         => throw new RpcException(new(StatusCode.Unauthenticated, detail));
@@ -65,7 +66,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         => obj ?? throw new RpcException(new(StatusCode.NotFound, message));
 
     private Func<Fso, Task<bool>> OwnedBy(User owner) =>
-            async fso => (await _fsosRepo.GetRootDirectory(fso.Id))?.Id == owner.Root.Id;
+            async fso => (owner.Role == UserRole.Admin) || (await _fsosRepo.GetRootDirectory(fso.Id))?.Id == owner.Root.Id;
 
 
     private Task<Fso> GetFsoOrFailAsync(Grpc.Guid key, User owner, CancellationToken cancellationToken = default)
@@ -202,6 +203,33 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
     }
     public override async Task<Grpc.User> GetSelf(EmptyMessage message, ServerCallContext context) {
         return (await GetUserOrThrowAsync(context)).ToGrpcUser();
+    }
+    public override async Task<EmptyMessage> AdminRemoveUser(Grpc.Guid request, ServerCallContext context) {
+        await EnsureAdminOrThrow(context);
+        var guid = ParseGuidOrThrow(request);
+        var id = new UserId(guid);
+        return await _userService.RemoveUser(id) switch {
+            Ok<Unit, DbError> => new EmptyMessage(),
+            Err<Unit, DbError>(var err) => err switch {
+                DbError.NothingChanged => throw new RpcException(new(StatusCode.Internal, $"Was unable to delete user with id {id}")),
+                _ => throw new RpcException(new(StatusCode.Internal, $"got a weird issue {err}"))
+            },
+            _ => throw new InvalidEnumArgumentException()
+        };
+    }
+
+    public override async Task<UserList> AdminGetUserList(EmptyMessage request, ServerCallContext context) {
+        await EnsureAdminOrThrow(context);
+        var users = await _userService.GetAllUsers(context.CancellationToken);
+        return users.ToUserList();
+    }
+
+    private async Task<User> EnsureAdminOrThrow(ServerCallContext context) {
+        if (_logger.IsEnabled(LogLevel.Information))
+            _logger.LogInformation("{Peer}", context.Peer);
+        var user = await GetUserOrThrowAsync(context);
+        if (user.Role != UserRole.Admin) throw new RpcException(new(StatusCode.PermissionDenied, "You are not an admin"));
+        return user;
     }
 }
 

@@ -17,7 +17,7 @@ using ZipZap.Persistence.Models;
 namespace ZipZap.Persistence.Repositories;
 
 internal interface IBasicRepository<TEntity, in TInner, in TId>
-where TInner : ITranslatable<TEntity>, ISqlRetrievable
+where TInner : ITranslatable<TEntity>, ISqlRetrievable, IInner<TId>
 where TId : struct {
     Task<Result<TEntity, DbError>> CreateAsync(TEntity createEntity, CancellationToken token = default);
     Task<Result<TEntity, DbError>> CreateAsync(TInner createEntity, CancellationToken token = default);
@@ -34,7 +34,7 @@ where TId : struct {
 }
 
 internal class BasicRepository<TEntity, TInner, TId> : IBasicRepository<TEntity, TInner, TId>
-where TInner : ITranslatable<TEntity>, ISqlRetrievable
+where TInner : ITranslatable<TEntity>, ISqlRetrievable,IInner<TId>
 where TId : struct {
     private readonly EntityHelper<TInner, TEntity, TId> _helper;
 
@@ -148,13 +148,16 @@ where TId : struct {
 
         await using var disp = await _conn.OpenAsyncDisposable(token);
         await using var transaction = await _conn.BeginTransactionAsync(token);
+        var lastIndex = 1;
+        var inner = (TInner)TInner.From(entity);
         await using var cmd = _conn.CreateCommand($"""
                 UPDATE {TableName} SET
-                {_helper.SqlFieldsList.Select((field, ind) => $"{field.sqlName}={ind + 1}")}
-                WHERE 
+                {_helper.SqlFieldsList.Select((field) => $"{field.sqlName}=${lastIndex++}").ConcatenateWith(", ")}
+                WHERE {_helper.IdCol} = ${lastIndex}
                 RETURNING {_helper.IdCol};
                 """);
-        _helper.FillParameters(cmd, (TInner)TInner.From(entity));
+        _helper.FillParameters(cmd, inner);
+        cmd.Parameters.Add(new NpgsqlParameter<TId>() { Value = inner.Id});
         var count = await cmd.ExecuteNonQueryAsync(token);
         await transaction.CommitAsync(token);
         return DbHelper.EnsureSingle(count);

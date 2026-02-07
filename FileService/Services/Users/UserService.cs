@@ -1,10 +1,20 @@
 using System;
+using System.Collections.Generic;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
+using Microsoft.IdentityModel.Tokens;
+
 using ZipZap.Classes;
+using ZipZap.Classes.Extensions;
+using ZipZap.Classes.Helpers;
 using ZipZap.LangExt.Extensions;
+using ZipZap.LangExt.Helpers;
+using ZipZap.Persistence.Models;
 using ZipZap.Persistence.Repositories;
 
 namespace ZipZap.FileService.Services;
@@ -13,14 +23,14 @@ public class UserService : IUserService {
     private readonly IUserRepository _repo;
     private readonly RsaSecurityKey _key;
 
-    private static byte[] HashPassword(string password) => SHA512.HashData(Encoding.UTF8.GetBytes(password));
+    public byte[] HashPassword(string password) => SHA512.HashData(Encoding.UTF8.GetBytes(password));
 
     public UserService(IUserRepository repo, RsaSecurityKey key) {
         _repo = repo;
         _key = key;
     }
 
-    private static bool UserHasPassword(User user, string password) {
+    private bool UserHasPassword(User user, string password) {
         var passwordHash = HashPassword(password);
         return user.PasswordHash.SequenceCompareTo(passwordHash) == 0;
     }
@@ -59,5 +69,14 @@ public class UserService : IUserService {
         var user = await _repo.GetByIdAsync(id);
         return user;
     }
+
+    public async Task<Result<Unit, DbError>> RemoveUser(UserId id) {
+        return await _repo.DeleteAsync(id);
+    }
+
+    public async Task<IEnumerable<User>> GetAllUsers(CancellationToken token) {
+        return await _repo.GetAll(token);
+    }
+
 }
 

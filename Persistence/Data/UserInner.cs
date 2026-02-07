@@ -4,19 +4,22 @@ using System.Security.Cryptography;
 
 using ZipZap.Classes;
 using ZipZap.Classes.Extensions;
-using ZipZap.Classes.Helpers;
 using ZipZap.LangExt.Helpers;
 using ZipZap.Persistence.Attributes;
 
 namespace ZipZap.Persistence.Data;
 
 [SqlTable("users")]
-public class UserInner : ITranslatable<User>, ISqlRetrievable {
-    public UserInner(Guid id, string username, byte[] passwordHash, string email, Guid root) {
+public class UserInner : ITranslatable<User>, ISqlRetrievable, IInner<Guid> {
+    public UserInner(
+        Guid id, string username, byte[] passwordHash, string email, Guid root,
+        UserRole role
+    ) {
         Id = id;
         Username = username;
         PasswordHash = passwordHash;
         Email = email;
+        Role = role;
         Root = root;
     }
 
@@ -25,7 +28,9 @@ public class UserInner : ITranslatable<User>, ISqlRetrievable {
             other.Username,
             other.PasswordHash,
             other.Email,
-            other.Root) { }
+            other.Root,
+            other.Role
+) { }
 
     [SqlColumn("id")]
     public Guid Id { get; init; }
@@ -42,9 +47,15 @@ public class UserInner : ITranslatable<User>, ISqlRetrievable {
     [SqlColumn("root")]
     public Guid Root { get; init; }
 
+    [SqlColumn("role")]
+    public UserRole Role { get; init; }
+
     public User Into() {
         PasswordHash.Length.AssertEq(SHA512.HashSizeInBytes);
-        return new(new(Id), Username, PasswordHash, Email, Root.ToFsoId().AsIdOf<Directory>());
+        return new(
+            new(Id), Username, PasswordHash, Email, Role,
+            Root.ToFsoId().AsIdOf<Directory>()
+        );
     }
     public static UserInner From(User user) {
         user.PasswordHash.Length.AssertEq(SHA512.HashSizeInBytes);
@@ -54,7 +65,8 @@ public class UserInner : ITranslatable<User>, ISqlRetrievable {
             user.Username,
             user.PasswordHash,
             user.Email,
-            user.Root.Id.Value
+            user.Root.Id.Value,
+            user.Role
         );
     }
 
