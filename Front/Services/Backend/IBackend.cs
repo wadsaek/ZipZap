@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -25,8 +26,13 @@ public interface IBackend {
     public Task<Result<Unit, ServiceError>> DeleteFrenchLanguagePack();
     public Task<Result<Unit, ServiceError>> ReplaceFileById(FsoId id, ByteString bytes, CancellationToken cancellationToken = default);
     public Task<Result<Unit, ServiceError>> ReplaceFileByPath(PathData pathData, ByteString bytes, CancellationToken cancellationToken = default);
+    public Task<Result<Unit, ServiceError>> UpdateFso(Fso fso, CancellationToken cancellationToken = default);
 
     public Task<Result<User, ServiceError>> GetSelf(CancellationToken cancellationToken = default);
+    public Task<Result<User, ServiceError>> RemoveSelf(CancellationToken cancellationToken = default);
+
+    public Task<Result<IEnumerable<User>, ServiceError>> AdminGetUsers(CancellationToken cancellationToken = default);
+    public Task<Result<Unit, ServiceError>> AdminRemoveUser(UserId id, CancellationToken cancellationToken = default);
 }
 
 public abstract record LoginError;

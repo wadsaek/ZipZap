@@ -8,6 +8,7 @@ using Microsoft.Extensions.Hosting;
 using ZipZap.Classes;
 using ZipZap.Front.Factories;
 using ZipZap.Front.Handlers.Exceptions;
+using ZipZap.Front.Handlers.Files.View;
 using ZipZap.Front.Services;
 
 namespace ZipZap.Front;
@@ -27,6 +28,8 @@ public class Program {
         builder.Services.AddScoped<IFactory<IBackend, BackendConfiguration>, BackendFactory>();
         builder.Services.AddScoped(_ => ServiceExceptionHandler.GetExceptionConverter());
         builder.Services.AddScoped<ILoginSerivce, LoginService>();
+        builder.Services.AddScoped<IFsoService, FsoService>();
+        builder.Services.AddScoped<IGetHandler, GetHandler>();
 
         builder.Services
             .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)

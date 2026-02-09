@@ -17,6 +17,8 @@ using User = ZipZap.Classes.User;
 using System;
 
 using ZipZap.LangExt.Helpers;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace ZipZap.Front.Services;
 
@@ -83,6 +85,16 @@ public class Backend : IBackend {
         }
     }
 
+    public Task<Result<Unit, ServiceError>> UpdateFso(Fso fso, CancellationToken cancellationToken = default) {
+        return Wrap(async () => {
+            await _filesStoringService.UpdateFsoAsync(new() {
+                FsoId = fso.Id.Value.ToGrpcGuid(),
+                Data = fso.ToRpcSharedData()
+            }, _configuration.ToMetadata());
+            return new Unit();
+        });
+    }
+
     public async Task<Result<User, ServiceError>> GetSelf(CancellationToken cancellationToken = default) {
         try {
             var user = await _filesStoringService.GetSelfAsync(new(), _configuration.ToMetadata(), cancellationToken: cancellationToken);
@@ -130,6 +142,23 @@ public class Backend : IBackend {
     }
 
     public Task<Result<Symlink, ServiceError>> MakeLink(Symlink link, string path, CancellationToken cancellationToken = default) {
+        throw new NotImplementedException();
+    }
+
+    public Task<Result<User, ServiceError>> RemoveSelf(CancellationToken cancellationToken = default) {
+        throw new NotImplementedException();
+    }
+
+    public async Task<Result<IEnumerable<User>, ServiceError>> AdminGetUsers(CancellationToken cancellationToken = default) {
+        var userList = await Wrap(async () => await _filesStoringService.AdminGetUserListAsync(new EmptyMessage(), _configuration.ToMetadata(), cancellationToken: cancellationToken));
+        return userList.Select(list =>
+            list.User
+                .AsEnumerable()
+                .Select(u => u.ToUser())
+        );
+    }
+
+    public Task<Result<Unit, ServiceError>> AdminRemoveUser(UserId id, CancellationToken cancellationToken = default) {
         throw new NotImplementedException();
     }
 }

@@ -1,28 +1,28 @@
 ﻿@page "/Files/View/{*path}"
 @using ZipZap.Classes
+@using ZipZap.Front.Handlers.Files.View
 @model ZipZap.Front.Pages.Files.FileViewModel
 @{
-    ViewData["Title"] = Model.GetHandler?.Specification.Identifier ?? "View Files";
+    ViewData["Title"] = Model.Result?.Specification.Identifier ?? "View Files";
 }
 
 <div class="pb-5">
-    @if (Model.GetHandler is not null)
+    @if (Model.Result is not null)
     {
-
         <div class="d-flex justify-content-between">
-            @{var item = Model.GetHandler!.Item;}
+            @{var item = Model.Result!.Item;}
             <div>
                 <h1> @item.ToString(Fso.ShortListingFormat) </h1>
                 <h4 class="text-secondary">@item.Data.Permissions @item.Data.Ownership </h4>
             </div>
-            <a class="text" href="@Model.GetHandler!.ParentUrl">Up</a>
+            <a class="text" href="@Model.Result!.ParentUrl">Up</a>
         </div>
-        @if (Model.GetHandler.Item is Directory dir)
+        @if (Model.Result.Item is Directory dir)
         {
 
             <div class="d-flex justify-content-between">
                 <h2>Items</h2>
-                <a class="text fs-4" asp-page="/Files/Create" asp-route-id="@Model.GetHandler.Item.Id.Value">Create a new
+                <a class="text fs-4" asp-page="/Files/Create" asp-route-id="@Model.Result.Item.Id.Value">Create a new
                     file</a>
             </div>
             @foreach (var child in dir.MaybeChildren)
@@ -33,16 +33,16 @@
                     asp-route-path="@child.Id" asp-route-type="id"
                     >
                         <button class="btn text-danger border border-1 p-1 m-1">X</button>
-                        <a href="@Model.GetHandler.GetChildLink(child)">
+                        <a href="@Model.Result.GetChildLink(child)">
                             @child.ToString(Fso.ShortListingFormat)
                         </a>
                     </form>
                 </div>
             }
         }
-        else if (Model.GetHandler.Item is File)
+        else if (Model.Result.Item is File)
         {
-            <p style="white-space: pre-wrap;" class="border border-1 rounded p-3">@Model.GetHandler.Text</p>
+            <p style="white-space: pre-wrap;" class="border border-1 rounded p-3">@Model.Result.Text</p>
         }
     }
 </div>

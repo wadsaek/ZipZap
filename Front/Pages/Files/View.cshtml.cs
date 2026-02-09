@@ -11,6 +11,8 @@ using ZipZap.Classes.Helpers;
 using System.ComponentModel;
 using ZipZap.Front.Handlers;
 using System;
+using System.Threading;
+
 using ZipZap.Classes.Extensions;
 using ZipZap.LangExt.Helpers;
 
@@ -21,32 +23,35 @@ using DeleteError = DeleteHandler.DeleteHandlerError;
 
 public class FileViewModel : PageModel {
 
-    private readonly ILogger<GetHandler> _logger;
+    private readonly ILogger<FileViewModel> _logger;
     private readonly IFactory<IBackend, BackendConfiguration> _backendFactory;
 
-    public FileViewModel(ILogger<GetHandler> logger, IFactory<IBackend, BackendConfiguration> backendFactory) {
+    public FileViewModel(ILogger<FileViewModel> logger, IFactory<IBackend, BackendConfiguration> backendFactory, IGetHandler getHandler) {
         _logger = logger;
         _backendFactory = backendFactory;
+        _getHandler = getHandler;
     }
-    public GetHandler? GetHandler { get; set; }
 
-    public async Task<IActionResult> OnGetAsync(string path, [FromQuery] IdType type)
-        => await GetHandler.OnGetAsync(
-                new(path, type),
-                Request, _logger, _backendFactory
+    private IGetHandler _getHandler; 
+
+    public async Task<IActionResult> OnGetAsync(string path, [FromQuery] IdType type,CancellationToken cancellationToken)
+        => await _getHandler.OnGetAsync(
+                new(path, type),    Request, cancellationToken
             ) switch {
-                Ok<GetHandler, GetError>(var handler) => SetupHandler(handler),
-                Err<GetHandler, GetError>(GetError.ShouldRedirect(var target)) => Redirect(target),
-                Err<GetHandler, GetError>(GetError.BadRequest) => BadRequest(),
-                Err<GetHandler, GetError>(GetError.NotFound) => NotFound(),
+                Ok<GetHandler.GetHandlerResult, GetError>(var handler) => SetupHandler(handler),
+                Err<GetHandler.GetHandlerResult, GetError>(GetError.ShouldRedirect(var target)) => Redirect(target),
+                Err<GetHandler.GetHandlerResult, GetError>(GetError.BadRequest) => BadRequest(),
+                Err<GetHandler.GetHandlerResult, GetError>(GetError.NotFound) => NotFound(),
                 _ => throw new InvalidEnumArgumentException()
 
             };
 
-    private PageResult SetupHandler(GetHandler handler) {
-        GetHandler = handler;
+    private PageResult SetupHandler(GetHandler.GetHandlerResult handler) {
+        Result = handler;
         return Page();
     }
+
+    public GetHandler.GetHandlerResult? Result { get; set; }
 
     public async Task<IActionResult> OnPostDelete([FromRoute] Guid path) {
         return await DeleteHandler.OnDeleteAsync(path.ToFsoId(), Request, _backendFactory) switch {

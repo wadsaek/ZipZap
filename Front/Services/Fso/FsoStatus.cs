@@ -1,25 +1,11 @@
-
-using System;
 using System.ComponentModel;
-using System.Threading.Tasks;
 
 using ZipZap.Classes;
-using ZipZap.Classes.Extensions;
-using ZipZap.Classes.Helpers;
-using ZipZap.Front.Services;
 using ZipZap.LangExt.Helpers;
 
-namespace ZipZap.Front.Handlers.Files.View;
+namespace ZipZap.Front.Services;
 
-internal static class Shared {
-    public static async Task<FsoStatus> GetFsoById(IBackend backend, string? path) {
-        if (!Guid.TryParse(path, out var guid))
-            return new FsoStatus.ParseError();
-        return FsoStatus.FromServiceResult(await backend.GetFsoByIdAsync(guid.ToFsoId()));
-    }
-}
-
-internal abstract record FsoStatus {
+public abstract record FsoStatus {
     public sealed record Success(Fso Fso) : FsoStatus;
     public sealed record ParseError : FsoStatus;
     public sealed record StatusServiceError(ServiceError Error) : FsoStatus;
@@ -32,3 +18,4 @@ internal abstract record FsoStatus {
 
         };
 }
+
