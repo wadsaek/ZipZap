@@ -133,7 +133,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         var createResult = await _fsosRepo.CreateAsync(fso);
         fso = createResult switch {
             Err<Fso, DbError>(DbError.UniqueViolation)
-                => throw new RpcException(new(StatusCode.FailedPrecondition, "This fso already exists")),
+                => throw new RpcException(new(StatusCode.AlreadyExists, "This fso already exists")),
             Err<Fso, DbError>
                 => throw new RpcException(new(StatusCode.Internal, "failed to create file in db")),
             Ok<Fso, DbError>(var fsoInner) => fsoInner,

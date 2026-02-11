@@ -8,5 +8,6 @@ public abstract record ServiceError {
     public sealed record NotFound : ServiceError;
     public sealed record BadResult : ServiceError;
     public sealed record BadRequest : ServiceError;
+    public sealed record AlreadyExists : ServiceError;
     public sealed record Unknown(Exception Exception) : ServiceError;
 }

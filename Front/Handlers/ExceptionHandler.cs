@@ -10,6 +10,7 @@ public static class ServiceExceptionHandler {
         RpcException { StatusCode: StatusCode.Unauthenticated or StatusCode.PermissionDenied } => new ServiceError.Unauthorized(),
         RpcException { StatusCode: StatusCode.NotFound } => new ServiceError.NotFound(),
         RpcException { StatusCode: StatusCode.FailedPrecondition, Status.Detail: var detail } => new ServiceError.FailedPrecondition(detail),
+        RpcException { StatusCode: StatusCode.AlreadyExists } => new ServiceError.AlreadyExists(),
         _ => new ServiceError.Unknown(ex)
 
     });

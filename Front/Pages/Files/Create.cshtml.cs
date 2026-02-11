@@ -77,11 +77,17 @@ public class CreateModel : PageModel {
                 ServiceError.BadResult or ServiceError.Unknown => throw new("bad result encountered"),
                 ServiceError.NotFound => HandleNotFound(),
                 ServiceError.Unauthorized => Redirect("/"),
+                ServiceError.AlreadyExists => HandleExists(),
                 ServiceError.FailedPrecondition(var message) => HandleFailedPrecondition(message),
                 _ => throw new InvalidEnumArgumentException()
             },
             _ => throw new InvalidEnumArgumentException()
         };
+    }
+
+    private PageResult HandleExists() {
+        FormError = "This fso already exists. Try editing or using a different name!";
+        return Page();
     }
 
     private PageResult HandleFailedPrecondition(string message) {
