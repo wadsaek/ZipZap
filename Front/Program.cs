@@ -27,7 +27,7 @@ public class Program {
         });
         builder.Services.AddScoped<IFactory<IBackend, BackendConfiguration>, BackendFactory>();
         builder.Services.AddScoped(_ => ServiceExceptionHandler.GetExceptionConverter());
-        builder.Services.AddScoped<ILoginSerivce, LoginService>();
+        builder.Services.AddScoped<ILoginService, LoginService>();
         builder.Services.AddScoped<IFsoService, FsoService>();
         builder.Services.AddScoped<IGetHandler, GetHandler>();
 

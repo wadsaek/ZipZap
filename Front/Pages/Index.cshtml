@@ -32,6 +32,7 @@
                 <input asp-for="Password" class="form-control" />
             </div>
             <input type="submit" value="Login" class="mb-2 text-lg-center btn btn-primary form-control" />
+            <a class="text-sm-center" asp-page="Signup">Don't have an account? Sign up now!</a>
 
             @if (Model.Error is not null)
             {

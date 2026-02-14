@@ -35,16 +35,6 @@ public interface IBackend {
     public Task<Result<Unit, ServiceError>> AdminRemoveUser(UserId id, CancellationToken cancellationToken = default);
 }
 
-public abstract record LoginError;
-public sealed record WrongCredentials : LoginError {
-    public override string ToString() => "One or more fields is wrong";
-}
-public sealed record EmptyCredentials : LoginError {
-    public override string ToString() => "One or more fields is empty";
-}
-public sealed record LoginServiceError(ServiceError ServiceError) : LoginError;
-
-
 [Flags]
 public enum DeleteFlags {
     Empty = 0

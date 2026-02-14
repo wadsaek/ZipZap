@@ -1,0 +1,41 @@
+@page
+@model ZipZap.Front.Signup
+
+@{
+    ViewData["Title"] = "Sign Up!";
+}
+<div class="d-flex flex-column justify-content-start align-items-center">
+<form method="post" class="text-start w-50">
+    <div class="mb-3">
+        <label asp-for="Username" class="form-label"></label>
+        <input asp-for="Username" class="form-control" />
+    </div>
+    <div class="mb-3">
+        <label asp-for="Password" class="form-label"></label>
+        <input asp-for="Password" class="form-control" />
+    </div>
+    <div class="mb-3">
+        <label asp-for="Email" class="form-label"></label>
+        <input asp-for="Email" class="form-control" />
+    </div>
+    <details>
+        <summary> Advanced </summary>
+        <div class="row">
+            <div class="col">
+                <label asp-for="Gid" class="form-label"></label>
+                <input asp-for="Gid" class="form-control" />
+            </div>
+            <div class="col">
+                <label asp-for="Uid" class="form-label"></label>
+                <input asp-for="Uid" class="form-control" />
+            </div>
+        </div>
+    </details>
+    <input type="submit" value="Sign up now!" class="mb-2 text-lg-center btn btn-primary form-control" />
+
+    @if (Model.Error is not null)
+    {
+        <div class="alert alert-danger" >@Model.Error</div>
+    }
+</form>
+</div>
