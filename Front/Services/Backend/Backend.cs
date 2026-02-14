@@ -77,13 +77,15 @@ public class Backend : IBackend {
 
 
     public async Task<Result<Directory, ServiceError>> GetRoot(CancellationToken cancellationToken = default) {
-        try {
-            var response = await _filesStoringService.GetRootAsync(new(), _configuration.ToMetadata(), cancellationToken: cancellationToken);
-            return Ok<Directory, ServiceError>(new(response.FsoId.ToGuid().ToFsoId(), response.Data.ToFsData()) { MaybeChildren = response.DirectoryData.ToFsos() });
-        } catch (RpcException exception) {
-            return Err<Directory, ServiceError>(_exceptionConverter.Convert(exception));
-        }
+        return await Wrap<Directory>(async () => {
+            var response = await _filesStoringService.GetRootAsync(
+                new(),
+                _configuration.ToMetadata(),
+                cancellationToken: cancellationToken);
+            return new(response.FsoId.ToGuid().ToFsoId(), response.Data.ToFsData()) { MaybeChildren = response.DirectoryData.ToFsos() };
+        });
     }
+
 
     public Task<Result<Unit, ServiceError>> UpdateFso(Fso fso, CancellationToken cancellationToken = default) {
         return Wrap(async () => {
@@ -112,12 +114,24 @@ public class Backend : IBackend {
         throw new NotImplementedException();
     }
 
-    public async Task<Result<File, ServiceError>> SaveFile(ByteString bytes, File file, CancellationToken cancellationToken = default) {
-        var fso = await Wrap(async () => (await _filesStoringService.SaveFsoAsync(
-                    new() {
-                        Data = file.ToRpcSharedData(),
-                        FileData = new() { Content = bytes }
-                    }, _configuration.ToMetadata(), cancellationToken: cancellationToken)).FileId);
+    private async Task<Grpc.Guid> SaveFileRaw(ByteString bytes, File file, string? path, CancellationToken cancellationToken) {
+        path = path?.NormalizePath();
+        var request = new SaveFsoRequest() {
+            Data = file.ToRpcSharedData(),
+            FileData = new() { Content = bytes }
+        };
+        if (!string.IsNullOrWhiteSpace(path))
+            request.FilePath = path;
+        var result = await _filesStoringService.SaveFsoAsync(
+            request, _configuration.ToMetadata(), cancellationToken: cancellationToken
+        );
+        return result.FileId;
+    }
+    public async Task<Result<File, ServiceError>> SaveFile(ByteString bytes, File file, CancellationToken cancellationToken = default)
+    => await SaveFile(bytes, file, "", cancellationToken);
+
+    public async Task<Result<File, ServiceError>> SaveFile(ByteString bytes, File file, string path, CancellationToken cancellationToken = default) {
+        var fso = await Wrap(() => SaveFileRaw(bytes, file, path, cancellationToken));
         return fso.SelectMany(grpcGuid =>
             grpcGuid.TryToGuid(out var guid)
             ? Ok<File, ServiceError>(file with { Id = guid.ToFsoId() })
@@ -125,29 +139,67 @@ public class Backend : IBackend {
         );
     }
 
-    public Task<Result<File, ServiceError>> SaveFile(ByteString bytes, File file, string path, CancellationToken cancellationToken = default) {
-        throw new NotImplementedException();
+    private async Task<Grpc.Guid> MkDirRaw(Directory dir, string? path, CancellationToken cancellationToken) {
+        path = path?.NormalizePath();
+        var request = new SaveFsoRequest() {
+            Data = dir.ToRpcSharedData(),
+            DirectoryData = dir.ToRpcDirectoryData()
+        };
+        if (!string.IsNullOrWhiteSpace(path))
+            request.FilePath = path;
+        var result = await _filesStoringService.SaveFsoAsync(
+            request, _configuration.ToMetadata(),
+            cancellationToken: cancellationToken
+        );
+        return result.FileId;
+    }
+    public async Task<Result<Directory, ServiceError>> MakeDirectory(Directory dir, CancellationToken cancellationToken = default)
+    => await MakeDirectory(dir, "", cancellationToken);
+
+
+    public async Task<Result<Directory, ServiceError>> MakeDirectory(Directory dir, string path, CancellationToken cancellationToken = default) {
+        var fso = await Wrap(() => MkDirRaw(dir, path, cancellationToken));
+        return fso.SelectMany(grpcGuid =>
+            grpcGuid.TryToGuid(out var guid)
+            ? Ok<Directory, ServiceError>(dir with { Id = guid.ToFsoId() })
+            : Err<Directory, ServiceError>(new ServiceError.BadResult())
+        );
     }
 
-    public Task<Result<Directory, ServiceError>> MakeDirectory(Directory dir, CancellationToken cancellationToken = default) {
-        throw new NotImplementedException();
+    private async Task<Grpc.Guid> MkLinkRaw(Symlink link, string? path, CancellationToken cancellationToken) {
+        path = path?.NormalizePath();
+        var request = new SaveFsoRequest() {
+            Data = link.ToRpcSharedData(),
+            SymlinkData = link.ToRpcLinkData()
+        };
+        if (!string.IsNullOrWhiteSpace(path))
+            request.FilePath = path;
+        var result = await _filesStoringService.SaveFsoAsync(
+            request, _configuration.ToMetadata(),
+            cancellationToken: cancellationToken
+        );
+        return result.FileId;
+    }
+    public async Task<Result<Symlink, ServiceError>> MakeLink(Symlink link, CancellationToken cancellationToken = default)
+    => await MakeLink(link, "", cancellationToken);
+
+
+    public async Task<Result<Symlink, ServiceError>> MakeLink(Symlink link, string path, CancellationToken cancellationToken = default) {
+        var fso = await Wrap(() => MkLinkRaw(link, path, cancellationToken));
+        return fso.SelectMany(grpcGuid =>
+            grpcGuid.TryToGuid(out var guid)
+            ? Ok<Symlink, ServiceError>(link with { Id = guid.ToFsoId() })
+            : Err<Symlink, ServiceError>(new ServiceError.BadResult())
+        );
     }
 
-    public Task<Result<Directory, ServiceError>> MakeDirectory(Directory dir, string path, CancellationToken cancellationToken = default) {
-        throw new NotImplementedException();
-    }
-
-    public Task<Result<Symlink, ServiceError>> MakeLink(Symlink link, CancellationToken cancellationToken = default) {
-        throw new NotImplementedException();
-    }
-
-    public Task<Result<Symlink, ServiceError>> MakeLink(Symlink link, string path, CancellationToken cancellationToken = default) {
-        throw new NotImplementedException();
-    }
-
-    public Task<Result<User, ServiceError>> RemoveSelf(CancellationToken cancellationToken = default) {
-        throw new NotImplementedException();
-    }
+    public async Task<Result<User, ServiceError>> RemoveSelf(CancellationToken cancellationToken = default)
+    => await Wrap(async () =>
+        (await _filesStoringService.RemoveSelfAsync(
+            new EmptyMessage(),
+            _configuration.ToMetadata(),
+            cancellationToken: cancellationToken)
+        ).ToUser());
 
     public async Task<Result<IEnumerable<User>, ServiceError>> AdminGetUsers(CancellationToken cancellationToken = default) {
         var userList = await Wrap(async () => await _filesStoringService.AdminGetUserListAsync(new EmptyMessage(), _configuration.ToMetadata(), cancellationToken: cancellationToken));
@@ -158,8 +210,11 @@ public class Backend : IBackend {
         );
     }
 
-    public Task<Result<Unit, ServiceError>> AdminRemoveUser(UserId id, CancellationToken cancellationToken = default) {
-        throw new NotImplementedException();
+    public async Task<Result<Unit, ServiceError>> AdminRemoveUser(UserId id, CancellationToken cancellationToken = default) {
+        var result = await Wrap(async () => await _filesStoringService.AdminRemoveUserAsync(id.Value.ToGrpcGuid(), _configuration.ToMetadata(), cancellationToken: cancellationToken));
+        return result.Select(_ => new Unit());
+    }
+
     public async Task<Result<IEnumerable<string>, ServiceError>> GetFullPath(FsoId id, CancellationToken cancellationToken = default) {
         var result = await Wrap(async () =>
             await _filesStoringService.GetFullPathAsync(
