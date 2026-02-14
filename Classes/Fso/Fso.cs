@@ -14,14 +14,14 @@ public abstract record Fso(FsoId Id, FsData Data) : IEntity<FsoId>, IFormattable
         };
     protected virtual string ToShortFormatString() => Data.Name;
 
-    public string ToString(string? format, IFormatProvider? formatProvider) 
+    public string ToString(string? format, IFormatProvider? formatProvider)
         => ToString(format);
 
     public const string LongListingFormat = "L";
     public const string ShortListingFormat = "S";
 }
 public sealed record File(FsoId Id, FsData Data) : Fso(Id, Data) {
-    public byte[]? Content {get; init;}
+    public byte[]? Content { get; init; }
     public override string ToString() => $"-{base.ToString()}";
 }
 public sealed record Symlink(FsoId Id, FsData Data, string Target) : Fso(Id, Data) {

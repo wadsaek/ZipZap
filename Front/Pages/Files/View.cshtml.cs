@@ -1,25 +1,25 @@
 
+using System;
+using System.ComponentModel;
+using System.Threading;
+using System.Threading.Tasks;
+
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
 
-using ZipZap.Front.Factories;
-using ZipZap.Front.Services;
-using ZipZap.Front.Handlers.Files.View;
-using Microsoft.AspNetCore.Mvc;
-using System.Threading.Tasks;
-using ZipZap.Classes.Helpers;
-using System.ComponentModel;
-using ZipZap.Front.Handlers;
-using System;
-using System.Threading;
-
 using ZipZap.Classes.Extensions;
+using ZipZap.Classes.Helpers;
+using ZipZap.Front.Factories;
+using ZipZap.Front.Handlers;
+using ZipZap.Front.Handlers.Files.View;
+using ZipZap.Front.Services;
 using ZipZap.LangExt.Helpers;
 
 namespace ZipZap.Front.Pages.Files;
 
-using GetError = GetHandler.GetHandlerError;
 using DeleteError = DeleteHandler.DeleteHandlerError;
+using GetError = GetHandler.GetHandlerError;
 
 public class FileViewModel : PageModel {
 
@@ -32,11 +32,11 @@ public class FileViewModel : PageModel {
         _getHandler = getHandler;
     }
 
-    private IGetHandler _getHandler; 
+    private IGetHandler _getHandler;
 
-    public async Task<IActionResult> OnGetAsync(string path, [FromQuery] IdType type,CancellationToken cancellationToken)
+    public async Task<IActionResult> OnGetAsync(string path, [FromQuery] IdType type, CancellationToken cancellationToken)
         => await _getHandler.OnGetAsync(
-                new(path, type),    Request, cancellationToken
+                new(path, type), Request, cancellationToken
             ) switch {
                 Ok<GetHandler.GetHandlerResult, GetError>(var handler) => SetupHandler(handler),
                 Err<GetHandler.GetHandlerResult, GetError>(GetError.ShouldRedirect(var target)) => Redirect(target),

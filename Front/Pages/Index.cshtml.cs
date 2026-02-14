@@ -1,16 +1,15 @@
+using System.ComponentModel.DataAnnotations;
+using System.Threading;
 using System.Threading.Tasks;
 
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.Extensions.Logging;
 
 using ZipZap.Classes;
 using ZipZap.Classes.Helpers;
 using ZipZap.Front.Factories;
 using ZipZap.Front.Services;
-using System.Threading;
-using Microsoft.AspNetCore.Mvc;
-using System.ComponentModel.DataAnnotations;
-using Microsoft.Extensions.Logging;
-
 using ZipZap.LangExt.Helpers;
 
 namespace ZipZap.Front.Pages;
@@ -18,9 +17,9 @@ namespace ZipZap.Front.Pages;
 public class IndexModel : PageModel {
     private readonly IFactory<IBackend, BackendConfiguration> _backendFactory;
     private readonly ILogger<IndexModel> _logger;
-    private readonly ILoginSerivce _loginService;
+    private readonly ILoginService _loginService;
 
-    public IndexModel(IFactory<IBackend, BackendConfiguration> backendFactory, ILoginSerivce loginService, ILogger<IndexModel> logger) {
+    public IndexModel(IFactory<IBackend, BackendConfiguration> backendFactory, ILoginService loginService, ILogger<IndexModel> logger) {
         _backendFactory = backendFactory;
         _loginService = loginService;
         _logger = logger;

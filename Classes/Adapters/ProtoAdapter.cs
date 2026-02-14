@@ -10,8 +10,8 @@ using ZipZap.Classes.Extensions;
 using ZipZap.Grpc;
 
 using DataCase = ZipZap.Grpc.GetFsoResponse.SpecificDataOneofCase;
-using IdCase = ZipZap.Grpc.PathData.IdOneofCase;
 using Guid = System.Guid;
+using IdCase = ZipZap.Grpc.PathData.IdOneofCase;
 
 namespace ZipZap.Classes.Adapters;
 
@@ -204,6 +204,6 @@ public static class ProtoAdapter {
         public Grpc.Ownership ToGrpcOwnership() => new() { Group = ownership.FsoGroup, Owner = ownership.FsoOwner };
     }
     extension(Grpc.Ownership ownership) {
-        public Ownership ToOwnership() => new(ownership.Owner,ownership.Group);
+        public Ownership ToOwnership() => new(ownership.Owner, ownership.Group);
     }
 }

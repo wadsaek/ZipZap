@@ -11,9 +11,9 @@ using ZipZap.LangExt.Helpers;
 namespace ZipZap.Front.Pages;
 
 public class LoginModel : PageModel {
-    private readonly ILoginSerivce _loginService;
+    private readonly ILoginService _loginService;
 
-    public LoginModel(ILoginSerivce loginService) {
+    public LoginModel(ILoginService loginService) {
         _loginService = loginService;
     }
 

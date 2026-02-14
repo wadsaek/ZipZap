@@ -2,10 +2,8 @@
 
 namespace ZipZap.Front.Pages;
 
-public class PrivacyModel : PageModel
-{
-    public void OnGet()
-    {
+public class PrivacyModel : PageModel {
+    public void OnGet() {
     }
 }
 

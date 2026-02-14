@@ -14,6 +14,6 @@ public class BackendFactory : IFactory<IBackend, BackendConfiguration> {
     }
 
     public IBackend Create(BackendConfiguration configuration)
-        => new Backend(_client, configuration,_exceptionConverter);
+        => new Backend(_client, configuration, _exceptionConverter);
 }
 

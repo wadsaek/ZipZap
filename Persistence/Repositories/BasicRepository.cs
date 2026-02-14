@@ -7,11 +7,11 @@ using System.Threading.Tasks;
 
 using Npgsql;
 
-using ZipZap.LangExt.Extensions;
 using ZipZap.Classes.Helpers;
+using ZipZap.LangExt.Extensions;
 using ZipZap.LangExt.Helpers;
-using ZipZap.Persistence.Extensions;
 using ZipZap.Persistence.Data;
+using ZipZap.Persistence.Extensions;
 using ZipZap.Persistence.Models;
 
 namespace ZipZap.Persistence.Repositories;
@@ -34,7 +34,7 @@ where TId : struct {
 }
 
 internal class BasicRepository<TEntity, TInner, TId> : IBasicRepository<TEntity, TInner, TId>
-where TInner : ITranslatable<TEntity>, ISqlRetrievable,IInner<TId>
+where TInner : ITranslatable<TEntity>, ISqlRetrievable, IInner<TId>
 where TId : struct {
     private readonly EntityHelper<TInner, TEntity, TId> _helper;
 
@@ -157,7 +157,7 @@ where TId : struct {
                 RETURNING {_helper.IdCol};
                 """);
         _helper.FillParameters(cmd, inner);
-        cmd.Parameters.Add(new NpgsqlParameter<TId>() { Value = inner.Id});
+        cmd.Parameters.Add(new NpgsqlParameter<TId>() { Value = inner.Id });
         var count = await cmd.ExecuteNonQueryAsync(token);
         await transaction.CommitAsync(token);
         return DbHelper.EnsureSingle(count);

@@ -6,8 +6,8 @@ using System.Threading.Tasks;
 using Npgsql;
 
 using ZipZap.Classes;
-using ZipZap.Persistence.Extensions;
 using ZipZap.Persistence.Data;
+using ZipZap.Persistence.Extensions;
 
 namespace ZipZap.Persistence.Repositories;
 

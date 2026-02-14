@@ -30,11 +30,11 @@ public sealed record Ok<T, E>(T Data) : Result<T, E>;
 public sealed record Err<T, E>(E Error) : Result<T, E>;
 
 public static class ResultExt {
-    extension<E>(E err){
-        public Result<T,E> AsErrorOf<T>() => Err<T,E>(err);
+    extension<E>(E err) {
+        public Result<T, E> AsErrorOf<T>() => Err<T, E>(err);
     }
-    extension<T>(T data){
-        public Result<T,E> AsOkOf<E>() => Ok<T,E>(data);
+    extension<T>(T data) {
+        public Result<T, E> AsOkOf<E>() => Ok<T, E>(data);
     }
 
     extension<T, E>(Result<T, E> result) {
@@ -50,7 +50,7 @@ public static class ResultExt {
             _ => throw new InvalidEnumArgumentException(nameof(Result<,>))
         };
         public T? Unwrap() => result switch {
-            Ok<T,E>(T data) => data,
+            Ok<T, E>(T data) => data,
             _ => default
         };
 

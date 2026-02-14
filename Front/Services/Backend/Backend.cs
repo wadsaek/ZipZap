@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -6,19 +9,16 @@ using Google.Protobuf;
 using Grpc.Core;
 
 using ZipZap.Classes;
-using static ZipZap.LangExt.Helpers.ResultConstructor;
+using ZipZap.Classes.Adapters;
+using ZipZap.Classes.Extensions;
 using ZipZap.Classes.Helpers;
 using ZipZap.Grpc;
+using ZipZap.LangExt.Helpers;
+
+using static ZipZap.LangExt.Helpers.ResultConstructor;
 
 using PathData = ZipZap.Classes.PathData;
-using ZipZap.Classes.Extensions;
-using ZipZap.Classes.Adapters;
 using User = ZipZap.Classes.User;
-using System;
-
-using ZipZap.LangExt.Helpers;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace ZipZap.Front.Services;
 

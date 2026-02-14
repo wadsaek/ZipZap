@@ -12,6 +12,6 @@ public record FsData(
 public record Ownership(
     int FsoOwner,
     int FsoGroup
-){
-public override string ToString() => $"{FsoOwner}:{FsoGroup}";
+) {
+    public override string ToString() => $"{FsoOwner}:{FsoGroup}";
 }

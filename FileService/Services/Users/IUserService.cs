@@ -15,6 +15,6 @@ public interface IUserService {
     Task<Result<Unit, DbError>> RemoveUser(UserId id);
     Task<IEnumerable<User>> GetAllUsers(CancellationToken token);
     byte[] HashPassword(string password);
-    Task<Result<User,DbError>> CreateAsync(User user,CancellationToken cancellationToken);
+    Task<Result<User, DbError>> CreateAsync(User user, CancellationToken cancellationToken);
 }
 
