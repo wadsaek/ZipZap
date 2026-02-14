@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -10,6 +12,7 @@ using ZipZap.Classes;
 using ZipZap.Classes.Extensions;
 using ZipZap.Classes.Helpers;
 using ZipZap.Front.Services;
+using ZipZap.LangExt.Extensions;
 using ZipZap.LangExt.Helpers;
 
 using static ZipZap.LangExt.Helpers.ResultConstructor;
@@ -60,14 +63,45 @@ public class GetHandler : IGetHandler {
         var parentUrl = GetRedirectUrl(specification, item);
         string? text = null;
 
-        if (item is Symlink { Target: var target })
-            return Err<GetHandlerResult, GetHandlerError>(new GetHandlerError.ShouldRedirect(target));
+        if (item is Symlink link)
+            return Err<GetHandlerResult, GetHandlerError>(new GetHandlerError.ShouldRedirect(await GetSymlinkLink(specification, backendConfiguration, link, cancellationToken)));
         if (item is File file) {
             text = Encoding.UTF8.GetString(file.Content ?? []);
         }
         return Ok<GetHandlerResult, GetHandlerError>(new(item, text, parentUrl, specification));
     }
 
+    private async Task<string> GetSymlinkLink(FileSpecification specification, BackendConfiguration backendConfiguration, Symlink link, CancellationToken cancellationToken) {
+        // the browser can handle those just fine
+        if (specification.Type == IdType.Path) return link.Target;
+
+        if (await _service.GetFullPath(link.Id, backendConfiguration, cancellationToken) is not Ok<IEnumerable<string>, ServiceError>(var path)) return "";
+        var parts = path.ToList();
+        // We're interested in the directory, not the actual path
+        parts.RemoveAt(parts.Count - 1);
+        var targetParts = link.Target.SplitPath();
+        foreach (var part in targetParts) {
+            switch (part) {
+                case "." or "":
+                    break;
+                case "..":
+                    parts.RemoveAt(parts.Count - 1);
+                    break;
+                case var p:
+                    parts.Add(p);
+                    break;
+            }
+        }
+        var result = await _service.GetFsoWithRoot(
+            new PathDataWithPath(parts.ConcatenateWith("/")),
+            link.Id,
+            backendConfiguration,
+            cancellationToken);
+        return result switch {
+            FsoStatus.Success(var fso) => $"/Files/View/{fso.Id}?type=id",
+            _ => "."
+        };
+    }
 
 
     public string GetParentDir(string path) {

@@ -20,6 +20,7 @@ public interface IBackend {
     public Task<Result<Symlink, ServiceError>> MakeLink(Symlink link, string path, CancellationToken cancellationToken = default);
     public Task<Result<Fso, ServiceError>> GetFsoByIdAsync(FsoId fsoId, CancellationToken cancellationToken = default);
     public Task<Result<Fso, ServiceError>> GetFsoByPathAsync(PathData pathData, CancellationToken cancellationToken = default);
+    public Task<Result<Fso, ServiceError>> GetFsoWithRootAsync(PathData pathData, FsoId anchor, CancellationToken cancellationToken = default);
     public Task<Result<Directory, ServiceError>> GetRoot(CancellationToken cancellationToken = default);
     public Task<Result<Unit, ServiceError>> DeleteFso(FsoId fsoId, DeleteFlags flags, CancellationToken token = default);
     // NOTE: notice the lack of CancellationToken :))
@@ -27,6 +28,7 @@ public interface IBackend {
     public Task<Result<Unit, ServiceError>> ReplaceFileById(FsoId id, ByteString bytes, CancellationToken cancellationToken = default);
     public Task<Result<Unit, ServiceError>> ReplaceFileByPath(PathData pathData, ByteString bytes, CancellationToken cancellationToken = default);
     public Task<Result<Unit, ServiceError>> UpdateFso(Fso fso, CancellationToken cancellationToken = default);
+    public Task<Result<IEnumerable<string>, ServiceError>> GetFullPath(FsoId id, CancellationToken cancellationToken = default);
 
     public Task<Result<User, ServiceError>> GetSelf(CancellationToken cancellationToken = default);
     public Task<Result<User, ServiceError>> RemoveSelf(CancellationToken cancellationToken = default);

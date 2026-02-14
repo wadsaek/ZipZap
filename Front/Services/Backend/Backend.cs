@@ -160,6 +160,25 @@ public class Backend : IBackend {
 
     public Task<Result<Unit, ServiceError>> AdminRemoveUser(UserId id, CancellationToken cancellationToken = default) {
         throw new NotImplementedException();
+    public async Task<Result<IEnumerable<string>, ServiceError>> GetFullPath(FsoId id, CancellationToken cancellationToken = default) {
+        var result = await Wrap(async () =>
+            await _filesStoringService.GetFullPathAsync(
+                id.Value.ToGrpcGuid(),
+                _configuration.ToMetadata(),
+                cancellationToken: cancellationToken));
+        return result.Select(res => res.Path.AsEnumerable());
+    }
+
+    public async Task<Result<Fso, ServiceError>> GetFsoWithRootAsync(PathData pathData, FsoId anchor, CancellationToken cancellationToken = default) {
+        var result = await Wrap(async () =>
+            await _filesStoringService.GetFsoWithRootAsync(new() {
+                Path = pathData.ToRpcPathData(),
+                AnchorId = anchor.Value.ToGrpcGuid()
+            },
+            _configuration.ToMetadata(),
+            cancellationToken: cancellationToken)
+        );
+        return result.Select(f => f.ToFso());
     }
 }
 public record BackendConfiguration(string AuthToken);

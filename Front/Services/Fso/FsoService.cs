@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -6,6 +7,7 @@ using ZipZap.Classes;
 using ZipZap.Classes.Extensions;
 using ZipZap.Front.Factories;
 using ZipZap.Front.Handlers;
+using ZipZap.LangExt.Helpers;
 
 namespace ZipZap.Front.Services;
 
@@ -34,5 +36,12 @@ public class FsoService : IFsoService {
         return FsoStatus.FromServiceResult(await backend.GetFsoByIdAsync(guid.ToFsoId(), cancellationToken));
     }
 
+    public Task<Result<IEnumerable<string>, ServiceError>> GetFullPath(FsoId id, BackendConfiguration backendConfiguration, CancellationToken cancellationToken) {
+        return _factory.Create(backendConfiguration).GetFullPath(id, cancellationToken);
+    }
+
+    public async Task<FsoStatus> GetFsoWithRoot(PathData path, FsoId anchor, BackendConfiguration backendConfiguration, CancellationToken cancellationToken) {
+        return FsoStatus.FromServiceResult(await _factory.Create(backendConfiguration).GetFsoWithRootAsync(path, anchor, cancellationToken));
+    }
 }
 
