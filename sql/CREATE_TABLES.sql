@@ -204,4 +204,22 @@ BEGIN
 
     END IF;
 END $MIGRATION$;
+
+DO
+$MIGRATION$
+BEGIN
+    IF NOT EXISTS (SELECT * FROM migrations WHERE migration_name = 'add_id_field') THEN
+
+        INSERT INTO migrations VALUES ('add_id_field');
+
+        ALTER TABLE fso_access
+        DROP CONSTRAINT fso_access_pkey,
+        ADD COLUMN id uuid NOT NULL DEFAULT (gen_random_uuid()) PRIMARY KEY;
+
+        ALTER TABLE ssh_keys
+        DROP CONSTRAINT ssh_keys_pkey,
+        ADD COLUMN id uuid NOT NULL DEFAULT (gen_random_uuid()) PRIMARY KEY;
+
+    END IF;
+END $MIGRATION$;
 COMMIT;

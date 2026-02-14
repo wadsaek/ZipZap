@@ -1,5 +1,14 @@
+using System;
+
+using ZipZap.Classes.Helpers;
+
 namespace ZipZap.Classes;
 
-public sealed record FsoAccess(Fso Fso, User User) : IEntity<(FsoId, UserId)> {
-    public (FsoId, UserId) Id => (Fso.Id, User.Id);
+public sealed record FsoAccess(
+    FsoAccessId Id,
+    MaybeEntity<Fso, FsoId> Fso,
+    MaybeEntity<User, UserId> User
+) : IEntity<FsoAccessId>;
+
+public record struct FsoAccessId(Guid Value) {
 }
