@@ -283,7 +283,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         return user;
     }
 
-    public override async Task<LoginResponse> SignUp(SignUpRequest request, ServerCallContext context) {
+    public override async Task<SignUpResponse> SignUp(SignUpRequest request, ServerCallContext context) {
         var ownership = request.DefaultOwnership?.ToOwnership() ?? new(1000, 100);
         var user = new User(
             default,
@@ -303,12 +303,17 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         user = user with { Root = root };
         user = await _userService.CreateAsync(user, context.CancellationToken) switch {
             Ok<User, DbError>(var returned) => returned,
-            Err<User, DbError>(var err) => throw new RpcException(new(StatusCode.Internal, err.ToString())),
+            Err<User, DbError>(var err) => err switch {
+                DbError.UniqueViolation
+                    => throw new RpcException(new(StatusCode.AlreadyExists, "This user already exists")),
+                _ => throw new RpcException(new(StatusCode.Internal, err.ToString())),
+            },
             _ => throw new InvalidEnumArgumentException()
         };
         var token = await _userService.Login(user.Username, request.Password);
-        return new() { Token = token ?? ThrowUnauthenticated<string>("Wrong credentials") };
+        return new() { Ok = new() { Token = token ?? ThrowUnauthenticated<string>("Wrong credentials") } };
     }
+
     public override async Task<FullPathMessage> GetFullPath(Grpc.Guid request, ServerCallContext context) {
         var user = await GetUserOrThrowAsync(context);
         var fso = await GetFsoOrFailAsync(request, user, context.CancellationToken);

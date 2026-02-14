@@ -1,0 +1,30 @@
+syntax = "proto3";
+import "ownership.proto";
+
+option csharp_namespace = "ZipZap.Grpc";
+
+message SignUpRequest {
+  string username = 1;
+  string password = 2;
+  string email = 3;
+  Ownership defaultOwnership = 4;
+}
+message LoginRequest {
+  string username = 1;
+  string password = 2;
+}
+message LoginResponse {
+  string token = 1;
+}
+message SignUpResponse{
+  oneof response {
+    LoginResponse ok = 1;
+    SignUpError error = 2;
+  }
+}
+
+enum SignUpError {
+  INVALID_USERNAME = 0;
+  INVALID_EMAIL = 1;
+  INVALID_PASSWORD = 2;
+}

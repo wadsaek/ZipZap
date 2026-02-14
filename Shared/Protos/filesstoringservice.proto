@@ -8,7 +8,7 @@ import "emptyrequest.proto";
 import "pathdata.proto";
 import "user.proto";
 import "ssh.proto";
-import "ownership.proto";
+import "login.proto";
 
 message SaveFsoRequest {
   FsoSharedData data = 1;
@@ -68,19 +68,6 @@ message ExistsOwnerIdResponse{
   bool exists = 1;
 }
 
-message SignUpRequest {
-  string username = 1;
-  string password = 2;
-  string email = 3;
-  Ownership defaultOwnership = 4;
-}
-message LoginRequest {
-  string username = 1;
-  string password = 2;
-}
-message LoginResponse {
-  string token = 1;
-}
 message UpdateFsoRequest{
   oneof identifier {
     Guid fsoId = 1;
@@ -109,7 +96,7 @@ service FilesStoringService {
   rpc GetFullPath(Guid) returns (FullPathMessage);
 
   rpc Login(LoginRequest) returns (LoginResponse);
-  rpc SignUp(SignUpRequest) returns (LoginResponse);
+  rpc SignUp(SignUpRequest) returns (SignUpResponse);
   rpc GetSelf(EmptyMessage) returns (User);
   rpc RemoveSelf(EmptyMessage) returns (User);
   rpc AddSshKey(SshKey) returns (Guid);
