@@ -2,6 +2,7 @@ using System;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -159,6 +160,18 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
             DirectoryData = directoryData
         };
     }
+
+    private async Task<GetFsoResponse> ToGetFsoResponse(Fso fso)
+    => fso switch {
+        File file => await GetFsoResponse.FromFileAsync(file, await _io.ReadAsync(file.PhysicalPath)),
+        Directory dir => GetFsoResponse.FromDirectory(dir with {
+            MaybeChildren = await _fsosRepo.GetAllByDirectory(dir)
+        }),
+        Symlink link => GetFsoResponse.FromSymlink(link),
+        _ => throw new InvalidEnumArgumentException(nameof(fso))
+    };
+
+
     public override async Task<GetFsoResponse> GetFso(GetFsoRequest request, ServerCallContext context) {
         var user = await GetUserOrThrowAsync(context);
         var fso = request.IdentifierCase switch {
@@ -169,14 +182,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
             _ or GetFsoRequest.IdentifierOneofCase.None
                 => throw new RpcException(new(StatusCode.InvalidArgument, nameof(request.IdentifierCase)))
         };
-        return fso switch {
-            File file => await GetFsoResponse.FromFileAsync(file, await _io.ReadAsync(file.PhysicalPath)),
-            Directory dir => GetFsoResponse.FromDirectory(dir with {
-                MaybeChildren = await _fsosRepo.GetAllByDirectory(dir)
-            }),
-            Symlink link => GetFsoResponse.FromSymlink(link),
-            _ => throw new InvalidEnumArgumentException(nameof(fso))
-        };
+        return await ToGetFsoResponse(fso);
     }
 
     public override async Task<EmptyMessage> RemoveFrenchLanguagePack(EmptyMessage message, ServerCallContext context) {
@@ -218,6 +224,8 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
             _ or UpdateFsoRequest.IdentifierOneofCase.None
                 => throw new RpcException(new(StatusCode.InvalidArgument, nameof(request.IdentifierCase)))
         };
+        if (fso.Data.VirtualLocation is null)
+            fsData = fsData with { VirtualLocation = null };
         var updated = fso with { Data = fsData };
         var result = await _fsosRepo.UpdateAsync(updated) switch {
             Ok<Unit, DbError> => new EmptyMessage(),
@@ -300,6 +308,48 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         };
         var token = await _userService.Login(user.Username, request.Password);
         return new() { Token = token ?? ThrowUnauthenticated<string>("Wrong credentials") };
+    }
+    public override async Task<FullPathMessage> GetFullPath(Grpc.Guid request, ServerCallContext context) {
+        var user = await GetUserOrThrowAsync(context);
+        var fso = await GetFsoOrFailAsync(request, user, context.CancellationToken);
+        var result = await _fsosRepo.GetFullPathTree(fso.Id);
+
+        var response = new FullPathMessage();
+        response.Path.AddRange(result.Select(a => a.Data.Name));
+        return response;
+
+    }
+
+    public override async Task<GetFsoResponse> GetFsoWithRoot(GetFsoWithRootRequest request, ServerCallContext context) {
+        var user = await GetUserOrThrowAsync(context);
+        var id = ParseGuidOrThrow(request.AnchorId).ToFsoId();
+        var root = user.Role switch {
+            UserRole.Admin => await _fsosRepo.GetRootDirectory(id, context.CancellationToken),
+            UserRole.User => await HandleRootAnchorShenanigansRegularUser(id, user, context.CancellationToken),
+            _ => throw new InvalidEnumArgumentException()
+
+
+        };
+        root = ThrowNotFoundIfNull(root);
+        var pathData = request.Path.ToPathData(root.Id);
+        var fso = ThrowNotFoundIfNull(pathData switch {
+            PathDataWithId { ParentId: var parentId, Name: var name }
+                => await _fsosRepo.GetByDirectoryAndName(parentId, name, context.CancellationToken),
+            PathDataWithPath { Path: var path }
+                => await _fsosRepo.GetByPath(root, path, context.CancellationToken),
+            _
+                => throw new InvalidEnumArgumentException(nameof(pathData))
+        });
+        return await ToGetFsoResponse(fso);
+    }
+
+    private async Task<Directory?> HandleRootAnchorShenanigansRegularUser(FsoId id, User user, CancellationToken cancellationToken) {
+        if (await _fsosRepo.GetRootDirectory(id, cancellationToken)
+            is Directory root && root.Id == user.Root.Id)
+            return root;
+        if (await _fsosRepo.GetDeepestSharedFso(id, user.Id, cancellationToken) is not Directory dir)
+            return null;
+        return dir;
     }
 }
 

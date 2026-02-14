@@ -14,6 +14,9 @@ public interface IFsosRepository : IRepository<Fso, FsoId> {
     public Task<Fso?> GetByPath(MaybeEntity<Directory, FsoId> root, string path, CancellationToken token = default);
 
     public Task<Directory?> GetRootDirectory(FsoId id, CancellationToken token = default);
-    public Task<IEnumerable<Directory>> GetFullPathTree(FsoId id, CancellationToken token = default);
+    public Task<IEnumerable<Fso>> GetFullPathTree(FsoId id, CancellationToken token = default);
+
+    ///<returns>The most deeply nested fso that is a parent of <paramref name="fsoId"/> that is shared with the <paramref name="userId"/> user</returns>
+    public Task<Fso?> GetDeepestSharedFso(FsoId fsoId, UserId userId, CancellationToken cancellationToken);
 
 }

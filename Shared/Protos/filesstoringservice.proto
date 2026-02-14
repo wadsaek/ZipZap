@@ -88,6 +88,15 @@ message UpdateFsoRequest{
   }
   FsoSharedData data = 3;
 }
+message FullPathMessage{
+  repeated string path = 1;
+}
+
+message GetFsoWithRootRequest{
+  PathData path = 1;
+  // a known fso's id - used to figure out the root
+  Guid anchorId = 2;
+}
 
 service FilesStoringService {
   rpc SaveFso(SaveFsoRequest) returns (SaveFsoResponse);
@@ -97,13 +106,15 @@ service FilesStoringService {
   rpc RemoveFrenchLanguagePack(EmptyMessage) returns (EmptyMessage);
   rpc ReplaceFile(ReplaceFileRequest) returns (EmptyMessage);
   rpc UpdateFso(UpdateFsoRequest) returns (EmptyMessage);
+  rpc GetFullPath(Guid) returns (FullPathMessage);
 
   rpc Login(LoginRequest) returns (LoginResponse);
   rpc SignUp(SignUpRequest) returns (LoginResponse);
   rpc GetSelf(EmptyMessage) returns (User);
   rpc RemoveSelf(EmptyMessage) returns (User);
   rpc AddSshKey(SshKey) returns (Guid);
-  
+
   rpc AdminGetUserList(EmptyMessage) returns (UserList);
   rpc AdminRemoveUser(Guid) returns (EmptyMessage);
+  rpc GetFsoWithRoot(GetFsoWithRootRequest) returns (GetFsoResponse);
 }

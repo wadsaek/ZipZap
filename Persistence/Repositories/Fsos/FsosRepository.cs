@@ -54,11 +54,11 @@ internal class FsosRepository : IFsosRepository {
                 )
         SELECT
         {_fsoHelper.SqlFields.Select(f => $"{TableName}_{f}").ConcatenateWith(", ")}
-        FROM ctename order by level desc
+        FROM ctename
         """;
     public async Task<Directory?> GetRootDirectory(FsoId id, CancellationToken token = default) {
         var fsos = await _basic.Get(conn => {
-            var cmd = conn.CreateCommand($"{GetRootQuery} LIMIT 1;");
+            var cmd = conn.CreateCommand($"{GetRootQuery} order by level desc LIMIT 1;");
 
             cmd.Parameters.Add(new NpgsqlParameter<Guid> { Value = id.Value });
             return cmd;
@@ -67,18 +67,32 @@ internal class FsosRepository : IFsosRepository {
         Assert(directory is Directory or null);
         return directory as Directory;
     }
-    public async Task<IEnumerable<Directory>> GetFullPathTree(FsoId id, CancellationToken token = default) {
+    public async Task<IEnumerable<Fso>> GetFullPathTree(FsoId id, CancellationToken token = default) {
         var fsos = await _basic.Get(conn => {
-            var cmd = conn.CreateCommand($"{GetRootQuery};");
+            var cmd = conn.CreateCommand($"{GetRootQuery} order by level desc;");
 
             cmd.Parameters.Add(new NpgsqlParameter<Guid> { Value = id.Value });
             return cmd;
         }, token);
-        return fsos.Assert(fso => fso is Directory).Cast<Directory>();
+        return fsos;
     }
 
-    public async Task<Fso?> GetByPath(MaybeEntity<Directory, FsoId> root, string path, CancellationToken token = default) => 
-        (await _basic.Get( conn => {
+    ///<returns>The most deeply nested fso that is a parent of <paramref name="fsoId"/> that is shared with the <paramref name="userId"/> user</returns>
+    public async Task<Fso?> GetDeepestSharedFso(FsoId fsoId, UserId userId, CancellationToken cancellationToken) {
+        var fsos = await _basic.Get(conn => {
+            var cmd = conn.CreateCommand($"{GetRootQuery} JOIN fso_access ON fso_access.fso_id = {TableName}_{_fsoHelper.IdCol} WHERE fso_access.user_id = $2 ORDER BY level DESC LIMIT 1;");
+            cmd.Parameters.Add(new NpgsqlParameter<Guid> { Value = fsoId.Value });
+            cmd.Parameters.Add(new NpgsqlParameter<Guid> { Value = userId.Value });
+
+            return cmd;
+        }, cancellationToken);
+
+        var deepestMatch = fsos.FirstOrDefault();
+        return deepestMatch;
+    }
+
+    public async Task<Fso?> GetByPath(MaybeEntity<Directory, FsoId> root, string path, CancellationToken token = default) =>
+        (await _basic.Get(conn => {
             var cmd = conn.CreateCommand();
             var builder = new StringBuilder(
                 """
