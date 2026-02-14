@@ -61,6 +61,56 @@ public static class SshStreamExt {
         }
     }
     extension(Stream stream) {
+        public void SshWriteArraySync(ReadOnlySpan<byte> bytes)
+            => stream.Write(bytes);
+
+        public void SshWriteByteSync(byte b)
+            => stream.SshWriteArraySync(new[] { b });
+
+        public void SshWriteBoolSync(bool b)
+            => stream.SshWriteByteSync(b ? (byte)1 : (byte)0);
+
+        public void SshWriteByteStringSync(byte[] bytes) {
+            stream.SshWriteUint32Sync((uint)bytes.Length);
+            stream.SshWriteArraySync(bytes);
+        }
+        public void SshWriteStringSync(string str) {
+            var bytes = Encoding.UTF8.GetBytes(str);
+            stream.SshWriteByteStringSync(bytes);
+        }
+        public void SshWriteBigIntSync(BigInteger bigint) {
+            stream.SshWriteByteStringSync(bigint == 0 ? [] : bigint.ToByteArray(isBigEndian: true));
+        }
+
+        public void SshWriteUint32Sync(uint n) {
+            var reversed = BinaryPrimitives.ReverseEndianness(n);
+            var bytes = BitConverter.GetBytes(reversed);
+            stream.SshWriteArraySync(bytes);
+        }
+        public void SshWriteInt32Sync(int n) {
+            var reversed = BinaryPrimitives.ReverseEndianness(n);
+            var bytes = BitConverter.GetBytes(reversed);
+            stream.SshWriteArraySync(bytes);
+        }
+        public void SshWriteUint64Sync(ulong n) {
+            var reversed = BinaryPrimitives.ReverseEndianness(n);
+            var bytes = BitConverter.GetBytes(reversed);
+            stream.SshWriteArraySync(bytes);
+        }
+        public void SshWriteInt64Sync(long n) {
+            var reversed = BinaryPrimitives.ReverseEndianness(n);
+            var bytes = BitConverter.GetBytes(reversed);
+            stream.SshWriteArraySync(bytes);
+        }
+
+        public void SshWriteNameListSync(NameList names) {
+            var str = names.ToString();
+            var bytes = new byte[str.Length];
+            if (Encoding.ASCII.TryGetBytes(str, bytes, out _))
+                stream.SshWriteByteStringSync(bytes);
+        }
+    }
+    extension(Stream stream) {
         public async Task<bool> SshTryReadArray(byte[] bytes, CancellationToken cancellationToken) {
             if (bytes.Length == 0) return true;
             var bytesRead = await stream.ReadAsync(bytes, cancellationToken);
