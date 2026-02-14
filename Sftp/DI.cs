@@ -5,8 +5,6 @@ using Microsoft.Extensions.DependencyInjection;
 using ZipZap.Sftp.Ssh;
 using ZipZap.Sftp.Ssh.Algorithms;
 
-using static ZipZap.Sftp.SftpService;
-
 namespace ZipZap.Sftp;
 
 public static class DI {
@@ -18,6 +16,8 @@ public static class DI {
             services.AddScoped<IProvider<IMacAlgorithm>, MacAlgorithmProvider>();
             services.AddScoped<HMacSha2256EtmOpenSsh>();
 
+            services.AddScoped<RsaPublicKeyAlgorithm>();
+            services.AddScoped<RsaServerKeyAlgorithm>();
             services.AddScoped<IProvider<IKeyExchangeAlgorithm>, KeyExchangeAlgorithmProvider>();
             services.AddScoped<IProvider<IPublicKeyAlgorithm>, PublicKeyProvider>();
             services.AddScoped<IProvider<IServerHostKeyAlgorithm>, ServerHostKeyProvider>();
@@ -33,11 +33,23 @@ public static class DI {
 }
 
 internal class ServerHostKeyProvider : IProvider<IServerHostKeyAlgorithm> {
-    public IImmutableList<IServerHostKeyAlgorithm> Items => [new RsaKeyAlgorithm()];
+    private readonly RsaServerKeyAlgorithm _rsaServerKeyAlgorithm;
+
+    public ServerHostKeyProvider(RsaServerKeyAlgorithm rsaServerKeyAlgorithm) {
+        _rsaServerKeyAlgorithm = rsaServerKeyAlgorithm;
+    }
+
+    public IImmutableList<IServerHostKeyAlgorithm> Items => [_rsaServerKeyAlgorithm];
 }
 
 internal class PublicKeyProvider : IProvider<IPublicKeyAlgorithm> {
-    public IImmutableList<IPublicKeyAlgorithm> Items => [new RsaKeyAlgorithm()];
+    private readonly RsaPublicKeyAlgorithm _rsaPublicKeyAlgorithm;
+
+    public PublicKeyProvider(RsaPublicKeyAlgorithm rsaPublicKeyAlgorithm) {
+        _rsaPublicKeyAlgorithm = rsaPublicKeyAlgorithm;
+    }
+
+    public IImmutableList<IPublicKeyAlgorithm> Items => [_rsaPublicKeyAlgorithm];
 }
 internal class CompressionProvider : IProvider<ICompressionAlgorithm> {
     public IImmutableList<ICompressionAlgorithm> Items => [new NoneCompression()];

@@ -1,7 +1,7 @@
 namespace ZipZap.Sftp.Ssh.Numbers;
 
 public enum Message : byte {
-    DIsconnect = 1,
+    Disconnect = 1,
     Ignore = 2,
     Unimplemented = 3,
     Debug = 4,

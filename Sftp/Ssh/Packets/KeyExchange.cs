@@ -24,7 +24,7 @@ public record KeyExchange(
     public static Message Message => Message.Kexinit;
     public static int CookieSize => 16;
 
-    public async Task<byte[]> ToPayload(CancellationToken cancellationToken) {
+    public byte[] ToPayload() {
         var kexAlgorithms = KexAlgorithms.ToByteString();
         var serverHostKeyAlgorithmsAlgorithms = ServerHostKeyAlgorithms.ToByteString();
         var encryptionAlgorithmsClientToServer = EncryptionAlgorithmsClientToServer.ToByteString();
@@ -35,35 +35,22 @@ public record KeyExchange(
         var compressionAlgorithmsServerToClient = CompressionAlgorithmsServerToClient.ToByteString();
         var languagesClientToServer = LanguagesClientToServer.ToByteString();
         var languagesServerToClient = LanguagesServerToClient.ToByteString();
-        var length = 1 + 16 +
-                4 + kexAlgorithms.Length +
-                4 + serverHostKeyAlgorithmsAlgorithms.Length +
-                4 + encryptionAlgorithmsClientToServer.Length +
-                4 + encryptionAlgorithmsServerToClient.Length +
-                4 + macAlgorithmsClientToServer.Length +
-                4 + macAlgorithmsServerToClient.Length +
-                4 + compressionAlgorithmsClientToServer.Length +
-                4 + compressionAlgorithmsServerToClient.Length +
-                4 + languagesClientToServer.Length +
-                4 + languagesServerToClient.Length +
-                1 + 4;
-        var buffer = new byte[length];
-        using var stream = new MemoryStream(buffer);
-        await stream.SshWriteByte((byte)Message, cancellationToken);
-        await stream.SshWriteArray(Cookie, cancellationToken);
-
-        await stream.SshWriteByteString(kexAlgorithms, cancellationToken);
-        await stream.SshWriteByteString(serverHostKeyAlgorithmsAlgorithms, cancellationToken);
-        await stream.SshWriteByteString(encryptionAlgorithmsClientToServer, cancellationToken);
-        await stream.SshWriteByteString(encryptionAlgorithmsServerToClient, cancellationToken);
-        await stream.SshWriteByteString(macAlgorithmsClientToServer, cancellationToken);
-        await stream.SshWriteByteString(macAlgorithmsServerToClient, cancellationToken);
-        await stream.SshWriteByteString(compressionAlgorithmsClientToServer, cancellationToken);
-        await stream.SshWriteByteString(compressionAlgorithmsServerToClient, cancellationToken);
-        await stream.SshWriteByteString(languagesClientToServer, cancellationToken);
-        await stream.SshWriteByteString(languagesServerToClient, cancellationToken);
-        await stream.SshWriteBool(FirstKexPacketFollows, cancellationToken);
-        await stream.SshWriteUint32(Value, cancellationToken);
+        var buffer = new SshMessageBuilder()
+            .Write((byte)Message)
+            .WriteArray(Cookie)
+            .WriteByteString(kexAlgorithms)
+            .WriteByteString(serverHostKeyAlgorithmsAlgorithms)
+            .WriteByteString(encryptionAlgorithmsClientToServer)
+            .WriteByteString(encryptionAlgorithmsServerToClient)
+            .WriteByteString(macAlgorithmsClientToServer)
+            .WriteByteString(macAlgorithmsServerToClient)
+            .WriteByteString(compressionAlgorithmsClientToServer)
+            .WriteByteString(compressionAlgorithmsServerToClient)
+            .WriteByteString(languagesClientToServer)
+            .WriteByteString(languagesServerToClient)
+            .Write(FirstKexPacketFollows)
+            .Write(Value)
+            .Build();
         return buffer;
     }
     public static async Task<KeyExchange?> TryFromPayload(byte[] payload, CancellationToken cancellationToken) {

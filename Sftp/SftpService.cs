@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
@@ -57,6 +56,43 @@ public partial class SftpService : BackgroundService {
                 _logger.LogInformation("{Count} tasks in queue\n{Removed} tasks removed", tasks.Count, removed);
         }
     }
+    private async Task HandleSocket(Socket socket, CancellationToken cancellationToken) {
+        try {
+            using var _ = socket;
+            await using var scope = _factory.CreateAsyncScope();
+            await using var stream = new NetworkStream(socket);
+
+            var idStrings = await ExchangeIdentificationStrings(stream, cancellationToken);
+
+            if (_logger.IsEnabled(LogLevel.Information))
+                _logger.LogInformation("handling client {ClientId}", idStrings.Client);
+
+            var state = await MakeKeyExchange(scope, stream, idStrings, cancellationToken);
+            await Task.Delay(TimeSpan.FromMinutes(2), cancellationToken);
+
+        } catch (OperationCanceledException e) {
+            if (_logger.IsEnabled(LogLevel.Information))
+                _logger.LogInformation("Operation was cancelled: {e}", e.Message);
+        } catch (IOException e) {
+            if (_logger.IsEnabled(LogLevel.Information))
+                _logger.LogInformation("IOException encountered: {e}", e.Message);
+        }
+    }
+
+    private async Task<IdenitificationStrings> ExchangeIdentificationStrings(Stream stream, CancellationToken cancellationToken) {
+        var serverHeader = $"SSH-2.0-{_configuration.ServerName}_{_configuration.Version}";
+        var header = Encoding.ASCII.GetBytes(serverHeader);
+        await stream.WriteAsync(header, cancellationToken);
+        await stream.WriteAsync(Encoding.ASCII.GetBytes("\r\n"), cancellationToken);
+
+        var clientHeaderBytes = new List<byte>();
+        while (clientHeaderBytes.Count < 2 || (clientHeaderBytes[^2] != (byte)'\r' && clientHeaderBytes[^1] != (byte)'\n'))
+            clientHeaderBytes.Add((byte)stream.ReadByte());
+        clientHeaderBytes.RemoveAt(clientHeaderBytes.Count - 1);
+        clientHeaderBytes.RemoveAt(clientHeaderBytes.Count - 1);
+        var clientHeader = Encoding.ASCII.GetString(clientHeaderBytes.ToArray());
+        return new(serverHeader, clientHeader);
+    }
 
     private async Task<SshState?> MakeKeyExchange(AsyncServiceScope scope, Stream stream, IdenitificationStrings idenitificationStrings, CancellationToken cancellationToken) {
         var provider = scope.ServiceProvider;
@@ -72,11 +108,7 @@ public partial class SftpService : BackgroundService {
         var clientKexPayload = await KeyExchange.TryFromPayload(clientKexPayloadRaw.Inner.Payload, cancellationToken);
         if (clientKexPayload is null) return null;
         var serverKexPayload = GenerateKeyExchangePacket(keyExchangeAlgorithms, publicKeyAlgorithms, encryptionAlgorithms, macAlgorithms, compressionAlgorithms, false);
-        if (_logger.IsEnabled(LogLevel.Information)) {
-            _logger.LogInformation("got keyExchange packet     {Packet}", clientKexPayload);
-            _logger.LogInformation("sending keyExchange packet {Packet}", serverKexPayload);
-        }
-        var keyExchangePacket = await serverKexPayload.ToPacket(new NoMacAlgorithm(),cancellationToken);
+        var keyExchangePacket = await serverKexPayload.ToPacket(new NoMacAlgorithm(), default, default, cancellationToken);
         await stream.SshWritePacket(keyExchangePacket, cancellationToken);
 
         var keyExchangeAlgorithmName = clientKexPayload.KexAlgorithms.Names.FirstOrDefault(a => serverKexPayload.KexAlgorithms.Names.Contains(a));
@@ -119,51 +151,33 @@ public partial class SftpService : BackgroundService {
             _logger.LogInformation("sending KeyExchangeAlgorithm {KeyExchangeAlgorithm}", keyExchangeAlgorithm);
         }
         var sshState = new SshState(
+            [],
             stream,
             0,
-            macAlgorithm,
+            [],
+            null!,
+            new(new NoMacAlgorithm(), 0, 0),
+            keyExchangeAlgorithm,
             idenitificationStrings,
             publicKeyAlgorithm.GetHostKeyPair(),
             clientKexPayloadRaw.Inner.Payload,
             keyExchangePacket.Inner.Payload
         );
-        if (await keyExchangeAlgorithm.ExchangeKeysAsync(sshState, cancellationToken) is not BigInteger secret) return null;
-        return sshState with { Secret = secret };
-    }
-
-
-    private async Task HandleSocket(Socket socket, CancellationToken cancellationToken) {
-        try {
-            using var _ = socket;
-            await using var scope = _factory.CreateAsyncScope();
-            await using var stream = new NetworkStream(socket);
-
-            var idStrings = await ExchangeIdentificationStrings(stream, cancellationToken);
-
-            if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("handling client {ClientId}", idStrings.Client);
-
-            var state = await MakeKeyExchange(scope, stream, idStrings, cancellationToken);
-
-        } catch (OperationCanceledException e) {
-            if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("Operation was cancelled, {e}", e);
-        }
-    }
-
-    private async Task<IdenitificationStrings> ExchangeIdentificationStrings(Stream stream, CancellationToken cancellationToken) {
-        var serverHeader = $"SSH-2.0-{_configuration.ServerName}_{_configuration.Version}";
-        var header = Encoding.ASCII.GetBytes(serverHeader);
-        await stream.WriteAsync(header, cancellationToken);
-        await stream.WriteAsync(Encoding.ASCII.GetBytes("\r\n"), cancellationToken);
-
-        var clientHeaderBytes = new List<byte>();
-        while (clientHeaderBytes.Count < 2 || (clientHeaderBytes[^2] != (byte)'\r' && clientHeaderBytes[^1] != (byte)'\n'))
-            clientHeaderBytes.Add((byte)stream.ReadByte());
-        clientHeaderBytes.RemoveAt(clientHeaderBytes.Count - 1);
-        clientHeaderBytes.RemoveAt(clientHeaderBytes.Count - 1);
-        var clientHeader = Encoding.ASCII.GetString(clientHeaderBytes.ToArray());
-        return new(serverHeader, clientHeader);
+        if (await keyExchangeAlgorithm.ExchangeKeysAsync(sshState, cancellationToken)
+            is not KeyExchangeResult(var secret, var exchangeHash))
+            return null;
+        var newKeysPacket = await new NewKeys().ToPacket(sshState, cancellationToken);
+        await sshState.Stream.SshWritePacket(newKeysPacket, cancellationToken);
+        sshState = sshState with {
+            EncryptionKeys = GenerateInitialKeys(secret, exchangeHash, sshState.KeyExchangeAlgorithm),
+            SessionId = exchangeHash,
+            ExchangeHash = exchangeHash,
+            Secret = secret,
+            MacData = sshState.MacData with {
+                MacAlgorithm = macAlgorithm
+            }
+        };
+        return sshState;
     }
 
     private static KeyExchange GenerateKeyExchangePacket(IEnumerable<IKeyExchangeAlgorithm> keyExchangeAlgorithms, IEnumerable<IPublicKeyAlgorithm> publicKeyAlgorithms, IEnumerable<IEncryptionAlgorithm> encryptionAlgorithms, IEnumerable<IMacAlgorithm> macAlgorithms, IEnumerable<ICompressionAlgorithm> compressionAlgorithms, bool firstPacketFollows) {
@@ -187,7 +201,48 @@ public partial class SftpService : BackgroundService {
             0
         );
     }
+    static EncryptionKeys GenerateInitialKeys(BigInteger secret, byte[] exchangeHash, IKeyExchangeAlgorithm keyExchangeAlgorithm) {
+        return new(
+            [HashWithParameter(secret, exchangeHash, (byte)'A', exchangeHash, keyExchangeAlgorithm)],
+            [HashWithParameter(secret, exchangeHash, (byte)'B', exchangeHash, keyExchangeAlgorithm)],
+            [HashWithParameter(secret, exchangeHash, (byte)'C', exchangeHash, keyExchangeAlgorithm)],
+            [HashWithParameter(secret, exchangeHash, (byte)'D', exchangeHash, keyExchangeAlgorithm)],
+            [HashWithParameter(secret, exchangeHash, (byte)'E', exchangeHash, keyExchangeAlgorithm)],
+            [HashWithParameter(secret, exchangeHash, (byte)'F', exchangeHash, keyExchangeAlgorithm)]
+        );
+
+    }
+    static byte[] HashWithParameter(BigInteger secret, byte[] exchangeHash, byte parameter, byte[] sessionId, IKeyExchangeAlgorithm keyExchangeAlgorithm) {
+        return keyExchangeAlgorithm.Hash(
+            new SshMessageBuilder()
+                .Write(secret)
+                .WriteArray(exchangeHash)
+                .Write(parameter)
+                .WriteArray(sessionId).Build()
+        );
+    }
+
 }
 
 public record IdenitificationStrings(string Server, string Client);
-public record SshState(Stream Stream, BigInteger Secret, IMacAlgorithm MacAlgorithm, IdenitificationStrings IdenitificationStrings, HostKeyPair HostKeyPair, byte[] ClientKexInit, byte[] ServerKexInit) { }
+public record SshState(
+    byte[] SessionId,
+    Stream Stream,
+    BigInteger Secret,
+    byte[] ExchangeHash,
+    EncryptionKeys EncryptionKeys,
+    MacData MacData,
+    IKeyExchangeAlgorithm KeyExchangeAlgorithm,
+    IdenitificationStrings IdenitificationStrings,
+    IHostKeyPair HostKeyPair,
+    byte[] ClientKexInit, byte[] ServerKexInit) { }
+
+public record MacData(IMacAlgorithm MacAlgorithm, uint MacSequenceClient, uint MacSequenceServer);
+public record EncryptionKeys(
+    List<byte[]> IVsClienttoServer,
+    List<byte[]> IVsServerToClient,
+    List<byte[]> EncryptionKeysClienttoServer,
+    List<byte[]> EncryptionKeysServerToClient,
+    List<byte[]> IntegrityKeysClienttoServer,
+    List<byte[]> IntegrityKeysServerToClient
+);

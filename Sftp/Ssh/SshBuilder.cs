@@ -20,7 +20,7 @@ public class SshMessageBuilder {
     private sealed record Int32Item(int Value) : SshItem { public override int Length => 4; }
     private sealed record Int64Item(long Value) : SshItem { public override int Length => 8; }
     private sealed record StringItem(string Value) : SshItem { public override int Length => 4 + Value.Length; }
-    private sealed record BigIntegerItem(BigInteger Value, bool IsUnsigned) : SshItem { public override int Length => 4 + Value.GetByteCount(IsUnsigned); }
+    private sealed record BigIntegerItem(BigInteger Value) : SshItem { public override int Length => 4 + Value.GetByteCount(); }
 
     public SshMessageBuilder Write(byte value) { items.Add(new ByteItem(value)); return this; }
     public SshMessageBuilder Write(string value) { items.Add(new StringItem(value)); return this; }
@@ -29,8 +29,7 @@ public class SshMessageBuilder {
     public SshMessageBuilder Write(ulong value) { items.Add(new Uint64Item(value)); return this; }
     public SshMessageBuilder Write(long value) { items.Add(new Int64Item(value)); return this; }
     public SshMessageBuilder Write(int value) { items.Add(new Int32Item(value)); return this; }
-    public SshMessageBuilder Write(BigInteger value) => Write(value, false);
-    public SshMessageBuilder Write(BigInteger value, bool isUnsigned) { items.Add(new BigIntegerItem(value, isUnsigned)); return this; }
+    public SshMessageBuilder Write(BigInteger value) { items.Add(new BigIntegerItem(value)); return this; }
     public SshMessageBuilder WriteArray(byte[] bytes) { items.Add(new ByteArrayItem(bytes)); return this; }
     public SshMessageBuilder WriteByteString(byte[] bytes) { items.Add(new ByteStringItem(bytes)); return this; }
 
@@ -68,8 +67,8 @@ public class SshMessageBuilder {
                 case StringItem(var value):
                     stream.SshWriteStringSync(value);
                     break;
-                case BigIntegerItem(var value, var isUnsigned):
-                    stream.SshWriteBigIntSync(value, isUnsigned);
+                case BigIntegerItem(var value):
+                    stream.SshWriteBigIntSync(value);
                     break;
             }
         }

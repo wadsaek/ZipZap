@@ -1,3 +1,4 @@
+using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -9,7 +10,7 @@ internal interface IPayload {
     static abstract Numbers.Message Message { get; }
 }
 internal interface IServerPayload : IPayload {
-    public Task<byte[]> ToPayload(CancellationToken cancellationToken);
+    public byte[] ToPayload();
 }
 internal interface IClientPayload<T> : IPayload
 where T : IClientPayload<T> {
@@ -17,10 +18,16 @@ where T : IClientPayload<T> {
 }
 static class PayloadExt {
     extension(IServerPayload payload) {
-        public async Task<Packet> ToPacket(IMacAlgorithm macAlgorithm,CancellationToken cancellationToken) {
-            var bytes = await payload.ToPayload(cancellationToken);
-            var mac = await macAlgorithm.GenerateMacFor(bytes, cancellationToken);
-            return new(bytes,mac);
+        public async Task<Packet> ToPacket(IMacAlgorithm macAlgorithm, uint sequencial, BigInteger secret, CancellationToken cancellationToken) {
+            var bytes = payload.ToPayload();
+            var mac = await macAlgorithm.GenerateMacForAsync(sequencial, secret, bytes, cancellationToken);
+            return new(bytes, mac);
         }
+        public async Task<Packet> ToPacket(SshState sshState, CancellationToken cancellationToken) => await payload.ToPacket(
+            sshState.MacData.MacAlgorithm,
+            sshState.MacData.MacSequenceClient,
+            sshState.Secret,
+            cancellationToken
+        );
     }
 }

@@ -17,18 +17,18 @@ public record PacketWithoutMac(byte[] Payload, byte[] Padding) {
         var paddingLength = 8 - ((Length + 4) % 8) + 8;
         Padding = RandomNumberGenerator.GetBytes((int)paddingLength);
     }
-    public async Task WriteTo(byte[] buffer, CancellationToken cancellationToken) {
+    public void WriteTo(byte[] buffer) {
         Debug.Assert(buffer.Length >= 4 + Length);
-        if (buffer.Length >= 4 + Length) throw new ArgumentException("buffer too short");
+        if (buffer.Length < 4 + Length) throw new ArgumentException("buffer too short");
         using var stream = new MemoryStream(buffer);
-        await stream.SshWriteUint32(Length, cancellationToken);
-        await stream.SshWriteByte(PaddingLength, cancellationToken);
-        await stream.SshWriteArray(Payload, cancellationToken);
-        await stream.SshWriteArray(Padding, cancellationToken);
+        stream.SshWriteUint32Sync(Length);
+        stream.SshWriteByteSync(PaddingLength);
+        stream.SshWriteArraySync(Payload);
+        stream.SshWriteArraySync(Padding);
     }
-    public async Task<byte[]> ToByteString(CancellationToken cancellationToken) {
+    public byte[] ToByteString() {
         byte[] buffer = new byte[Length + 4];
-        await WriteTo(buffer, cancellationToken);
+        WriteTo(buffer);
         return buffer;
     }
 }
@@ -37,11 +37,11 @@ public record Packet(PacketWithoutMac Inner, byte[] Mac) {
     public byte PaddingLength => Inner.PaddingLength;
     public Packet(byte[] Payload, byte[] Mac) : this(new PacketWithoutMac(Payload), Mac) { }
     public Packet(byte[] Payload, byte[] Padding, byte[] Mac) : this(new PacketWithoutMac(Payload, Padding), Mac) { }
-    public async Task<byte[]> ToByteString(CancellationToken cancellationToken) {
+    public byte[] ToByteString() {
         var buffer = new byte[4 + Length + Mac.Length];
-        await Inner.WriteTo(buffer, cancellationToken);
+        Inner.WriteTo(buffer);
         using var stream = new MemoryStream(buffer, (int)(4 + Length), Mac.Length);
-        await stream.SshWriteArray(Mac, cancellationToken);
+        stream.SshWriteArraySync(Mac);
         return buffer;
     }
 }
@@ -49,10 +49,11 @@ public record Packet(PacketWithoutMac Inner, byte[] Mac) {
 public static class PacketExt {
     extension(Stream stream) {
         public async Task SshWritePacket(Packet packet, CancellationToken cancellationToken) {
-            var rawPacket = await packet.Inner.ToByteString(cancellationToken);
+            var rawPacket = packet.Inner.ToByteString();
             await stream.SshWriteArray(rawPacket, cancellationToken);
             await stream.SshWriteArray(packet.Mac, cancellationToken);
         }
+
         public async Task<Packet?> SshTryReadPacket(IMacAlgorithm macAlgorithm, CancellationToken cancellationToken) {
             if (await stream.SshTryReadUint32(cancellationToken) is not uint length) return null;
             if (await stream.SshTryReadByte(cancellationToken) is not byte paddingLength) return null;
