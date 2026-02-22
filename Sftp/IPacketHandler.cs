@@ -26,10 +26,10 @@ using ZipZap.Sftp.Ssh.Numbers;
 namespace ZipZap.Sftp;
 
 internal interface IPacketHandler {
-    Task Handle(Packet packet, SessionId sessionId, CancellationToken cancellationToken);
+    Task BeginHandle(Packet packet, CancellationToken cancellationToken);
 }
 internal interface IPacketHandlerFactory {
-    public IPacketHandler Create(IPacketSender sendPacket);
+    public IPacketHandler Create(ITransportClient sendPacket);
 }
 
 internal class PacketHandlerFactory : IPacketHandlerFactory {
@@ -39,10 +39,10 @@ internal class PacketHandlerFactory : IPacketHandlerFactory {
     public PacketHandlerFactory(ISftpRequestHandler sftpRequestHandler) {
         _sftpRequestHandler = sftpRequestHandler;
     }
-    public IPacketHandler Create(IPacketSender sendPacket) => new PacketHandler(sendPacket, _sftpRequestHandler);
+    public IPacketHandler Create(ITransportClient transport) => new PacketHandler(transport, _sftpRequestHandler);
 
 }
-public interface IPacketSender {
+public interface ITransportClient {
     void SendPacket<T>(T Packet) where T : IServerPayload;
 }
 internal class PacketHandler : IPacketHandler, IDisposable {
@@ -50,16 +50,16 @@ internal class PacketHandler : IPacketHandler, IDisposable {
     private bool _isDisposed = false;
     private readonly Lock _lock = new();
     private Task? _handler = null;
-    private readonly IPacketSender _sendPacket;
+    private readonly ITransportClient _transport;
     private readonly ISftpRequestHandler _sftpRequestHandler;
     private readonly ConcurrentQueue<Packet> _incomingPackets = [];
 
-    public PacketHandler(IPacketSender sendPacket, ISftpRequestHandler sftpRequestHandler) {
-        _sendPacket = sendPacket;
+    public PacketHandler(ITransportClient sendPacket, ISftpRequestHandler sftpRequestHandler) {
+        _transport = sendPacket;
         _sftpRequestHandler = sftpRequestHandler;
     }
 
-    public Task Handle(Packet packet, SessionId sessionId, CancellationToken cancellationToken) {
+    public Task BeginHandle(Packet packet, CancellationToken cancellationToken) {
         _incomingPackets.Enqueue(packet);
         lock (_lock) {
             if (_handler == null || _handler.IsCompleted) {
@@ -76,7 +76,7 @@ internal class PacketHandler : IPacketHandler, IDisposable {
         while (!_isDisposed && _incomingPackets.TryDequeue(out var packet)) {
             var payload = packet.Payload;
             if (payload.Length == 0) {
-                _sendPacket.SendPacket(new Disconnect(
+                _transport.SendPacket(new Disconnect(
                     DisconnectCode.ProtocolError,
                     "Zero length packet encountered"
                     ));

@@ -16,21 +16,13 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.IO;
-using System.Linq;
 using System.Net.Sockets;
-using System.Numerics;
-using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.Extensions.Logging;
-
-using ZipZap.Sftp.Ssh;
-using ZipZap.Sftp.Ssh.Algorithms;
-using ZipZap.Sftp.Ssh.Numbers;
 
 namespace ZipZap.Sftp;
 
@@ -59,7 +51,6 @@ internal class SftpService {
                 _logger.LogInformation("handling client {ClientId}", idStrings.Client);
 
             await _transport.Handle(stream, idStrings, cancellationToken);
-            await Task.Delay(TimeSpan.FromMinutes(2), cancellationToken);
 
         } catch (OperationCanceledException e) {
             if (_logger.IsEnabled(LogLevel.Information))

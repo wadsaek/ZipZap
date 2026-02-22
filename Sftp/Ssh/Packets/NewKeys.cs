@@ -27,7 +27,7 @@ public record NewKeys : IServerPayload, IClientPayload<NewKeys> {
     public static bool TryParse(byte[] payload, [NotNullWhen(true)] out NewKeys? value) {
         value = null;
         var stream = new MemoryStream(payload);
-        if(!(stream.SshTryReadByteSync(out var msg) && msg == (byte)Message))
+        if (!(stream.SshTryReadByteSync(out var msg) && msg == (byte)Message))
             return false;
         value = new();
         return true;

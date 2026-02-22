@@ -81,10 +81,5 @@ public class RsaServerKeyAlgorithm : IServerHostKeyAlgorithm {
 
 
     public IHostKeyPair GetHostKeyPair() => new RsaPublicKeyPair(_sftpConfiguration.RsaKey ?? throw new System.Exception("no rsa key"), _inner.HashAlgorithm);
-
-    public byte[] Sign(byte[] unsigned, byte[] key) {
-        throw new System.NotImplementedException();
-    }
-
 }
 

@@ -27,7 +27,7 @@ public static class DI {
         public IServiceCollection AddSftp<T>(ISftpConfiguration configuration) where T : ISftpRequestHandler {
             services.AddScoped<SftpService>();
             services.AddScoped<Transport>();
-            services.AddScoped<IPacketHandlerFactory,PacketHandlerFactory>();
+            services.AddScoped<IPacketHandlerFactory, PacketHandlerFactory>();
             services.AddScoped<IProvider<IEncryptionAlgorithm>, EncryptionAlgorithmProvider>();
             services.AddScoped<Aes128GcmEncryptionAlgorithm>();
 
@@ -61,7 +61,7 @@ internal class ServerHostKeyProvider : IProvider<IServerHostKeyAlgorithm> {
     public IImmutableList<IServerHostKeyAlgorithm> Items => [_rsaServerKeyAlgorithm];
 }
 
-interface IPublicKeyProvider:IProvider<IPublicKeyAlgorithm> {
+interface IPublicKeyProvider : IProvider<IPublicKeyAlgorithm> {
     public IPublicKey? TryGetPublicKey(byte[] key);
 }
 internal class PublicKeyProvider : IProvider<IPublicKeyAlgorithm> {
@@ -73,7 +73,7 @@ internal class PublicKeyProvider : IProvider<IPublicKeyAlgorithm> {
 
     public IImmutableList<IPublicKeyAlgorithm> Items => [_rsaPublicKeyAlgorithm];
 
-    public bool TryGetPublicKey(byte[] key, out  IPublicKey? publicKey) {
+    public bool TryGetPublicKey(byte[] key, out IPublicKey? publicKey) {
         publicKey = null;
         foreach (var alg in Items) {
             if (alg.TryParse(key, out publicKey)) return true;

@@ -59,7 +59,13 @@ internal class Transport {
         _handler = handler;
     }
 
-    private class PacketSender : IPacketSender {
+    private class TransportClient : ITransportClient {
+        public byte[] SessionId { get; }
+
+        public TransportClient(byte[] sessionId) {
+            SessionId = sessionId;
+        }
+
         public void SendPacket<T>(T Packet) where T : IServerPayload {
             throw new NotImplementedException();
         }
@@ -67,10 +73,37 @@ internal class Transport {
     public async Task Handle(Stream stream, IdenitificationStrings idenitificationStrings, CancellationToken cancellationToken) {
         var state = await MakeKeyExchange(stream, idenitificationStrings, cancellationToken);
         if (state is null) return;
-        var handler = _handler.Create(new PacketSender());
+        await state.Stream.SshWriteArray(await state.Encryptor.EncryptPacket(new Debug(true, "example displayed debug message"), cancellationToken), cancellationToken);
+        await state.Stream.SshWriteArray(await state.Encryptor.EncryptPacket(new Debug(false, "example not displayed debug message"), cancellationToken), cancellationToken);
+        await state.Stream.SshWriteArray(await state.Encryptor.EncryptPacket(new Disconnect(DisconnectCode.ByApplication, "oops"), cancellationToken), cancellationToken);
+        var handler = _handler.Create(new TransportClient(state.SessionId));
         var tokenSource = new CancellationTokenSource();
-        // tokenSource.th
         while (await state.Decryptor.ReadPacket(cancellationToken) is Packet packet) {
+            var payload = packet.Payload;
+            if (payload.Length == 0) break;
+            var msg = (Message)payload[0];
+            _logger.LogInformation("Recieved packet {msg}", msg);
+            switch (msg.GetMessageCategory()) {
+                case MessageCategory.Invalid:
+                    SendUnimplemented();
+                    break;
+                case MessageCategory.TransportGeneric:
+                    if (HandleGenericTransportMsg(packet)) return;
+                    break;
+                case MessageCategory.KexInit:
+                    var maybeState = RedoKeyExchange();
+                    if (maybeState is null) return;
+                    state = maybeState;
+                    break;
+                case MessageCategory.KeyExchange or MessageCategory.KeyExchangeAlgSpecific:
+                    var errorString = $"recieved a key exchange message {msg} without outside of a key exchange";
+                    if (_logger.IsEnabled(LogLevel.Critical))
+                        _logger.LogCritical("{}", errorString);
+                    throw new Exception(errorString);
+                default:
+                    await handler.BeginHandle(packet, cancellationToken);
+                    break;
+            }
         }
 
         var disconnect = new Disconnect(DisconnectCode.ProtocolError, "Unable to parse packet");
@@ -78,6 +111,15 @@ internal class Transport {
         await state.Stream.SshWriteArray(disconnectPacket, cancellationToken);
         return;
     }
+
+    private SshState RedoKeyExchange() {
+        throw new NotImplementedException();
+    }
+
+    private void SendUnimplemented() {
+        throw new NotImplementedException();
+    }
+
     private async Task<SshState?> MakeKeyExchange(Stream stream, IdenitificationStrings idenitificationStrings, CancellationToken cancellationToken) {
         var keyExchangeAlgorithms = _kexProvider.Items;
         var publicKeyAlgorithms = _serverHostKeyProvider.Items;
@@ -95,11 +137,7 @@ internal class Transport {
             clientKexPayloadRaw = await packetReader.ReadPacket(cancellationToken);
             if (clientKexPayloadRaw is null) return null;
             if (!KeyExchange.TryParse(clientKexPayloadRaw.Payload, out clientKexPayload)) {
-                if (HandleGenericTransportMsg(clientKexPayloadRaw) is string description) {
-                    var packet = new Disconnect(ReasonCode: DisconnectCode.ProtocolError, description);
-                    var payload = await packetEncoder.EncryptPacket(packet, cancellationToken);
-                    await stream.SshWriteArray(payload, cancellationToken);
-                }
+                if (HandleGenericTransportMsg(clientKexPayloadRaw)) return null;
             }
         }
         while (clientKexPayload == null);
@@ -181,10 +219,43 @@ internal class Transport {
             is not KeyExchangeResult(var secret, var exchangeHash))
             return null;
         var newKeysPacket = new NewKeys();
+        NewKeys? clientNewKeys;
+        do {
+            var packetRaw = await packetReader.ReadPacket(cancellationToken);
+            if (packetRaw is null) return null;
+            if (!NewKeys.TryParse(packetRaw.Payload, out clientNewKeys)) {
+                if (HandleGenericTransportMsg(packetRaw)) return null;
+            }
+        }
+        while (clientNewKeys == null);
+
         var newKeysBytes = await packetEncoder.EncryptPacket(newKeysPacket, cancellationToken);
         await sshState.Stream.SshWriteArray(newKeysBytes, cancellationToken);
         var keys = GenerateInitialKeys(secret, exchangeHash, sshState.KeyExchangeAlgorithm);
+        var newMacGenerator = macAlgorithm.CreateGenerator(
+            sshState.Encryptor.MacSequential,
+            keys.IntegrityStC[0..macAlgorithm.KeyLength]
+        );
+
+        var newEncryptor = encAlgorithm.GetEncryptor(
+            keys.IvStC[0..encAlgorithm.IVLength],
+            keys.EncryptionStC[0..encAlgorithm.KeyLength],
+            newMacGenerator
+        );
+        var newMacValidator = macAlgorithm.CreateValidator(
+            sshState.Decryptor.MacSequential,
+            keys.IntegrityCtS[0..macAlgorithm.KeyLength]
+        );
+
+        var newDecryptor = encAlgorithm.GetDecryptor(
+            sshState.Stream,
+            keys.IVCtS[0..encAlgorithm.IVLength],
+            keys.EncryptionCtS[0..encAlgorithm.KeyLength],
+            newMacValidator
+        );
         sshState = sshState with {
+            Decryptor = newDecryptor,
+            Encryptor = newEncryptor,
             SessionId = exchangeHash,
             LastExchangeHash = exchangeHash,
             Secret = secret,
@@ -192,41 +263,41 @@ internal class Transport {
         return sshState;
     }
 
-    private string? HandleGenericTransportMsg(Packet clientKexPayloadRaw) {
-        using var stream = new MemoryStream(clientKexPayloadRaw.Payload);
-        if (!stream.SshTryReadByteSync(out var msg)) msg = 0; ;
+    ///<returns>A bool indicating whether the caller should stop execution</returns>
+    private bool HandleGenericTransportMsg(Packet packet) {
 
-        switch ((Message)msg) {
-            case Message.Ignore: return null;
+        switch ((Message)packet.Payload[0]) {
+            case Message.Ignore: return false;
             case Message.Disconnect: {
-
-                    if (!stream.SshTryReadUint32Sync(out var reasonRaw)) return "";
-                    var reason = (DisconnectCode)reasonRaw;
-                    if (!stream.SshTryReadStringSync(out var description)) description = "";
-                    _ = stream.SshTryReadStringSync(out _);
+                    if (!Disconnect.TryParse(packet.Payload, out var disconnect)) return true;
                     if (_logger.IsEnabled(LogLevel.Information))
-                        _logger.LogInformation("Got a disconnect {Code} with description {description}", reason, description);
-                    return description;
+                        _logger.LogInformation("Got a disconnect {Code} with description {description}", disconnect.ReasonCode, disconnect.Description);
+                    return true;
                 }
             case Message.Debug: {
-                    if (!stream.SshTryReadBoolSync(out var display)) display = false;
-                    if (!stream.SshTryReadStringSync(out var description)) description = "";
-                    _ = stream.SshTryReadStringSync(out _);
-                    if (display && _logger.IsEnabled(LogLevel.Debug))
-                        _logger.LogDebug("Got a debug message with description {description}", description);
+                    if (!Debug.TryParse(packet.Payload, out var debug)) {
+                        DisconnectFromPeer($"Can't parse a {nameof(Debug)} packet");
+                        return true;
+                    }
+                    if (debug.Display && _logger.IsEnabled(LogLevel.Debug))
+                        _logger.LogDebug("Got a debug message with description {description}", debug.Description);
 
-                    return null;
+                    return false;
                 }
             case Message.Unimplemented: {
-                    if (!stream.SshTryReadUint32Sync(out _)) {
-                        return "Can't read the message type of an unimplemented message";
+                    if (!Unimplemented.TryParse(packet.Payload, out var unimplemented)) {
+                        DisconnectFromPeer("Can't read the message type of an unimplemented message");
                     }
-                    return null;
+                    return false;
                 }
             default: {
-                    return null;
+                    return false;
                 }
         }
+    }
+
+    private void DisconnectFromPeer(string v) {
+        throw new NotImplementedException();
     }
 
     private static KeyExchange GenerateKeyExchangePacket(IEnumerable<IKeyExchangeAlgorithm> keyExchangeAlgorithms, IEnumerable<IServerHostKeyAlgorithm> serverHostKeyAlgorithms, IEnumerable<IEncryptionAlgorithm> encryptionAlgorithms, IEnumerable<IMacAlgorithm> macAlgorithms, IEnumerable<ICompressionAlgorithm> compressionAlgorithms, bool firstPacketFollows) {

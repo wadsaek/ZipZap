@@ -1,4 +1,4 @@
-// Unimplemented.cs - Part of the ZipZap project for storing files online
+// Debug.cs - Part of the ZipZap project for storing files online
 //     Copyright (C) 2026  Barenboim Esther wadsaek@gmail.com
 //
 //     This program is free software: you can redistribute it and/or modify
@@ -21,20 +21,26 @@ using ZipZap.Sftp.Ssh.Numbers;
 
 namespace ZipZap.Sftp.Ssh;
 
-internal record Unimplemented(uint Sequential) : IServerPayload, IClientPayload<Unimplemented> {
-    public static Message Message => Message.Unimplemented;
+internal record Debug(bool Display, string Description) : IServerPayload, IClientPayload<Debug> {
+    public static Message Message => Message.Debug;
 
-    public static bool TryParse(byte[] payload, [NotNullWhen(true)] out Unimplemented? value) {
-        value = null;
+    public static bool TryParse(byte[] payload, [NotNullWhen(true)] out Debug? packet) {
+        packet = null;
         var stream = new MemoryStream(payload);
-        if (!stream.SshTryReadByteSync(out var msg) || (Message)msg != Message) return false;
-        if (!stream.SshTryReadUint32Sync(out var sequential)) return false;
-        value = new(sequential);
+        if (!(stream.SshTryReadByteSync(out var msg) && msg != (byte)Message)) return false;
+        if (!stream.SshTryReadBoolSync(out var display)) return false;
+        if (!stream.SshTryReadStringSync(out var description)) return false;
+        if (!stream.SshTryReadStringSync(out _)) return false;
+        packet = new(display, description);
         return true;
-
     }
 
     public byte[] ToPayload() {
-        throw new System.NotImplementedException();
+        return new SshMessageBuilder()
+             .Write((byte)Message)
+             .Write(Display)
+             .Write(Description)
+             .Write(string.Empty)
+             .Build();
     }
 }

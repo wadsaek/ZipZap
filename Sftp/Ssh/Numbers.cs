@@ -16,6 +16,36 @@
 
 namespace ZipZap.Sftp.Ssh.Numbers;
 
+public enum MessageCategory {
+    Invalid = 0,
+    TransportGeneric,
+    Service,
+    KeyExchange,
+    KexInit,
+    KeyExchangeAlgSpecific,
+    UserAuthGeneric,
+    UserAuthAlgSpecific,
+    ConnectionGeneric,
+    Channel,
+}
+public static class MessageExt {
+    extension(Message message) {
+        public MessageCategory GetMessageCategory()
+            => (byte)message switch {
+                5 or 6 => MessageCategory.Service,
+                >= 1 and <= 19 => MessageCategory.TransportGeneric,
+                20 => MessageCategory.KexInit,
+                >= 21 and <= 29 => MessageCategory.KeyExchange,
+                >= 30 and <= 49 => MessageCategory.KeyExchangeAlgSpecific,
+                >= 50 and <= 59 => MessageCategory.UserAuthGeneric,
+                >= 60 and <= 79 => MessageCategory.UserAuthAlgSpecific,
+                >= 80 and <= 89 => MessageCategory.ConnectionGeneric,
+                >= 90 and <= 127 => MessageCategory.Channel,
+                _ => MessageCategory.Invalid
+
+            };
+    }
+}
 public enum Message : byte {
     Disconnect = 1,
     Ignore = 2,

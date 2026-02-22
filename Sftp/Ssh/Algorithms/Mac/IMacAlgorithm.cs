@@ -31,7 +31,7 @@ public interface IMacAlgorithm : INamed {
 public interface IMacValidator {
     public void IncrementCounter();
     public uint GetCount();
-    public Task<bool> Validate(Packet packet, byte[] mac,CancellationToken cancellationToken);
+    public Task<bool> Validate(Packet packet, byte[] mac, CancellationToken cancellationToken);
 
     public int MacLength { get; }
 }

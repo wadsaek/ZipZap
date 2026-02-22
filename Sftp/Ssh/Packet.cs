@@ -15,7 +15,6 @@
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System;
-using System.Diagnostics;
 using System.IO;
 using System.Security.Cryptography;
 
@@ -28,13 +27,13 @@ public record Packet(byte[] Payload, byte[] Padding) : IToByteString {
 
     public uint BufferLength => Length + 4;
 
-    public Packet(byte[] payload, uint alignment) : this(payload, []) {
-        var paddingLength = alignment - (BufferLength % alignment) + alignment;
+    public Packet(byte[] payload, uint alignment, int offset = 0) : this(payload, []) {
+        var paddingLength = 2 * alignment - ((BufferLength - offset) % alignment);
         Padding = RandomNumberGenerator.GetBytes((int)paddingLength);
     }
 
     public void WriteTo(byte[] buffer) {
-        Debug.Assert(buffer.Length >= BufferLength);
+        System.Diagnostics.Debug.Assert(buffer.Length >= BufferLength);
         if (buffer.Length < 4 + Length) throw new ArgumentException("buffer too short");
         using var stream = new MemoryStream(buffer);
         stream.SshWriteUint32Sync(Length);

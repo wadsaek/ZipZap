@@ -30,9 +30,9 @@ where T : IClientPayload<T> {
 }
 public static class PayloadExt {
     extension(IServerPayload payload) {
-        public Packet ToPacket(uint alignment) {
+        public Packet ToPacket(uint alignment, int offset = 0) {
             var bytes = payload.ToPayload();
-            return new(bytes, alignment);
+            return new(bytes, alignment, offset);
         }
     }
 }
