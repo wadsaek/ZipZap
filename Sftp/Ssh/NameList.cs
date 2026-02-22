@@ -21,7 +21,7 @@ using ZipZap.LangExt.Extensions;
 
 namespace ZipZap.Sftp.Ssh;
 
-public record NameList(NameList.Item[] Names) {
+public record NameList(NameList.Item[] Names) : IToByteString {
     public override string ToString()
         => Names
             .Select(n => n.ToString())
@@ -43,13 +43,8 @@ public record NameList(NameList.Item[] Names) {
     public sealed record LocalName(string Name, string Domain) : Item(Name) {
         public override string ToString() => $"{Name}@{Domain}";
     }
-}
-
-public static class NameListExt {
-    extension(NameList nameList) {
-        public byte[] ToByteString() {
-            var str = nameList.ToString();
-            return Encoding.ASCII.GetBytes(str);
-        }
+    public byte[] ToByteString() {
+        var str = ToString();
+        return Encoding.ASCII.GetBytes(str);
     }
 }

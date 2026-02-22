@@ -14,6 +14,7 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -26,14 +27,14 @@ public record KeyExchange(
     byte[] Cookie,
     NameList KexAlgorithms,
     NameList ServerHostKeyAlgorithms,
-    NameList EncryptionAlgorithmsClientToServer,
-    NameList EncryptionAlgorithmsServerToClient,
-    NameList MacAlgorithmsClientToServer,
-    NameList MacAlgorithmsServerToClient,
-    NameList CompressionAlgorithmsClientToServer,
-    NameList CompressionAlgorithmsServerToClient,
-    NameList LanguagesClientToServer,
-    NameList LanguagesServerToClient,
+    NameList EncryptionAlgorithmsCtS,
+    NameList EncryptionAlgorithmsStC,
+    NameList MacAlgorithmsCtS,
+    NameList MacAlgorithmsStC,
+    NameList CompressionAlgorithmsCtS,
+    NameList CompressionAlgorithmsStC,
+    NameList LanguagesCtS,
+    NameList LanguagesStC,
     bool FirstKexPacketFollows,
     uint Value
 ) : IServerPayload, IClientPayload<KeyExchange> {
@@ -41,53 +42,45 @@ public record KeyExchange(
     public static int CookieSize => 16;
 
     public byte[] ToPayload() {
-        var kexAlgorithms = KexAlgorithms.ToByteString();
-        var serverHostKeyAlgorithmsAlgorithms = ServerHostKeyAlgorithms.ToByteString();
-        var encryptionAlgorithmsClientToServer = EncryptionAlgorithmsClientToServer.ToByteString();
-        var encryptionAlgorithmsServerToClient = EncryptionAlgorithmsServerToClient.ToByteString();
-        var macAlgorithmsClientToServer = MacAlgorithmsClientToServer.ToByteString();
-        var macAlgorithmsServerToClient = MacAlgorithmsServerToClient.ToByteString();
-        var compressionAlgorithmsClientToServer = CompressionAlgorithmsClientToServer.ToByteString();
-        var compressionAlgorithmsServerToClient = CompressionAlgorithmsServerToClient.ToByteString();
-        var languagesClientToServer = LanguagesClientToServer.ToByteString();
-        var languagesServerToClient = LanguagesServerToClient.ToByteString();
         var buffer = new SshMessageBuilder()
             .Write((byte)Message)
             .WriteArray(Cookie)
-            .WriteByteString(kexAlgorithms)
-            .WriteByteString(serverHostKeyAlgorithmsAlgorithms)
-            .WriteByteString(encryptionAlgorithmsClientToServer)
-            .WriteByteString(encryptionAlgorithmsServerToClient)
-            .WriteByteString(macAlgorithmsClientToServer)
-            .WriteByteString(macAlgorithmsServerToClient)
-            .WriteByteString(compressionAlgorithmsClientToServer)
-            .WriteByteString(compressionAlgorithmsServerToClient)
-            .WriteByteString(languagesClientToServer)
-            .WriteByteString(languagesServerToClient)
+            .WriteByteString(KexAlgorithms)
+            .WriteByteString(ServerHostKeyAlgorithms)
+            .WriteByteString(EncryptionAlgorithmsCtS)
+            .WriteByteString(EncryptionAlgorithmsStC)
+            .WriteByteString(MacAlgorithmsCtS)
+            .WriteByteString(MacAlgorithmsStC)
+            .WriteByteString(CompressionAlgorithmsCtS)
+            .WriteByteString(CompressionAlgorithmsStC)
+            .WriteByteString(LanguagesCtS)
+            .WriteByteString(LanguagesStC)
             .Write(FirstKexPacketFollows)
             .Write(Value)
             .Build();
         return buffer;
     }
-    public static async Task<KeyExchange?> TryFromPayload(byte[] payload, CancellationToken cancellationToken) {
-        await using var stream = new MemoryStream(payload);
-        var msg = (Message?)await stream.SshTryReadByte(cancellationToken);
-        if (msg is not Message.Kexinit) return null;
+
+    public static bool TryParse(byte[] payload, [NotNullWhen(true)] out KeyExchange? value) {
+        value = null;
+        using var stream = new MemoryStream(payload);
+        if (!stream.SshTryReadByteSync(out var msg)) return false;
+        if ((Message)msg != Message.Kexinit) return false;
         var cookie = new byte[CookieSize];
-        if (!await stream.SshTryReadArray(cookie, cancellationToken)) return null;
-        if (await stream.SshTryReadNameList(cancellationToken) is not NameList kexAlgorithms) return null;
-        if (await stream.SshTryReadNameList(cancellationToken) is not NameList serverHostKeyAlgorithms) return null;
-        if (await stream.SshTryReadNameList(cancellationToken) is not NameList encryptionAlgorithmsClientToServer) return null;
-        if (await stream.SshTryReadNameList(cancellationToken) is not NameList encryptionAlgorithmsServerToClient) return null;
-        if (await stream.SshTryReadNameList(cancellationToken) is not NameList macAlgorithmsClientToServer) return null;
-        if (await stream.SshTryReadNameList(cancellationToken) is not NameList macAlgorithmsServerToClient) return null;
-        if (await stream.SshTryReadNameList(cancellationToken) is not NameList compressionAlgorithmsClientToServer) return null;
-        if (await stream.SshTryReadNameList(cancellationToken) is not NameList compressionAlgorithmsServerToClient) return null;
-        if (await stream.SshTryReadNameList(cancellationToken) is not NameList languagesClientToServer) return null;
-        if (await stream.SshTryReadNameList(cancellationToken) is not NameList languagesServerToClient) return null;
-        if (await stream.SshTryReadBool(cancellationToken) is not bool firstKexPacketFollows) return null;
-        if (await stream.SshTryReadUint32(cancellationToken) is not uint val) return null;
-        return new(
+        if (!stream.SshTryReadArraySync(cookie)) return false;
+        if (!stream.SshTryReadNameListSync(out var kexAlgorithms)) return false;
+        if (!stream.SshTryReadNameListSync(out var serverHostKeyAlgorithms)) return false;
+        if (!stream.SshTryReadNameListSync(out var encryptionAlgorithmsClientToServer)) return false;
+        if (!stream.SshTryReadNameListSync(out var encryptionAlgorithmsServerToClient)) return false;
+        if (!stream.SshTryReadNameListSync(out var macAlgorithmsClientToServer)) return false;
+        if (!stream.SshTryReadNameListSync(out var macAlgorithmsServerToClient)) return false;
+        if (!stream.SshTryReadNameListSync(out var compressionAlgorithmsClientToServer)) return false;
+        if (!stream.SshTryReadNameListSync(out var compressionAlgorithmsServerToClient)) return false;
+        if (!stream.SshTryReadNameListSync(out var languagesClientToServer)) return false;
+        if (!stream.SshTryReadNameListSync(out var languagesServerToClient)) return false;
+        if (!stream.SshTryReadBoolSync(out var firstKexPacketFollows)) return false;
+        if (!stream.SshTryReadUint32Sync(out var val)) return false;
+        value = new(
             cookie,
             kexAlgorithms,
             serverHostKeyAlgorithms,
@@ -102,5 +95,6 @@ public record KeyExchange(
             firstKexPacketFollows,
             val
         );
+        return true;
     }
 }

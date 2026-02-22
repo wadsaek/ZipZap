@@ -46,7 +46,7 @@ public enum Message : byte {
     ChannelSuccess = 99,
     ChannelFailure = 100
 }
-internal enum Disconnect : uint {
+internal enum DisconnectCode : uint {
     HostNotAllowedToConnect = 1,
     ProtocolError = 2,
     KeyExchangeFailed = 3,

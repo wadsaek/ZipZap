@@ -16,12 +16,15 @@
 
 using System.IO;
 using System.Security.Cryptography;
+using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
+using ZipZap.LangExt.Helpers;
 using ZipZap.Sftp;
+using ZipZap.Sftp.Ssh.Algorithms;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.AddConsole();
@@ -33,7 +36,16 @@ builder.Services.AddSftp<SftpHandler>(new SftpConfiguration(
 var app = builder.Build();
 app.Run();
 
-internal class SftpHandler : ISftpRequestHandler;
+internal class SftpHandler : ISftpRequestHandler {
+    public async Task<Result<Unit, LoginError>> TryLoginPublicKey(string username, IPublicKey userPublicKey, IHostKeyPair serverHostKey) {
+        throw new System.NotImplementedException();
+    }
+
+    public async Task<Result<Unit, LoginError>> TryLoginPassword(string username, string password) {
+        throw new System.NotImplementedException();
+    }
+}
+
 internal class SftpConfiguration : ISftpConfiguration {
     public int Port => 9999;
     public string ServerName => "ZipZapTestSftp";

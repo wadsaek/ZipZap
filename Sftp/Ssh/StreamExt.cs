@@ -17,6 +17,7 @@
 using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Numerics;
 using System.Text;
@@ -218,6 +219,101 @@ public static class SshStreamExt {
                 names.Add(item);
             }
             return new(names.ToArray());
+        }
+    }
+    extension(Stream stream) {
+        public bool SshTryReadArraySync(byte[] bytes) {
+            if (bytes.Length == 0) return true;
+            var bytesRead = stream.Read(bytes);
+            return bytesRead == bytes.Length;
+        }
+
+        public bool SshTryReadByteSync(out byte value) {
+            var bytes = new byte[1];
+            var success = stream.SshTryReadArraySync(bytes);
+
+            value = success ? bytes[0] : default;
+            return success;
+        }
+        public bool SshTryReadUint32Sync(out uint value) {
+            var bytes = new byte[sizeof(uint)];
+            var success = stream.SshTryReadArraySync(bytes);
+
+            value = BinaryPrimitives.ReverseEndianness(BitConverter.ToUInt32(bytes));
+            return success;
+        }
+        public bool SshTryReadInt32Sync(out int value) {
+            var bytes = new byte[sizeof(int)];
+            var success = stream.SshTryReadArraySync(bytes);
+
+            value = BinaryPrimitives.ReverseEndianness(BitConverter.ToInt32(bytes));
+            return success;
+        }
+        public bool SshTryReadUInt64Sync(out ulong value) {
+            var bytes = new byte[sizeof(ulong)];
+            var success = stream.SshTryReadArraySync(bytes);
+
+            value = BinaryPrimitives.ReverseEndianness(BitConverter.ToUInt64(bytes));
+            return success;
+        }
+        public bool SshTryReadInt64Sync(out long value) {
+            var bytes = new byte[sizeof(long)];
+            var success = stream.SshTryReadArraySync(bytes);
+
+            value = BinaryPrimitives.ReverseEndianness(BitConverter.ToInt64(bytes));
+            return success;
+        }
+        public bool SshTryReadBoolSync(out bool value) {
+            var success = stream.SshTryReadByteSync(out var by);
+            value = by > 0;
+            return success;
+        }
+        public bool SshTryReadByteStringSync([NotNullWhen(true)] out byte[]? bytes) {
+            bytes = null;
+            if (!stream.SshTryReadUint32Sync(out var len))
+                return false;
+
+            bytes = new byte[len];
+            if (!stream.SshTryReadArraySync(bytes))
+                return false;
+
+            return true;
+        }
+        public bool SshTryReadStringSync([NotNullWhen(true)] out string? str) {
+            str = default;
+            if (!stream.SshTryReadByteStringSync(out var bytes)) return false;
+            try {
+                str = Encoding.UTF8.GetString(bytes);
+                return true;
+            } catch (Exception) {
+                return false;
+            }
+        }
+        public bool SshTryReadBigIntSync(out BigInteger value) {
+            value = default;
+            if (!stream.SshTryReadByteStringSync(out var bytes))
+                return false;
+            value = new(bytes, isBigEndian: true);
+            return true;
+        }
+        public bool SshTryReadNameListSync([NotNullWhen(true)] out NameList? nameList) {
+            nameList = default;
+            if (!stream.SshTryReadStringSync(out var str))
+                return false;
+            if (str is "") {
+
+                nameList = new([]);
+                return true;
+            }
+            var maybeNames = str.Split(',');
+            var names = new List<NameList.Item>(maybeNames.Length);
+            foreach (var name in maybeNames) {
+                if (!NameList.Item.TryParse(name, out var item))
+                    return false;
+                names.Add(item);
+            }
+            nameList = new(names.ToArray());
+            return true;
         }
     }
 }

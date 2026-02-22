@@ -48,6 +48,7 @@ public class SshMessageBuilder {
     public SshMessageBuilder Write(BigInteger value) { items.Add(new BigIntegerItem(value)); return this; }
     public SshMessageBuilder WriteArray(byte[] bytes) { items.Add(new ByteArrayItem(bytes)); return this; }
     public SshMessageBuilder WriteByteString(byte[] bytes) { items.Add(new ByteStringItem(bytes)); return this; }
+    public SshMessageBuilder WriteByteString(IToByteString value) => WriteByteString(value.ToByteString());
 
     public byte[] Build() {
         var length = items.Sum(i => i.Length);

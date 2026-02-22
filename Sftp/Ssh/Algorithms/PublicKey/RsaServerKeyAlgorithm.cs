@@ -14,7 +14,7 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-using System.IO;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Numerics;
 using System.Security.Cryptography;
@@ -32,7 +32,10 @@ public class RsaServerKeyAlgorithm : IServerHostKeyAlgorithm {
         _sftpConfiguration = sftpConfiguration;
     }
 
-    public NameList.Item Name => _inner.Name;
+    public NameList.Item Name => new NameList.GlobalName("rsa-sha2-256");
+    public bool TryParse(byte[] bytes, [NotNullWhen(true)] out IPublicKey? key) {
+        return _inner.TryParse(bytes, out key);
+    }
 
     class RsaPublicKeyPair : IHostKeyPair {
         private readonly RSA _rsaKey;
@@ -56,7 +59,7 @@ public class RsaServerKeyAlgorithm : IServerHostKeyAlgorithm {
             var modulus = new BigInteger(parameters.Modulus, isUnsigned: true, isBigEndian: true);
             var exponent = new BigInteger(parameters.Exponent, isUnsigned: true, isBigEndian: true);
             return new SshMessageBuilder()
-                .Write(ID)
+                .Write("ssh-rsa")
                 .Write(exponent)
                 .Write(modulus)
                 .Build();
@@ -82,8 +85,6 @@ public class RsaServerKeyAlgorithm : IServerHostKeyAlgorithm {
     public byte[] Sign(byte[] unsigned, byte[] key) {
         throw new System.NotImplementedException();
     }
-
-    public bool Verify(byte[] unsigned, byte[] key) => _inner.Verify(unsigned, key);
 
 }
 

@@ -15,6 +15,7 @@
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Numerics;
 using System.Security.Cryptography;
@@ -55,9 +56,9 @@ internal class DiffieHelman {
     }
 
     public async Task<KeyExchangeResult?> ExchangeKeysAsync(SshState state, CancellationToken cancellationToken) {
-        var packetMaybeNull = await state.Stream.SshTryReadPacket(state.MacData.MacAlgorithm, cancellationToken);
+        var packetMaybeNull = await state.Decryptor.ReadPacket(cancellationToken);
         if (packetMaybeNull is not Packet clientInitPacket) return null;
-        if (await KeyExchangeDiffieHelmanInit.TryFromPayload(clientInitPacket.Inner.Payload, cancellationToken) is not { E: var clientExponent }) return null;
+        if (await KeyExchangeDiffieHelmanInit.TryFromPayload(clientInitPacket.Payload, cancellationToken) is not { E: var clientExponent }) return null;
         var order = (Group - 1) / 2;
         var exponent = BigInteger.Random(1, order);
         var exponentiated = BigInteger.ModPow(Generator, exponent, Group);
@@ -66,8 +67,8 @@ internal class DiffieHelman {
         var signature = state.HostKeyPair.Sign(exchangeHash);
         var publicKey = await state.HostKeyPair.GetPublicKeyBytes(cancellationToken);
         var reply = new KeyExchangeDiffieHelmanReply(publicKey, exponentiated, signature);
-        var replyPacket = await reply.ToPacket(state, cancellationToken);
-        await state.Stream.SshWritePacket(replyPacket, cancellationToken);
+        var replyPacket = await state.Encryptor.EncryptPacket(reply, cancellationToken);
+        await state.Stream.SshWriteArray(replyPacket, cancellationToken);
         return new(secret, exchangeHash);
     }
 
@@ -104,6 +105,14 @@ internal record KeyExchangeDiffieHelmanInit(BigInteger E) : IPayload, IClientPay
         if (await stream.SshTryReadByte(cancellationToken) != (byte)Message) return null;
         if (await stream.SshTryReadBigInt(cancellationToken) is not BigInteger e) return null;
         return new(e);
+    }
+    public static bool TryParse(byte[] payload, [NotNullWhen(true)] out KeyExchangeDiffieHelmanInit? packet) {
+        packet = null;
+        var stream = new MemoryStream(payload);
+        if (!stream.SshTryReadByteSync(out var msg) || (Message)msg != Message) return false;
+        if (!stream.SshTryReadBigIntSync(out var e)) return false;
+        packet = new(e);
+        return true;
     }
 }
 internal record KeyExchangeDiffieHelmanReply(byte[] PublicHostKey, BigInteger ServerExponent, byte[] HashSignature) : IServerPayload {

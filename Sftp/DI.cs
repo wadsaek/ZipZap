@@ -18,7 +18,6 @@ using System.Collections.Immutable;
 
 using Microsoft.Extensions.DependencyInjection;
 
-using ZipZap.Sftp.Ssh;
 using ZipZap.Sftp.Ssh.Algorithms;
 
 namespace ZipZap.Sftp;
@@ -26,6 +25,9 @@ namespace ZipZap.Sftp;
 public static class DI {
     extension(IServiceCollection services) {
         public IServiceCollection AddSftp<T>(ISftpConfiguration configuration) where T : ISftpRequestHandler {
+            services.AddScoped<SftpService>();
+            services.AddScoped<Transport>();
+            services.AddScoped<IPacketHandlerFactory,PacketHandlerFactory>();
             services.AddScoped<IProvider<IEncryptionAlgorithm>, EncryptionAlgorithmProvider>();
             services.AddScoped<Aes128GcmEncryptionAlgorithm>();
 
@@ -42,11 +44,12 @@ public static class DI {
             services.AddSingleton<ISftpRequestHandler, SftpHandler>();
 
             services.AddSingleton(configuration);
-            services.AddHostedService<SftpService>();
+            services.AddHostedService<SftpBackgroundService>();
             return services;
         }
     }
 }
+
 
 internal class ServerHostKeyProvider : IProvider<IServerHostKeyAlgorithm> {
     private readonly RsaServerKeyAlgorithm _rsaServerKeyAlgorithm;
@@ -58,6 +61,9 @@ internal class ServerHostKeyProvider : IProvider<IServerHostKeyAlgorithm> {
     public IImmutableList<IServerHostKeyAlgorithm> Items => [_rsaServerKeyAlgorithm];
 }
 
+interface IPublicKeyProvider:IProvider<IPublicKeyAlgorithm> {
+    public IPublicKey? TryGetPublicKey(byte[] key);
+}
 internal class PublicKeyProvider : IProvider<IPublicKeyAlgorithm> {
     private readonly RsaPublicKeyAlgorithm _rsaPublicKeyAlgorithm;
 
@@ -66,6 +72,15 @@ internal class PublicKeyProvider : IProvider<IPublicKeyAlgorithm> {
     }
 
     public IImmutableList<IPublicKeyAlgorithm> Items => [_rsaPublicKeyAlgorithm];
+
+    public bool TryGetPublicKey(byte[] key, out  IPublicKey? publicKey) {
+        publicKey = null;
+        foreach (var alg in Items) {
+            if (alg.TryParse(key, out publicKey)) return true;
+        }
+
+        return false;
+    }
 }
 internal class CompressionProvider : IProvider<ICompressionAlgorithm> {
     public IImmutableList<ICompressionAlgorithm> Items => [new NoneCompression()];
@@ -95,6 +110,3 @@ internal class EncryptionAlgorithmProvider : IProvider<IEncryptionAlgorithm> {
     public IImmutableList<IEncryptionAlgorithm> Items => [_aesGcm];
 }
 
-internal class Aes128GcmEncryptionAlgorithm : IEncryptionAlgorithm {
-    public NameList.Item Name => new NameList.LocalName("aes128-gcm", "openssh.com");
-}

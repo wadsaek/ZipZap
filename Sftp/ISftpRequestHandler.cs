@@ -14,9 +14,22 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+using System.Threading.Tasks;
+
+using ZipZap.LangExt.Helpers;
+using ZipZap.Sftp.Ssh.Algorithms;
+
 namespace ZipZap.Sftp;
 
 public interface ISftpRequestHandler {
-
+    public Task<Result<Unit, LoginError>> TryLoginPublicKey(string username, IPublicKey userPublicKey, IHostKeyPair serverHostKey);
+    public Task<Result<Unit, LoginError>> TryLoginPassword(string username, string password);
 }
 
+public class Unit {
+}
+
+public interface IPublicKey {
+    bool Verify(byte[] signature, byte[] data);
+}
+public class LoginError { }

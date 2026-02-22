@@ -1,4 +1,4 @@
-// IPayload.cs - Part of the ZipZap project for storing files online
+// Aes128GcmEncryptionAlgorithm.cs - Part of the ZipZap project for storing files online
 //     Copyright (C) 2026  Barenboim Esther wadsaek@gmail.com
 //
 //     This program is free software: you can redistribute it and/or modify
@@ -14,25 +14,24 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-using System.Diagnostics.CodeAnalysis;
+using System.IO;
 
-namespace ZipZap.Sftp.Ssh;
+namespace ZipZap.Sftp.Ssh.Algorithms;
 
-public interface IPayload {
-    static abstract Numbers.Message Message { get; }
-}
-public interface IServerPayload : IPayload {
-    public byte[] ToPayload();
-}
-public interface IClientPayload<T> : IPayload
-where T : IClientPayload<T> {
-    public abstract static bool TryParse(byte[] payload, [NotNullWhen(true)] out T? value);
-}
-public static class PayloadExt {
-    extension(IServerPayload payload) {
-        public Packet ToPacket(uint alignment) {
-            var bytes = payload.ToPayload();
-            return new(bytes, alignment);
-        }
+internal class Aes128GcmEncryptionAlgorithm : IEncryptionAlgorithm {
+    public NameList.Item Name => new NameList.LocalName("aes128-gcm", "openssh.com");
+
+    public bool OverridesMac => true;
+
+    public int IVLength => 12;
+
+    public int KeyLength => 16;
+
+    public IDecryptor GetDecryptor(Stream stream, byte[] IV, byte[] Key, IMacValidator mac) {
+        throw new System.NotImplementedException();
+    }
+
+    public IEncryptor GetEncryptor(byte[] IV, byte[] Key, IMacGenerator mac) {
+        throw new System.NotImplementedException();
     }
 }
