@@ -28,12 +28,12 @@ namespace ZipZap.Sftp;
 
 internal class SftpService {
 
-    private readonly ISftpRequestHandler _handler;
+    private readonly ISftpRequestHandlerFactory _handler;
     private readonly ISftpConfiguration _configuration;
     private readonly ILogger<SftpService> _logger;
     private readonly Transport _transport;
 
-    public SftpService(Transport transport, ILogger<SftpService> logger, ISftpConfiguration configuration, ISftpRequestHandler handler) {
+    public SftpService(Transport transport, ILogger<SftpService> logger, ISftpConfiguration configuration, ISftpRequestHandlerFactory handler) {
         _transport = transport;
         _logger = logger;
         _configuration = configuration;

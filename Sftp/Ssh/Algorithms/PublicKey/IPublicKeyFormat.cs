@@ -18,3 +18,10 @@ namespace ZipZap.Sftp.Ssh.Algorithms;
 
 public interface IPublicKeyFormat { }
 public class RsaPubicKeyFormat : IPublicKeyFormat { }
+
+public interface IPublicKey {
+    byte[] ToByteString();
+    bool Verify(byte[] signature, byte[] data);
+    string ToAsciiString();
+    string AlgorithmName { get; }
+}

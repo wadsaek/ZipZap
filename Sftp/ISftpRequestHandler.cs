@@ -14,6 +14,7 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+using System.Threading;
 using System.Threading.Tasks;
 
 using ZipZap.LangExt.Helpers;
@@ -21,15 +22,42 @@ using ZipZap.Sftp.Ssh.Algorithms;
 
 namespace ZipZap.Sftp;
 
+public interface ISftpRequestHandlerFactory {
+    public ISftpLoginHandler CreateLogin();
+}
+
+public interface ISftpLoginHandler {
+    public Task<Result<ISftpRequestHandler, LoginError>> TryLoginPublicKey(
+        string username,
+        IPublicKey userPublicKey,
+        IHostKeyPair serverHostKey,
+        CancellationToken cancellationToken);
+
+    public Task<Result<ISftpRequestHandler, LoginError>> TryLoginPassword(
+        string username,
+        string password,
+        CancellationToken cancellationToken);
+}
+
 public interface ISftpRequestHandler {
-    public Task<Result<Unit, LoginError>> TryLoginPublicKey(string username, IPublicKey userPublicKey, IHostKeyPair serverHostKey);
-    public Task<Result<Unit, LoginError>> TryLoginPassword(string username, string password);
 }
 
 public class Unit {
 }
 
-public interface IPublicKey {
-    bool Verify(byte[] signature, byte[] data);
+public abstract record LoginError {
+    public sealed record HostPublicKeyNotAuthorized : LoginError {
+        public override string ToString() => "Host public key is not recognized by the auth server";
+    }
+
+    public sealed record WrongCredentials : LoginError {
+        public override string ToString() => "One or more fields is wrong";
+    }
+    public sealed record EmptyCredentials : LoginError {
+        public override string ToString() => "One or more fields is empty";
+    }
+    public sealed record SignatureNotProvided(IPublicKey PublicKey) : LoginError {
+        public override string ToString() => "Signature wasn't provided";
+    }
+    public sealed record Other : LoginError;
 }
-public class LoginError { }

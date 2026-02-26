@@ -34,10 +34,10 @@ public class NoEncryptionAlgorithm : IEncryptionAlgorithm {
         return new NoEncryptionDecryptor(stream, mac);
     }
 
-    public IEncryptor GetEncryptor(byte[] IV, byte[] Key, IMacGenerator mac) {
+    public IEncryptor GetEncryptor(Stream stream, byte[] IV, byte[] Key, IMacGenerator mac) {
         if (IV.Length != IVLength) throw new ArgumentException($"{nameof(IV)} should be of length {IVLength}");
         if (Key.Length != KeyLength) throw new ArgumentException($"{nameof(Key)} should be of length {KeyLength}");
-        return new NoEncryptionEncryptor(mac);
+        return new NoEncryptionEncryptor(stream,mac);
     }
     private class NoEncryptionDecryptor : IDecryptor {
         private readonly Stream _stream;
@@ -75,22 +75,23 @@ public class NoEncryptionAlgorithm : IEncryptionAlgorithm {
 
     private class NoEncryptionEncryptor : IEncryptor {
         private readonly IMacGenerator _macGenerator;
+        private readonly Stream _stream;
 
-        public NoEncryptionEncryptor(IMacGenerator macGenerator) {
+        public NoEncryptionEncryptor(Stream stream, IMacGenerator macGenerator) {
+            _stream = stream;
             _macGenerator = macGenerator;
         }
 
         public uint MacSequential => _macGenerator.GetCount();
 
-        public async Task<byte[]> EncryptPacket<T>(T serverPayload, CancellationToken cancellationToken)
+        public async Task SendPacket<T>(T serverPayload, CancellationToken cancellationToken)
         where T : IServerPayload {
-            Console.WriteLine("sending packet {0}", T.Message);
             var packet = serverPayload.ToPacket(8);
             var mac = await _macGenerator.Generate(packet, cancellationToken);
             var output = new byte[4 + packet.Length + mac.Length];
             packet.WriteTo(output);
             mac.CopyTo(output, packet.Length);
-            return output;
+            await _stream.SshWriteArray(output,cancellationToken);
         }
     }
 }

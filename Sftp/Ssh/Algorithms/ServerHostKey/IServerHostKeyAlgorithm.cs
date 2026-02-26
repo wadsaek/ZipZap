@@ -20,3 +20,8 @@ public interface IServerHostKeyAlgorithm : IPublicKeyAlgorithm {
     public IHostKeyPair GetHostKeyPair();
 }
 
+public interface IHostKeyPair {
+    IPublicKey GetPublicKey();
+    byte[] Sign(byte[] unsigned);
+}
+

@@ -15,60 +15,9 @@
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System.Diagnostics.CodeAnalysis;
-using System.IO;
-using System.Security.Cryptography;
-
 
 namespace ZipZap.Sftp.Ssh.Algorithms;
 
 public interface IPublicKeyAlgorithm : INamed {
     public bool TryParse(byte[] bytes, [NotNullWhen(true)] out IPublicKey? key);
-}
-
-public class RsaPublicKeyAlgorithm() : IPublicKeyAlgorithm {
-    public NameList.Item Name => new NameList.GlobalName("ssh-rsa");
-
-    public class RsaPublicKey : IPublicKey {
-        public RsaPublicKey(RSA rsa) {
-            _rsa = rsa;
-        }
-        private readonly RSA _rsa;
-
-        public bool Verify(byte[] signature, byte[] data) {
-            var stream = new MemoryStream(signature);
-            if (!stream.SshTryReadStringSync(out var str)) return false;
-            HashAlgorithmName? name = str switch {
-                "rsa-sha2-256" => HashAlgorithmName.SHA256,
-                "rsa-sha2-512" => HashAlgorithmName.SHA512,
-                _ => null
-            };
-            if (name is null) return false;
-            if (!stream.SshTryReadByteStringSync(out var blob))
-                return false;
-            return _rsa.VerifyData(data, blob, name.Value, RSASignaturePadding.Pkcs1);
-        }
-    }
-
-    public static bool TryParseRsa(byte[] bytes, [NotNullWhen(true)] out RSA? rsa) {
-
-        var stream = new MemoryStream(bytes);
-        rsa = null;
-        if (!stream.SshTryReadStringSync(out var str)) return false;
-        if (str != "ssh-rsa") return false;
-        if (!stream.SshTryReadBigIntSync(out var exponent)) return false;
-        if (!stream.SshTryReadBigIntSync(out var modulus)) return false;
-        var rsaParams = new RSAParameters {
-            Exponent = exponent.ToByteArray(isUnsigned: true, isBigEndian: true),
-            Modulus = modulus.ToByteArray(isUnsigned: true, isBigEndian: true)
-        };
-        rsa = RSA.Create(rsaParams);
-        return true;
-    }
-    public bool TryParse(byte[] bytes, [NotNullWhen(true)] out IPublicKey? key) {
-        key = null;
-        if (!TryParseRsa(bytes, out var rsa)) return false;
-        key = new RsaPublicKey(rsa);
-        return true;
-    }
-    public HashAlgorithm HashAlgorithm => SHA256.Create();
 }

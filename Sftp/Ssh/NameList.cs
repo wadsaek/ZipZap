@@ -14,6 +14,7 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+using System.ComponentModel;
 using System.Linq;
 using System.Text;
 
@@ -46,5 +47,13 @@ public record NameList(NameList.Item[] Names) : IToByteString {
     public byte[] ToByteString() {
         var str = ToString();
         return Encoding.ASCII.GetBytes(str);
+    }
+
+    internal int GetByteStringSize() {
+        return 4 + Names.Sum(a => a switch {
+            GlobalName(var name) => name.Length,
+            LocalName(var local, var domain) => local.Length + 1 + domain.Length,
+            _ => throw new InvalidEnumArgumentException()
+        }) + Names.Length - 1;
     }
 }

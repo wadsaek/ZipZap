@@ -16,32 +16,25 @@
 
 using System.IO;
 using System.Security.Cryptography;
-using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-using ZipZap.LangExt.Helpers;
 using ZipZap.Sftp;
-using ZipZap.Sftp.Ssh.Algorithms;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.AddConsole();
-builder.Services.AddSingleton<ISftpRequestHandler, SftpHandler>();
-builder.Services.AddSftp<SftpHandler>(new SftpConfiguration(
+builder.Services.AddSingleton<ISftpRequestHandlerFactory, SftpHandlerFactory>();
+builder.Services.AddSftp<SftpHandlerFactory>(new SftpConfiguration(
     builder.Configuration["RSA:PrivateKey"]
     ?? throw new System.Exception("No Private key"))
 );
 var app = builder.Build();
 app.Run();
 
-internal class SftpHandler : ISftpRequestHandler {
-    public async Task<Result<Unit, LoginError>> TryLoginPublicKey(string username, IPublicKey userPublicKey, IHostKeyPair serverHostKey) {
-        throw new System.NotImplementedException();
-    }
-
-    public async Task<Result<Unit, LoginError>> TryLoginPassword(string username, string password) {
+internal class SftpHandlerFactory : ISftpRequestHandlerFactory {
+    public ISftpLoginHandler CreateLogin() {
         throw new System.NotImplementedException();
     }
 }

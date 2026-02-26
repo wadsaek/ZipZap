@@ -37,6 +37,7 @@ public class SshMessageBuilder {
     private sealed record Int64Item(long Value) : SshItem { public override int Length => 8; }
     private sealed record StringItem(string Value) : SshItem { public override int Length => 4 + Value.Length; }
     private sealed record BigIntegerItem(BigInteger Value) : SshItem { public override int Length => 4 + Value.GetByteCount(); }
+    private sealed record NameListItem(NameList Value) : SshItem { public override int Length => Value.GetByteStringSize(); }
 
     public SshMessageBuilder Write(byte value) { items.Add(new ByteItem(value)); return this; }
     public SshMessageBuilder Write(string value) { items.Add(new StringItem(value)); return this; }
@@ -46,6 +47,7 @@ public class SshMessageBuilder {
     public SshMessageBuilder Write(long value) { items.Add(new Int64Item(value)); return this; }
     public SshMessageBuilder Write(int value) { items.Add(new Int32Item(value)); return this; }
     public SshMessageBuilder Write(BigInteger value) { items.Add(new BigIntegerItem(value)); return this; }
+    public SshMessageBuilder Write(NameList value) { items.Add(new NameListItem(value)); return this; }
     public SshMessageBuilder WriteArray(byte[] bytes) { items.Add(new ByteArrayItem(bytes)); return this; }
     public SshMessageBuilder WriteByteString(byte[] bytes) { items.Add(new ByteStringItem(bytes)); return this; }
     public SshMessageBuilder WriteByteString(IToByteString value) => WriteByteString(value.ToByteString());
@@ -86,6 +88,9 @@ public class SshMessageBuilder {
                     break;
                 case BigIntegerItem(var value):
                     stream.SshWriteBigIntSync(value);
+                    break;
+                case NameListItem(var namelist):
+                    stream.SshWriteNameListSync(namelist);
                     break;
             }
         }

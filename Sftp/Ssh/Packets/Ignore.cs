@@ -1,4 +1,4 @@
-// Unimplemented.cs - Part of the ZipZap project for storing files online
+// Ignore.cs - Part of the ZipZap project for storing files online
 //     Copyright (C) 2026  Barenboim Esther wadsaek@gmail.com
 //
 //     This program is free software: you can redistribute it and/or modify
@@ -16,25 +16,34 @@
 
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Security.Cryptography;
 
 using ZipZap.Sftp.Ssh.Numbers;
 
 namespace ZipZap.Sftp.Ssh;
 
-internal record Unimplemented(uint Sequential) : IServerPayload, IClientPayload<Unimplemented> {
-    public static Message Message => Message.Unimplemented;
+internal record Ignore(byte[] Data) : IServerPayload, IClientPayload<Ignore> {
+    public static Message Message => Message.Ignore;
 
-    public static bool TryParse(byte[] payload, [NotNullWhen(true)] out Unimplemented? value) {
-        value = null;
+    public static Ignore Random() {
+        var size = RandomNumberGenerator.GetInt32(1000);
+        var data = RandomNumberGenerator.GetBytes(size);
+        return new(data);
+    }
+
+    public static bool TryParse(byte[] payload, [NotNullWhen(true)] out Ignore? packet) {
+        packet = null;
         var stream = new MemoryStream(payload);
-        if (!stream.SshTryReadByteSync(out var msg) || (Message)msg != Message) return false;
-        if (!stream.SshTryReadUint32Sync(out var sequential)) return false;
-        value = new(sequential);
+        if (!(stream.SshTryReadByteSync(out var msg) && msg != (byte)Message)) return false;
+        if (!stream.SshTryReadByteStringSync(out var data)) return false;
+        packet = new(data);
         return true;
-
     }
 
     public byte[] ToPayload() {
-        return new SshMessageBuilder().Write((byte)Message).Write(Sequential).Build();
+        return new SshMessageBuilder()
+             .Write((byte)Message)
+             .WriteByteString(Data)
+             .Build();
     }
 }

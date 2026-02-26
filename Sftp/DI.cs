@@ -19,29 +19,34 @@ using System.Collections.Immutable;
 using Microsoft.Extensions.DependencyInjection;
 
 using ZipZap.Sftp.Ssh.Algorithms;
+using ZipZap.Sftp.Ssh.Services;
 
 namespace ZipZap.Sftp;
 
 public static class DI {
     extension(IServiceCollection services) {
-        public IServiceCollection AddSftp<T>(ISftpConfiguration configuration) where T : ISftpRequestHandler {
+        public IServiceCollection AddSftp<T>(ISftpConfiguration configuration) where T : class, ISftpRequestHandlerFactory {
             services.AddScoped<SftpService>();
             services.AddScoped<Transport>();
-            services.AddScoped<IPacketHandlerFactory, PacketHandlerFactory>();
+            services.AddScoped<KeyExchangeProcess>();
+            services.AddScoped<ISshConnectionFactory, PacketHandlerFactory>();
+            services.AddScoped<IAuthServiceFactory, AuthServiceFactory>();
+
             services.AddScoped<IProvider<IEncryptionAlgorithm>, EncryptionAlgorithmProvider>();
             services.AddScoped<Aes128GcmEncryptionAlgorithm>();
 
             services.AddScoped<IProvider<IMacAlgorithm>, MacAlgorithmProvider>();
             services.AddScoped<HMacSha2256EtmOpenSsh>();
 
+            services.AddScoped<IProvider<IPublicKeyAlgorithm>, PublicKeyProvider>();
             services.AddScoped<RsaPublicKeyAlgorithm>();
             services.AddScoped<RsaServerKeyAlgorithm>();
+
             services.AddScoped<IProvider<IKeyExchangeAlgorithm>, KeyExchangeAlgorithmProvider>();
-            services.AddScoped<IProvider<IPublicKeyAlgorithm>, PublicKeyProvider>();
             services.AddScoped<IProvider<IServerHostKeyAlgorithm>, ServerHostKeyProvider>();
             services.AddScoped<IProvider<ICompressionAlgorithm>, CompressionProvider>();
 
-            services.AddSingleton<ISftpRequestHandler, SftpHandler>();
+            services.AddScoped<ISftpRequestHandlerFactory, T>();
 
             services.AddSingleton(configuration);
             services.AddHostedService<SftpBackgroundService>();
@@ -49,7 +54,6 @@ public static class DI {
         }
     }
 }
-
 
 internal class ServerHostKeyProvider : IProvider<IServerHostKeyAlgorithm> {
     private readonly RsaServerKeyAlgorithm _rsaServerKeyAlgorithm;
@@ -61,7 +65,7 @@ internal class ServerHostKeyProvider : IProvider<IServerHostKeyAlgorithm> {
     public IImmutableList<IServerHostKeyAlgorithm> Items => [_rsaServerKeyAlgorithm];
 }
 
-interface IPublicKeyProvider : IProvider<IPublicKeyAlgorithm> {
+internal interface IPublicKeyProvider : IProvider<IPublicKeyAlgorithm> {
     public IPublicKey? TryGetPublicKey(byte[] key);
 }
 internal class PublicKeyProvider : IProvider<IPublicKeyAlgorithm> {

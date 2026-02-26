@@ -61,6 +61,7 @@ public enum Message : byte {
     UserauthFailure = 51,
     UserauthSuccess = 52,
     UserauthBanner = 53,
+    UserauthPkOk = 60,
     GlobalRequest = 80,
     RequestSuccess = 81,
     RequestFailure = 82,

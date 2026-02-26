@@ -26,7 +26,7 @@ public interface IEncryptionAlgorithm : INamed {
     public int KeyLength { get; }
 
     ///<returns>A stateful encryptor</returns>
-    public IEncryptor GetEncryptor(byte[] IV, byte[] Key, IMacGenerator mac);
+    public IEncryptor GetEncryptor(Stream stream, byte[] IV, byte[] Key, IMacGenerator mac);
 
     ///<returns>A stateful decryptor</returns>
     public IDecryptor GetDecryptor(Stream stream, byte[] IV, byte[] Key, IMacValidator mac);
@@ -48,7 +48,7 @@ public interface IEncryptor {
     // ```cs
     // public Task<byte[]> EncryptPacket(Packet packet, CancellationToken cancellationToken);
     // ```
-    public Task<byte[]> EncryptPacket<TPayload>(TPayload serverPayload, CancellationToken cancellationToken)
+    public Task SendPacket<TPayload>(TPayload serverPayload, CancellationToken cancellationToken)
     where TPayload : IServerPayload;
 
     public uint MacSequential { get; }

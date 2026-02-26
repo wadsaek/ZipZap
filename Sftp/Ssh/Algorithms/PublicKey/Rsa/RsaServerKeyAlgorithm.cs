@@ -18,8 +18,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Numerics;
 using System.Security.Cryptography;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace ZipZap.Sftp.Ssh.Algorithms;
 
@@ -48,23 +46,8 @@ public class RsaServerKeyAlgorithm : IServerHostKeyAlgorithm {
             _hashAlgorithm = hashAlgorithm;
         }
 
-        public async Task<byte[]> GetPublicKeyBytes(CancellationToken cancellationToken) {
-            // NOTE:
-            // these are encoded as unsigned big-endian.
-            // You can verify this through trial and error.
-            // There is 0 reason Microsoft can't document it.
-            // There is even less reason for this to be the EXACT OPPOSITE of
-            // the default BigInteger constructor's parameters.
-            var parameters = _rsaKey.ExportParameters(false);
-            var modulus = new BigInteger(parameters.Modulus, isUnsigned: true, isBigEndian: true);
-            var exponent = new BigInteger(parameters.Exponent, isUnsigned: true, isBigEndian: true);
-            return new SshMessageBuilder()
-                .Write("ssh-rsa")
-                .Write(exponent)
-                .Write(modulus)
-                .Build();
-
-        }
+        public IPublicKey GetPublicKey()
+            => new RsaPublicKeyAlgorithm.RsaPublicKey(_rsaKey);
 
         public byte[] Sign(byte[] unsigned) {
             var hash = _hashAlgorithm.ComputeHash(unsigned);

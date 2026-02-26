@@ -28,7 +28,7 @@ public record Packet(byte[] Payload, byte[] Padding) : IToByteString {
     public uint BufferLength => Length + 4;
 
     public Packet(byte[] payload, uint alignment, int offset = 0) : this(payload, []) {
-        var paddingLength = 2 * alignment - ((BufferLength - offset) % alignment);
+        var paddingLength = 2 * alignment - (BufferLength - offset) % alignment;
         Padding = RandomNumberGenerator.GetBytes((int)paddingLength);
     }
 
@@ -43,7 +43,7 @@ public record Packet(byte[] Payload, byte[] Padding) : IToByteString {
     }
 
     public byte[] ToByteString() {
-        byte[] buffer = new byte[BufferLength];
+        var buffer = new byte[BufferLength];
         WriteTo(buffer);
         return buffer;
     }

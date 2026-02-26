@@ -1,4 +1,4 @@
-// SshState.cs - Part of the ZipZap project for storing files online
+// UserauthFailure.cs - Part of the ZipZap project for storing files online
 //     Copyright (C) 2026  Barenboim Esther wadsaek@gmail.com
 //
 //     This program is free software: you can redistribute it and/or modify
@@ -14,23 +14,17 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-using System.IO;
+using ZipZap.Sftp.Ssh.Numbers;
 
-using ZipZap.Sftp.Ssh.Algorithms;
+namespace ZipZap.Sftp.Ssh.Auth;
 
-namespace ZipZap.Sftp;
+public sealed record UserauthFailure(NameList Methods, bool Partial) : IServerPayload {
+    public static Message Message => Message.UserauthFailure;
 
-public record SshState(
-    byte[] SessionId,
-    IEncryptor Encryptor,
-    IDecryptor Decryptor,
-    byte[] ClientKexInit, byte[] ServerKexInit
-) { }
-
-public record KeyExchangeInput(
-    Stream Stream,
-    ITransPacketReader Reader,
-    byte[]? SessionId,
-    IdenitificationStrings IdenitificationStrings
-);
-
+    public byte[] ToPayload() {
+        return new SshMessageBuilder().Write((byte)Message)
+            .Write(Methods)
+            .Write(Partial)
+            .Build();
+    }
+}

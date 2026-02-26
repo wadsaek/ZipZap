@@ -1,4 +1,4 @@
-// SshState.cs - Part of the ZipZap project for storing files online
+// ServiceRequest.cs - Part of the ZipZap project for storing files online
 //     Copyright (C) 2026  Barenboim Esther wadsaek@gmail.com
 //
 //     This program is free software: you can redistribute it and/or modify
@@ -14,23 +14,22 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 
-using ZipZap.Sftp.Ssh.Algorithms;
+using ZipZap.Sftp.Ssh.Numbers;
 
-namespace ZipZap.Sftp;
+namespace ZipZap.Sftp.Ssh;
 
-public record SshState(
-    byte[] SessionId,
-    IEncryptor Encryptor,
-    IDecryptor Decryptor,
-    byte[] ClientKexInit, byte[] ServerKexInit
-) { }
+public record ServiceRequest(string ServiceName) : IClientPayload<ServiceRequest> {
+    public static Message Message => Message.ServiceRequest;
 
-public record KeyExchangeInput(
-    Stream Stream,
-    ITransPacketReader Reader,
-    byte[]? SessionId,
-    IdenitificationStrings IdenitificationStrings
-);
-
+    public static bool TryParse(byte[] payload, [NotNullWhen(true)] out ServiceRequest? value) {
+        value = null;
+        var stream = new MemoryStream(payload);
+        if (!stream.SshTryReadByteSync(out var msg) || (Message)msg != Message) return false;
+        if (!stream.SshTryReadStringSync(out var name)) return false;
+        value = new(name);
+        return true;
+    }
+}

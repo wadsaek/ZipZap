@@ -40,10 +40,10 @@ internal class Aes128GcmEncryptionAlgorithm : IEncryptionAlgorithm {
         return new Aes128GcmDecryptor(stream, mac, IV, Key);
     }
 
-    public IEncryptor GetEncryptor(byte[] IV, byte[] Key, IMacGenerator mac) {
+    public IEncryptor GetEncryptor(Stream stream, byte[] IV, byte[] Key, IMacGenerator mac) {
         if (IV.Length != IVLength) throw new ArgumentException($"{nameof(IV)} should be of length {IVLength}");
         if (Key.Length != KeyLength) throw new ArgumentException($"{nameof(Key)} should be of length {KeyLength}");
-        return new Aes128GcmEncryptor(mac, IV, Key);
+        return new Aes128GcmEncryptor(stream, mac, IV, Key);
     }
 
     private class Aes128GcmDecryptor : IDecryptor {
@@ -87,9 +87,9 @@ internal class Aes128GcmEncryptionAlgorithm : IEncryptionAlgorithm {
             try {
                 decryptor.Decrypt(nonce, encrypted, mac, plaintext, associated);
 #if NET8_0_OR_GREATER
-            } catch (AuthenticationTagMismatchException e) {
+            } catch (AuthenticationTagMismatchException) {
 #else
-            } catch (CryptographicException e){
+            } catch (CryptographicException){
 #endif
                 return null;
             }
@@ -105,13 +105,15 @@ internal class Aes128GcmEncryptionAlgorithm : IEncryptionAlgorithm {
     }
 
     private class Aes128GcmEncryptor : IEncryptor {
+        private readonly Stream _stream;
         private readonly IMacGenerator _mac;
         private readonly byte[] _key;
 
         private readonly uint _fixed;
         private ulong _incrementing;
 
-        public Aes128GcmEncryptor(IMacGenerator mac, byte[] iv, byte[] key) {
+        public Aes128GcmEncryptor(Stream stream, IMacGenerator mac, byte[] iv, byte[] key) {
+            _stream = stream;
             _mac = mac;
             _key = key;
             var ivstream = new MemoryStream(iv);
@@ -121,7 +123,7 @@ internal class Aes128GcmEncryptionAlgorithm : IEncryptionAlgorithm {
 
         public uint MacSequential => throw new NotImplementedException();
 
-        public Task<byte[]> EncryptPacket<TPayload>(TPayload serverPayload, CancellationToken cancellationToken) where TPayload : IServerPayload {
+        public async Task SendPacket<TPayload>(TPayload serverPayload, CancellationToken cancellationToken) where TPayload : IServerPayload {
             _mac.IncrementCounter();
 
             var packet = serverPayload.ToPacket(16, 4);
@@ -151,7 +153,7 @@ internal class Aes128GcmEncryptionAlgorithm : IEncryptionAlgorithm {
                 .WriteArray(encrypted)
                 .WriteArray(mac)
                 .Build();
-            return Task.FromResult(result);
+            await _stream.SshWriteArray(result,cancellationToken);
         }
     }
 }
