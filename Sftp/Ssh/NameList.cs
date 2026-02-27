@@ -14,7 +14,10 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+using System;
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 
@@ -55,5 +58,23 @@ public record NameList(NameList.Item[] Names) : IToByteString {
             LocalName(var local, var domain) => local.Length + 1 + domain.Length,
             _ => throw new InvalidEnumArgumentException()
         }) + Names.Length - 1;
+    }
+
+    internal static bool TryParse(string str, [NotNullWhen(true)] out NameList? nameList) {
+            nameList = null;
+
+            if (str is "") {
+                nameList = new([]);
+                return true;
+            }
+            var maybeNames = str.Split(',');
+            var names = new List<Item>(maybeNames.Length);
+            foreach (var name in maybeNames) {
+                if (!Item.TryParse(name, out var item))
+                    return false;
+                names.Add(item);
+            }
+            nameList = new(names.ToArray());
+            return true;
     }
 }

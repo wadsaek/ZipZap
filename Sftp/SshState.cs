@@ -24,7 +24,8 @@ public record SshState(
     byte[] SessionId,
     IEncryptor Encryptor,
     IDecryptor Decryptor,
-    byte[] ClientKexInit, byte[] ServerKexInit
+    byte[] ClientKexInit, byte[] ServerKexInit,
+    bool SupportsExtensions
 ) { }
 
 public record KeyExchangeInput(

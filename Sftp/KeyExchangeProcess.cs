@@ -98,12 +98,16 @@ public class KeyExchangeProcess {
 
         var keys = GenerateKeys(secret, exchangeHash, exchangeHash, algs.KeyExchangeAlgorithm);
         var (newEncryptor, newDecryptor) = GenerateEncryptors(input, algs, keys);
+
+        var supportsExtensions = clientKexPayload.KexAlgorithms.Names.Contains(new NameList.GlobalName("ext-info-c"));
+
         var sshState = new SshState(
             input.SessionId ?? exchangeHash,
             newEncryptor,
             newDecryptor,
             clientKexPayloadRaw,
-            serverKexPayload
+            serverKexPayload,
+            supportsExtensions
         );
         return sshState;
     }
@@ -133,6 +137,8 @@ public class KeyExchangeProcess {
         return (newEncryptor, newDecryptor);
     }
     private AlgorithmCollection? GetAlgorithmsFromKexInit(KeyExchange clientKexPayload, KeyExchange serverKexPayload) {
+        if (_logger.IsEnabled(LogLevel.Information))
+            _logger.LogInformation("Recieved kex algorithms: {KexAlgorithms}", clientKexPayload.KexAlgorithms);
 
         var keyExchangeAlgorithmName = clientKexPayload.KexAlgorithms.Names.FirstOrDefault(a => Enumerable.Contains(serverKexPayload.KexAlgorithms.Names, a));
         if (keyExchangeAlgorithmName is null) {
@@ -229,9 +235,11 @@ public class KeyExchangeProcess {
         var encryptionAlgorithmsList = encryptionAlgorithms.ToNameList();
         var macAlgorithmsNameList = macAlgorithms.ToNameList();
         var compressionAlgorithmsNameList = compressionAlgorithms.ToNameList();
+        var kexNames = keyExchangeAlgorithms.ToNameList();
+        kexNames = kexNames with { Names = [.. kexNames.Names, new NameList.GlobalName("ext-info-s")] };
         return new(
             cookie,
-            keyExchangeAlgorithms.ToNameList(),
+            kexNames,
             serverHostKeyAlgorithms.ToNameList(),
             encryptionAlgorithmsList,
             encryptionAlgorithmsList,

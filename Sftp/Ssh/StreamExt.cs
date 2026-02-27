@@ -298,22 +298,11 @@ public static class SshStreamExt {
         }
         public bool SshTryReadNameListSync([NotNullWhen(true)] out NameList? nameList) {
             nameList = default;
+
             if (!stream.SshTryReadStringSync(out var str))
                 return false;
-            if (str is "") {
 
-                nameList = new([]);
-                return true;
-            }
-            var maybeNames = str.Split(',');
-            var names = new List<NameList.Item>(maybeNames.Length);
-            foreach (var name in maybeNames) {
-                if (!NameList.Item.TryParse(name, out var item))
-                    return false;
-                names.Add(item);
-            }
-            nameList = new(names.ToArray());
-            return true;
+            return NameList.TryParse(str,out nameList);
         }
     }
 }

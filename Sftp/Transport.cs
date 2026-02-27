@@ -16,6 +16,7 @@
 
 using System;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
@@ -36,17 +37,19 @@ internal class Transport {
     private readonly ISshConnectionFactory _connectionFactory;
     private readonly KeyExchangeProcess _kexProcess;
     private readonly IAuthServiceFactory _loginFactory;
+    private readonly IProvider<IPublicKeyAlgorithm> _publicKeyAlgs;
 
     public Transport(
         ILogger<Transport> logger,
         ISshConnectionFactory handler,
         IAuthServiceFactory loginFactory,
-        KeyExchangeProcess kexProcess
-    ) {
+        KeyExchangeProcess kexProcess,
+        IProvider<IPublicKeyAlgorithm> publicKeyAlgs) {
         _logger = logger;
         _connectionFactory = handler;
         _kexProcess = kexProcess;
         _loginFactory = loginFactory;
+        _publicKeyAlgs = publicKeyAlgs;
     }
 
     private class TransportClient : ITransportClient {
@@ -102,11 +105,20 @@ internal class Transport {
         var state = await _kexProcess.MakeKeyExchange(input, null, cancellationToken);
 
         if (state is null) return;
+        if (state.SupportsExtensions) {
+            Extension[] extensions = [
+                new Extension.ServerSigAlgs(new(_publicKeyAlgs.Items.SelectMany(i=>i.SupportedSignatureAlgs).ToArray())),
+                new Extension.NoFlowControl(true)
+            ];
+            await state.Encryptor.SendPacket(new ExtInfo(extensions), cancellationToken);
+        }
         var transportClient = new TransportClient(state);
-        ISshConnection? connectionService = null;
+        ISshConnection? connectionService;
         IAuthService? loginService = null;
 
         ISshService? currentService = null;
+        bool firstPacketRecieved = false;
+        bool noFlowControl = false;
 
         while (await state.Decryptor.ReadPacket(cancellationToken) is Packet packet) {
             var payload = packet.Payload;
@@ -115,6 +127,28 @@ internal class Transport {
             if (_logger.IsEnabled(LogLevel.Information))
                 _logger.LogInformation("Recieved packet {Msg}", msg);
             switch (msg.GetMessageCategory()) {
+                case MessageCategory.ExtInfo: {
+                        if (firstPacketRecieved) {
+                            var disconnect = new Disconnect(
+                                DisconnectCode.ProtocolError,
+                                "Recieved extensions after first packet"
+                            );
+                            await state.Encryptor.SendPacket(disconnect, cancellationToken);
+                            return;
+                        }
+                        if (!ExtInfo.TryParse(payload, out var extInfo)) {
+                            var disconnect = new Disconnect(
+                                DisconnectCode.ProtocolError,
+                                "Unable to parse ExtInfo"
+                            );
+                            await state.Encryptor.SendPacket(disconnect, cancellationToken);
+                            return;
+                        }
+                        var noFlowExt = extInfo.Extensions.FirstOrDefault(e => e is Extension.NoFlowControl);
+                        // we prefer it, so if the client supports it we can enable it
+                        noFlowControl = noFlowExt is not null;
+                        break;
+                    }
                 case MessageCategory.Invalid:
                     await ReplyUnimplemented(state, cancellationToken);
                     break;
@@ -132,9 +166,8 @@ internal class Transport {
                     transportClient.SshState = state;
                     break;
                 case MessageCategory.KeyExchange or MessageCategory.KeyExchangeAlgSpecific:
-                    var errorString = $"recieved a key exchange message {msg} without outside of a key exchange";
                     if (_logger.IsEnabled(LogLevel.Critical))
-                        _logger.LogCritical("{}", errorString);
+                        _logger.LogCritical("recieved a key exchange message {Msg} without outside of a key exchange", msg);
                     await state.Encryptor.SendPacket(
                         new Disconnect(DisconnectCode.ProtocolError, "Unexpected kex packet"),
                         cancellationToken
@@ -160,7 +193,7 @@ internal class Transport {
                                 DisconnectCode.ServiceNotAvailable,
                                 "ssh-connection was requested before ssh-userauth");
                             await state.Encryptor.SendPacket(disconnect, cancellationToken);
-                            break;
+                            return;
                         }
                         connectionService = _connectionFactory.Create(transportClient, handler);
                         currentService = connectionService;
@@ -171,13 +204,21 @@ internal class Transport {
                         await state.Encryptor.SendPacket(disconnect, cancellationToken);
                         if (_logger.IsEnabled(LogLevel.Information))
                             _logger.LogInformation("An unrecognized service \"{ServiceName}\" was requested", request.ServiceName);
+                        return;
                     }
-                    break;
                 default:
-                    var task = currentService?.SendPacket(packet, cancellationToken) ?? ReplyUnimplemented(state, cancellationToken);
-                    await task;
+                    if (currentService is null) {
+                        var disconnect = new Disconnect(
+                            DisconnectCode.ProtocolError,
+                            "Recieved a service message without negotiating a server beforehand"
+                        );
+                        await state.Encryptor.SendPacket(disconnect, cancellationToken);
+                        return;
+                    }
+                    await currentService.SendPacket(packet, cancellationToken);
                     break;
             }
+            firstPacketRecieved = true;
         }
 
         var finalDisconnect = new Disconnect(DisconnectCode.ProtocolError, "Unable to parse packet");

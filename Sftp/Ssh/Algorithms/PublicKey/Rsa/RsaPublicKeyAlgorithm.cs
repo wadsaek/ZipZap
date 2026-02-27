@@ -15,6 +15,7 @@
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Numerics;
@@ -27,6 +28,10 @@ namespace ZipZap.Sftp.Ssh.Algorithms;
 public class RsaPublicKeyAlgorithm() : IPublicKeyAlgorithm {
     static NameList.Item StaticName => new NameList.GlobalName("ssh-rsa");
     public NameList.Item Name => StaticName;
+    public IEnumerable<NameList.Item> SupportedSignatureAlgs => [
+        new NameList.GlobalName("rsa-sha2-256"),
+        new NameList.GlobalName("rsa-sha2-512")
+    ];
 
     public class RsaPublicKey : IPublicKey {
         public RsaPublicKey(RSA rsa) {
@@ -70,7 +75,7 @@ public class RsaPublicKeyAlgorithm() : IPublicKeyAlgorithm {
 
         public string ToAsciiString() {
             var bytes = ToByteString();
-            var hex = Convert.ToHexStringLower(bytes);
+            var hex = Convert.ToBase64String(bytes);
             return new[] { AlgorithmName, hex }.ConcatenateWith(" ");
         }
     }
@@ -97,5 +102,6 @@ public class RsaPublicKeyAlgorithm() : IPublicKeyAlgorithm {
         return true;
     }
     public HashAlgorithm HashAlgorithm => SHA256.Create();
+
 }
 

@@ -81,7 +81,7 @@ internal class AuthService : SshService, IAuthService {
         return Task.CompletedTask;
     }
 
-    protected async override Task HandlePacket(Packet packet, CancellationToken cancellationToken) {
+    protected override async Task HandlePacket(Packet packet, CancellationToken cancellationToken) {
         if (!UserauthRequest.TryParse(packet.Payload, out var request)) {
             await _transport.SendUnimplemented(cancellationToken);
             return;
@@ -124,7 +124,7 @@ internal class AuthService : SshService, IAuthService {
     }
 
     private async Task<Result<ISftpRequestHandler, LoginError>> HandlePublicKey(UserauthRequest.PublicKey publickeyRequest, CancellationToken cancellationToken) {
-        var publicKeyAlg = _publicKeys.Items.FirstOrDefault(i => i.Name.ToString() == publickeyRequest.AlgName);
+        var publicKeyAlg = _publicKeys.Items.FirstOrDefault(i => i.SupportedSignatureAlgs.Select(n => n.ToString()).Contains(publickeyRequest.AlgName));
         if (publicKeyAlg is null
             || !publicKeyAlg.TryParse(publickeyRequest.PublicKeyBytes, out var key))
             return Err<ISftpRequestHandler, LoginError>(new LoginError.WrongCredentials());
@@ -134,7 +134,7 @@ internal class AuthService : SshService, IAuthService {
             var result = await _handler.TryLoginPublicKey(
                 publickeyRequest.Username, key, pair, cancellationToken
             );
-            if(result is Err<ISftpRequestHandler,LoginError>(LoginError.HostPublicKeyNotAuthorized)) continue;
+            if (result is Err<ISftpRequestHandler, LoginError>(LoginError.HostPublicKeyNotAuthorized)) continue;
             return result;
         }
         // this only fires off if there are no host keys

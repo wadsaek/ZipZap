@@ -16,12 +16,10 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
 using ZipZap.Sftp.Ssh;
-using ZipZap.Sftp.Ssh.Numbers;
 using ZipZap.Sftp.Ssh.Services;
 
 namespace ZipZap.Sftp;

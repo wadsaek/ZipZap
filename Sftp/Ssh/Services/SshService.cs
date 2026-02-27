@@ -32,9 +32,7 @@ internal abstract class SshService : ISshService {
     private readonly Lock _lock = new();
     private Task? _handler = null;
 
-    // the default constructor of `BlockingCollection` is equievalent to
-    // constructing with a `ConcurrentQueue`, which is exactly what we need
-    protected readonly ChannelReader<Packet> incomingPackets;
+    private readonly ChannelReader<Packet> _incomingReader;
     private readonly ChannelWriter<Packet> _incomingPacketsWriter;
 
     protected SshService() {
@@ -42,9 +40,10 @@ internal abstract class SshService : ISshService {
             SingleReader = true,
             SingleWriter = true
         });
-        incomingPackets = channel.Reader;
+        _incomingReader = channel.Reader;
         _incomingPacketsWriter = channel.Writer;
     }
+    protected async Task<Packet> ReadNextPacket() => await _incomingReader.ReadAsync();
 
     public abstract string ServiceName { get; }
 
@@ -61,7 +60,7 @@ internal abstract class SshService : ISshService {
 
     private async Task StartWorking(CancellationToken cancellationToken) {
         while (!isDisposed) {
-            var packet = await incomingPackets.ReadAsync(cancellationToken);
+            var packet = await _incomingReader.ReadAsync(cancellationToken);
             var payload = packet.Payload;
             if (payload.Length == 0) {
                 await ReturnPacket(new Disconnect(
@@ -71,7 +70,7 @@ internal abstract class SshService : ISshService {
                 await End(cancellationToken);
                 return;
             }
-            await HandlePacket(packet,cancellationToken);
+            await HandlePacket(packet, cancellationToken);
         }
     }
 

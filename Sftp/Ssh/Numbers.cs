@@ -27,12 +27,14 @@ public enum MessageCategory {
     UserAuthAlgSpecific,
     ConnectionGeneric,
     Channel,
+    ExtInfo,
 }
 public static class MessageExt {
     extension(Message message) {
         public MessageCategory GetMessageCategory()
             => (byte)message switch {
                 5 or 6 => MessageCategory.Service,
+                7 => MessageCategory.ExtInfo,
                 >= 1 and <= 19 => MessageCategory.TransportGeneric,
                 20 => MessageCategory.KexInit,
                 >= 21 and <= 29 => MessageCategory.KeyExchange,
@@ -53,6 +55,7 @@ public enum Message : byte {
     Debug = 4,
     ServiceRequest = 5,
     ServiceAccept = 6,
+    ExtInfo = 7,
     Kexinit = 20,
     Newkeys = 21,
     KexDhInit = 30,

@@ -14,6 +14,7 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Numerics;
@@ -25,12 +26,16 @@ public class RsaServerKeyAlgorithm : IServerHostKeyAlgorithm {
     private readonly RsaPublicKeyAlgorithm _inner;
     private readonly ISftpConfiguration _sftpConfiguration;
 
+
     public RsaServerKeyAlgorithm(RsaPublicKeyAlgorithm inner, ISftpConfiguration sftpConfiguration) {
         _inner = inner;
         _sftpConfiguration = sftpConfiguration;
     }
 
     public NameList.Item Name => new NameList.GlobalName("rsa-sha2-256");
+
+    public IEnumerable<NameList.Item> SupportedSignatureAlgs => _inner.SupportedSignatureAlgs;
+
     public bool TryParse(byte[] bytes, [NotNullWhen(true)] out IPublicKey? key) {
         return _inner.TryParse(bytes, out key);
     }

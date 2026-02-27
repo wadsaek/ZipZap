@@ -14,10 +14,13 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 
 namespace ZipZap.Sftp.Ssh.Algorithms;
 
 public interface IPublicKeyAlgorithm : INamed {
+    IEnumerable<NameList.Item> SupportedSignatureAlgs { get; }
+
     public bool TryParse(byte[] bytes, [NotNullWhen(true)] out IPublicKey? key);
 }
