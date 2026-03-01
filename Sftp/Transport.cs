@@ -14,7 +14,6 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-using System;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -60,12 +59,17 @@ internal class Transport {
         // `Transport` in order to change. This makes it trivial to update
         // the client info when doing a rekey.
         public SshState SshState { get; set; }
+        public CancellationTokenSource TokenSource { get; }
 
         public byte[] SessionId => SshState.SessionId;
         public uint LastPacketId => SshState.Decryptor.MacSequential - 1;
 
-        internal TransportClient(SshState sshState) {
+        public bool NoFlowControlEnabled { get; set; }
+
+        internal TransportClient(SshState sshState, CancellationTokenSource tokenSource, bool noFlowControlEnabled) {
             SshState = sshState;
+            TokenSource = tokenSource;
+            NoFlowControlEnabled = noFlowControlEnabled;
         }
 
 
@@ -79,21 +83,30 @@ internal class Transport {
         }
 
         public void End() {
-            throw new NotImplementedException();
+            TokenSource.Cancel();
         }
 
         public async Task SendUnimplemented(CancellationToken cancellationToken) {
             await ReplyUnimplemented(SshState, cancellationToken);
         }
     }
-    public async Task Handle(Stream stream, IdenitificationStrings idenitificationStrings, CancellationToken cancellationToken) {
 
-        var decryptor = new NoEncryptionAlgorithm().GetDecryptor(
-            stream, [], [],
-            new NoMacAlgorithm().CreateValidator(0, []));
-        var encryptor = new NoEncryptionAlgorithm().GetEncryptor(
-            stream, [], [],
-            new NoMacAlgorithm().CreateGenerator(0, []));
+    private class HandleState {
+        public required SshState State { get; set; }
+        public required ISshConnection? ConnectionService { get; set; }
+        public required IAuthService? AuthService { get; set; }
+        public required ISshService? CurrentService { get; set; }
+        public required bool FirstPacketRecieved { get; set; }
+        public required KeyExchangeInput Input { get; set; }
+        public required TransportClient TransportClient { get; set; }
+    }
+
+    public async Task HandleStream(Stream stream, IdenitificationStrings idenitificationStrings, CancellationToken cancellationToken) {
+
+        using var linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        cancellationToken = linkedTokenSource.Token;
+
+        var (decryptor, encryptor) = GenerateDefaultEncryptors(stream);
 
         var input = new KeyExchangeInput(
             stream,
@@ -105,120 +118,28 @@ internal class Transport {
         var state = await _kexProcess.MakeKeyExchange(input, null, cancellationToken);
 
         if (state is null) return;
-        if (state.SupportsExtensions) {
-            Extension[] extensions = [
-                new Extension.ServerSigAlgs(new(_publicKeyAlgs.Items.SelectMany(i=>i.SupportedSignatureAlgs).ToArray())),
-                new Extension.NoFlowControl(true)
-            ];
-            await state.Encryptor.SendPacket(new ExtInfo(extensions), cancellationToken);
-        }
-        var transportClient = new TransportClient(state);
-        ISshConnection? connectionService;
-        IAuthService? loginService = null;
+        if (state.SupportsExtensions)
+            await SendExtensions(state, cancellationToken);
 
-        ISshService? currentService = null;
-        bool firstPacketRecieved = false;
-        bool noFlowControl = false;
+        var transportClient = new TransportClient(state, linkedTokenSource, false);
 
-        while (await state.Decryptor.ReadPacket(cancellationToken) is Packet packet) {
-            var payload = packet.Payload;
-            if (payload.Length == 0) break;
-            var msg = (Message)payload[0];
-            if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("Recieved packet {Msg}", msg);
-            switch (msg.GetMessageCategory()) {
-                case MessageCategory.ExtInfo: {
-                        if (firstPacketRecieved) {
-                            var disconnect = new Disconnect(
-                                DisconnectCode.ProtocolError,
-                                "Recieved extensions after first packet"
-                            );
-                            await state.Encryptor.SendPacket(disconnect, cancellationToken);
-                            return;
-                        }
-                        if (!ExtInfo.TryParse(payload, out var extInfo)) {
-                            var disconnect = new Disconnect(
-                                DisconnectCode.ProtocolError,
-                                "Unable to parse ExtInfo"
-                            );
-                            await state.Encryptor.SendPacket(disconnect, cancellationToken);
-                            return;
-                        }
-                        var noFlowExt = extInfo.Extensions.FirstOrDefault(e => e is Extension.NoFlowControl);
-                        // we prefer it, so if the client supports it we can enable it
-                        noFlowControl = noFlowExt is not null;
-                        break;
-                    }
-                case MessageCategory.Invalid:
-                    await ReplyUnimplemented(state, cancellationToken);
-                    break;
-                case MessageCategory.TransportGeneric:
-                    if (await HandleGenericTransportMsg(packet, encryptor, cancellationToken)) return;
-                    break;
-                case MessageCategory.KexInit:
-                    var newInput = input with {
-                        Reader = new PacketReaderTransportPassThrough(this, state.Decryptor, state.Encryptor),
-                        SessionId = state.SessionId
-                    };
-                    var maybeState = await RedoKeyExchange(packet, newInput, cancellationToken);
-                    if (maybeState is null) return;
-                    state = maybeState;
-                    transportClient.SshState = state;
-                    break;
-                case MessageCategory.KeyExchange or MessageCategory.KeyExchangeAlgSpecific:
-                    if (_logger.IsEnabled(LogLevel.Critical))
-                        _logger.LogCritical("recieved a key exchange message {Msg} without outside of a key exchange", msg);
-                    await state.Encryptor.SendPacket(
-                        new Disconnect(DisconnectCode.ProtocolError, "Unexpected kex packet"),
-                        cancellationToken
-                    );
-                    return;
-                case MessageCategory.Service:
-                    if (msg == Message.ServiceAccept) {
-                        await ReplyUnimplemented(state, cancellationToken);
-                        break;
-                    }
-                    if (!ServiceRequest.TryParse(payload, out var request)) {
+        var handlerState = new HandleState {
+            State = state,
+            CurrentService = null,
+            AuthService = null,
+            ConnectionService = null,
+            FirstPacketRecieved = false,
+            TransportClient = transportClient,
+            Input = input
+        };
 
-                        await ReplyUnimplemented(state, cancellationToken);
-                        break;
-                    }
-                    if (request.ServiceName == IAuthService.ServiceName) {
-                        currentService = loginService = _loginFactory.Create(transportClient);
-                        await state.Encryptor.SendPacket(new ServiceAccept(request.ServiceName), cancellationToken);
-                        break;
-                    } else if (request.ServiceName == ISshConnection.ServiceName) {
-                        if (loginService is null || !loginService.TryGetRequestHandler(out var handler)) {
-                            var disconnect = new Disconnect(
-                                DisconnectCode.ServiceNotAvailable,
-                                "ssh-connection was requested before ssh-userauth");
-                            await state.Encryptor.SendPacket(disconnect, cancellationToken);
-                            return;
-                        }
-                        connectionService = _connectionFactory.Create(transportClient, handler);
-                        currentService = connectionService;
-                        await state.Encryptor.SendPacket(new ServiceAccept(request.ServiceName), cancellationToken);
-                        break;
-                    } else {
-                        var disconnect = new Disconnect(DisconnectCode.ServiceNotAvailable, "Service name not recognized");
-                        await state.Encryptor.SendPacket(disconnect, cancellationToken);
-                        if (_logger.IsEnabled(LogLevel.Information))
-                            _logger.LogInformation("An unrecognized service \"{ServiceName}\" was requested", request.ServiceName);
-                        return;
-                    }
-                default:
-                    if (currentService is null) {
-                        var disconnect = new Disconnect(
-                            DisconnectCode.ProtocolError,
-                            "Recieved a service message without negotiating a server beforehand"
-                        );
-                        await state.Encryptor.SendPacket(disconnect, cancellationToken);
-                        return;
-                    }
-                    await currentService.SendPacket(packet, cancellationToken);
-                    break;
+        while (await handlerState.State.Decryptor.ReadPacket(cancellationToken) is Payload packet) {
+            cancellationToken.ThrowIfCancellationRequested();
+            bool shouldContinue = await HandlePacket(packet, handlerState, cancellationToken);
+            if (!shouldContinue) {
+                return;
             }
-            firstPacketRecieved = true;
+            handlerState.FirstPacketRecieved = true;
         }
 
         var finalDisconnect = new Disconnect(DisconnectCode.ProtocolError, "Unable to parse packet");
@@ -226,8 +147,135 @@ internal class Transport {
         return;
     }
 
-    private async Task<SshState?> RedoKeyExchange(Packet? packet, KeyExchangeInput input, CancellationToken cancellationToken) {
-        return await _kexProcess.MakeKeyExchange(input, packet, cancellationToken);
+    private async Task SendExtensions(SshState state, CancellationToken cancellationToken) {
+        Extension[] extensions = [
+            new Extension.ServerSigAlgs(new(_publicKeyAlgs.Items.SelectMany(i=>i.SupportedSignatureAlgs).ToArray())),
+                new Extension.NoFlowControl(true)
+        ];
+        await state.Encryptor.SendPacket(new ExtInfo(extensions), cancellationToken);
+    }
+
+    private static (IDecryptor decryptor, IEncryptor encryptor) GenerateDefaultEncryptors(Stream stream) {
+        var decryptor = new NoEncryptionAlgorithm().GetDecryptor(
+            stream, [], [],
+            new NoMacAlgorithm().CreateValidator(0, []));
+        var encryptor = new NoEncryptionAlgorithm().GetEncryptor(
+            stream, [], [],
+            new NoMacAlgorithm().CreateGenerator(0, []));
+        return (decryptor, encryptor);
+    }
+
+    /// <returns>A boolean indicating whether caller should continue</returns>
+    private async Task<bool> HandlePacket(Payload packet, HandleState handleState, CancellationToken cancellationToken) {
+        if (packet.Length == 0) return false;
+        var msg = (Message)packet[0];
+        if (_logger.IsEnabled(LogLevel.Information))
+            _logger.LogInformation("Recieved packet {Msg}", msg);
+        switch (msg.GetMessageCategory()) {
+            case MessageCategory.ExtInfo: {
+                    if (handleState.FirstPacketRecieved) {
+                        var disconnect = new Disconnect(
+                            DisconnectCode.ProtocolError,
+                            "Recieved extensions after first packet"
+                        );
+                        await handleState.State.Encryptor.SendPacket(disconnect, cancellationToken);
+                        return false;
+                    }
+                    if (!ExtInfo.TryParse(packet, out var extInfo)) {
+                        var disconnect = new Disconnect(
+                            DisconnectCode.ProtocolError,
+                            "Unable to parse ExtInfo"
+                        );
+                        await handleState.State.Encryptor.SendPacket(disconnect, cancellationToken);
+                        return false;
+                    }
+                    if (_logger.IsEnabled(LogLevel.Information))
+                        _logger.LogInformation("recieved extensions: {ExtInfo}", extInfo);
+                    var noFlowExt = extInfo.Extensions.FirstOrDefault(e => e is Extension.NoFlowControl);
+                    // we prefer it, so if the client supports it we can enable it
+                    handleState.TransportClient.NoFlowControlEnabled = noFlowExt is not null;
+                    break;
+                }
+            case MessageCategory.Invalid: {
+                    await ReplyUnimplemented(handleState.State, cancellationToken);
+                    break;
+                }
+            case MessageCategory.TransportGeneric: {
+                    if (await HandleGenericTransportMsg(packet, handleState.State.Encryptor, cancellationToken)) return false;
+                    break;
+                }
+            case MessageCategory.KexInit: {
+                    var newInput = handleState.Input with {
+                        Reader = new PacketReaderTransportPassThrough(this, handleState.State.Decryptor, handleState.State.Encryptor),
+                        SessionId = handleState.State.SessionId
+                    };
+                    var maybeState = await RedoKeyExchange(packet, newInput, cancellationToken);
+                    if (maybeState is null) return false;
+                    handleState.State = maybeState;
+                    handleState.TransportClient.SshState = handleState.State;
+                    break;
+                }
+            case MessageCategory.KeyExchange or MessageCategory.KeyExchangeAlgSpecific: {
+                    if (_logger.IsEnabled(LogLevel.Critical))
+                        _logger.LogCritical("recieved a key exchange message {Msg} without outside of a key exchange", msg);
+                    await handleState.State.Encryptor.SendPacket(
+                            new Disconnect(DisconnectCode.ProtocolError, "Unexpected kex packet"),
+                            cancellationToken
+                            );
+                    return false;
+                }
+            case MessageCategory.Service: {
+                    if (msg == Message.ServiceAccept) {
+                        await ReplyUnimplemented(handleState.State, cancellationToken);
+                        break;
+                    }
+                    if (!ServiceRequest.TryParse(packet, out var request)) {
+
+                        await ReplyUnimplemented(handleState.State, cancellationToken);
+                        break;
+                    }
+                    if (request.ServiceName == IAuthService.ServiceName) {
+                        handleState.CurrentService = handleState.AuthService = _loginFactory.Create(handleState.TransportClient);
+                        await handleState.State.Encryptor.SendPacket(new ServiceAccept(request.ServiceName), cancellationToken);
+                        break;
+                    } else if (request.ServiceName == ISshConnection.ServiceName) {
+                        if (handleState.AuthService is null || !handleState.AuthService.TryGetRequestHandler(out var handler)) {
+                            var disconnect = new Disconnect(
+                                    DisconnectCode.ServiceNotAvailable,
+                                    "ssh-connection was requested before ssh-userauth");
+                            await handleState.State.Encryptor.SendPacket(disconnect, cancellationToken);
+                            return false;
+                        }
+                        handleState.ConnectionService = _connectionFactory.Create(handleState.TransportClient, handler);
+                        handleState.CurrentService = handleState.ConnectionService;
+                        await handleState.State.Encryptor.SendPacket(new ServiceAccept(request.ServiceName), cancellationToken);
+                        break;
+                    } else {
+                        var disconnect = new Disconnect(DisconnectCode.ServiceNotAvailable, "Service name not recognized");
+                        await handleState.State.Encryptor.SendPacket(disconnect, cancellationToken);
+                        if (_logger.IsEnabled(LogLevel.Information))
+                            _logger.LogInformation("An unrecognized service \"{ServiceName}\" was requested", request.ServiceName);
+                        return false;
+                    }
+                }
+            default: {
+                    if (handleState.CurrentService is null) {
+                        var disconnect = new Disconnect(
+                                DisconnectCode.ProtocolError,
+                                "Recieved a service message without negotiating a server beforehand"
+                                );
+                        await handleState.State.Encryptor.SendPacket(disconnect, cancellationToken);
+                        return false;
+                    }
+                    await handleState.CurrentService.SendPacket(packet, cancellationToken);
+                    break;
+                }
+        }
+        return true;
+    }
+
+    private Task<SshState?> RedoKeyExchange(Payload? packet, KeyExchangeInput input, CancellationToken cancellationToken) {
+        return _kexProcess.MakeKeyExchange(input, packet, cancellationToken);
     }
 
 
@@ -247,7 +295,7 @@ internal class Transport {
 
         public uint SequentialStC => _encryptor.MacSequential;
 
-        public Task<(Packet, T)?> ReadUntilPacket<T>(CancellationToken cancellationToken)
+        public Task<(Payload, T)?> ReadUntilPacket<T>(CancellationToken cancellationToken)
         where T : IClientPayload<T>
         => _transport.ReadUntilPacket<T>(_decryptor, _encryptor, cancellationToken);
 
@@ -261,17 +309,17 @@ internal class Transport {
         }
     }
 
-    private async Task<(Packet, T)?> ReadUntilPacket<T>(IDecryptor decryptor, IEncryptor encryptor, CancellationToken cancellationToken)
+    private async Task<(Payload, T)?> ReadUntilPacket<T>(IDecryptor decryptor, IEncryptor encryptor, CancellationToken cancellationToken)
     where T : IClientPayload<T> {
 
-        Packet? packet;
+        Payload? packet;
         T? parsed;
         bool success;
 
         do {
             packet = await decryptor.ReadPacket(cancellationToken);
             if (packet is null) return null;
-            success = T.TryParse(packet.Payload, out parsed);
+            success = T.TryParse(packet, out parsed);
             if (!success) {
                 if (await HandleGenericTransportMsg(packet, encryptor, cancellationToken)) return null;
             }
@@ -281,18 +329,18 @@ internal class Transport {
     }
 
     ///<returns>A bool indicating whether the caller should stop execution</returns>
-    private async Task<bool> HandleGenericTransportMsg(Packet packet, IEncryptor encryptor, CancellationToken cancellationToken) {
+    private async Task<bool> HandleGenericTransportMsg(Payload packet, IEncryptor encryptor, CancellationToken cancellationToken) {
 
-        switch ((Message)packet.Payload[0]) {
+        switch ((Message)packet[0]) {
             case Message.Ignore: return false;
             case Message.Disconnect: {
-                    if (!Disconnect.TryParse(packet.Payload, out var disconnect)) return true;
+                    if (!Disconnect.TryParse(packet, out var disconnect)) return true;
                     if (_logger.IsEnabled(LogLevel.Information))
                         _logger.LogInformation("Got a disconnect {Code} with description {Description}", disconnect.ReasonCode, disconnect.Description);
                     return true;
                 }
             case Message.Debug: {
-                    if (!Debug.TryParse(packet.Payload, out var debug)) {
+                    if (!Debug.TryParse(packet, out var debug)) {
                         var disconnect = new Disconnect(
                             DisconnectCode.ProtocolError,
                             $"Can't parse a {nameof(Debug)} packet"
@@ -306,7 +354,7 @@ internal class Transport {
                     return false;
                 }
             case Message.Unimplemented: {
-                    if (!Unimplemented.TryParse(packet.Payload, out _)) {
+                    if (!Unimplemented.TryParse(packet, out _)) {
                         var disconnect = new Disconnect(
                             DisconnectCode.ProtocolError,
                             "Can't read the message type of an unimplemented message"
@@ -329,7 +377,7 @@ internal class Transport {
 
 
 public interface ITransPacketReader {
-    public Task<(Packet, T)?> ReadUntilPacket<T>(CancellationToken cancellationToken)
+    public Task<(Payload, T)?> ReadUntilPacket<T>(CancellationToken cancellationToken)
     where T : IClientPayload<T>;
 
     public Task SendPacket<T>(T packet, CancellationToken cancellationToken)
@@ -377,6 +425,7 @@ public record IdenitificationStrings(string Server, string Client);
 
 public interface ITransportClient {
     public byte[] SessionId { get; }
+    public bool NoFlowControlEnabled { get; }
     public Task SendUnimplemented(CancellationToken cancellationToken);
     Task SendPacket<T>(T Packet, CancellationToken cancellationToken) where T : IServerPayload;
     void End();

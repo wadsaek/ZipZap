@@ -50,7 +50,7 @@ internal class SftpService {
             if (_logger.IsEnabled(LogLevel.Information))
                 _logger.LogInformation("handling client {ClientId}", idStrings.Client);
 
-            await _transport.Handle(stream, idStrings, cancellationToken);
+            await _transport.HandleStream(stream, idStrings, cancellationToken);
 
         } catch (OperationCanceledException e) {
             if (_logger.IsEnabled(LogLevel.Information))

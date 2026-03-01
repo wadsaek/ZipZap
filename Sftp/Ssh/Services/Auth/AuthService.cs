@@ -1,4 +1,4 @@
-// Auth.cs - Part of the ZipZap project for storing files online
+// AuthService.cs - Part of the ZipZap project for storing files online
 //     Copyright (C) 2026  Barenboim Esther wadsaek@gmail.com
 //
 //     This program is free software: you can redistribute it and/or modify
@@ -24,44 +24,35 @@ using ZipZap.Sftp.Ssh.Auth;
 using ZipZap.Sftp.Ssh.Algorithms;
 using System.ComponentModel;
 using System.Linq;
+using System;
+using ZipZap.Sftp.Ssh.Numbers;
+using Microsoft.Extensions.Logging;
 
 namespace ZipZap.Sftp.Ssh.Services;
-
-internal interface IAuthServiceFactory {
-    IAuthService Create(ITransportClient transport);
-}
-internal class AuthServiceFactory : IAuthServiceFactory {
-    private readonly ISftpRequestHandlerFactory _factory;
-    private readonly IProvider<IPublicKeyAlgorithm> _publicKeys;
-    private readonly IProvider<IServerHostKeyAlgorithm> _hostKeys;
-
-    public AuthServiceFactory(ISftpRequestHandlerFactory factory, IProvider<IPublicKeyAlgorithm> publicKeys, IProvider<IServerHostKeyAlgorithm> hostKeys) {
-        _factory = factory;
-        _publicKeys = publicKeys;
-        _hostKeys = hostKeys;
-    }
-
-    public IAuthService Create(ITransportClient transport) {
-        return new AuthService(transport, _factory.CreateLogin(), _publicKeys, _hostKeys);
-    }
-}
-
-internal interface IAuthService : ISshService {
-    public new const string ServiceName = "ssh-userauth";
-    public bool TryGetRequestHandler([NotNullWhen(true)] out ISftpRequestHandler? sftpRequestHandler);
-}
 
 internal class AuthService : SshService, IAuthService {
     private readonly ITransportClient _transport;
     private readonly ISftpLoginHandler _handler;
     private readonly IProvider<IPublicKeyAlgorithm> _publicKeys;
     private readonly IProvider<IServerHostKeyAlgorithm> _hostKeys;
+    private readonly ISshConnectionFactory _connectionFactory;
+    private readonly ILogger<AuthService> _logger;
+    private ISshService? _aggregate = null;
 
-    public AuthService(ITransportClient transport, ISftpLoginHandler handler, IProvider<IPublicKeyAlgorithm> publicKeys, IProvider<IServerHostKeyAlgorithm> hostKeys) {
+    public AuthService(
+        ITransportClient transport,
+        ISftpLoginHandler handler,
+        IProvider<IPublicKeyAlgorithm> publicKeys,
+        IProvider<IServerHostKeyAlgorithm> hostKeys,
+        ISshConnectionFactory connectionFactory,
+        ILogger<AuthService> logger
+    ) {
         _transport = transport;
         _handler = handler;
         _publicKeys = publicKeys;
         _hostKeys = hostKeys;
+        _connectionFactory = connectionFactory;
+        _logger = logger;
     }
 
     public override string ServiceName => IAuthService.ServiceName;
@@ -81,9 +72,26 @@ internal class AuthService : SshService, IAuthService {
         return Task.CompletedTask;
     }
 
-    protected override async Task HandlePacket(Packet packet, CancellationToken cancellationToken) {
-        if (!UserauthRequest.TryParse(packet.Payload, out var request)) {
+    protected override Task HandlePacket(Payload packet, CancellationToken cancellationToken) {
+        if (IsPassThrough())
+            return _aggregate.SendPacket(packet, cancellationToken);
+        return HandleAuthPacket(packet, cancellationToken);
+    }
+
+    [MemberNotNullWhen(true, nameof(_aggregate))]
+    private bool IsPassThrough() {
+        return _aggregate is not null;
+    }
+
+    protected async Task HandleAuthPacket(Payload packet, CancellationToken cancellationToken) {
+        if (!UserauthRequest.TryParse(packet, out var request)) {
             await _transport.SendUnimplemented(cancellationToken);
+            return;
+        }
+        if (request.ServiceName != ISshConnectionFactory.ServiceName) {
+            var disconnect = new Disconnect(DisconnectCode.ServiceNotAvailable, "requested service not availible");
+            await _transport.SendPacket(disconnect, cancellationToken);
+            await End(cancellationToken);
             return;
         }
         var result = request switch {
@@ -92,16 +100,18 @@ internal class AuthService : SshService, IAuthService {
             _ or UserauthRequest.Unrecognized or UserauthRequest.None => Err<ISftpRequestHandler, LoginError>(new LoginError.EmptyCredentials()),
         };
         await (result switch {
-            Ok<ISftpRequestHandler, LoginError>(var handler) => HandleSuccess(handler, cancellationToken),
+            Ok<ISftpRequestHandler, LoginError>(var handler) => HandleSuccess(request, handler, cancellationToken),
             Err<ISftpRequestHandler, LoginError>(var err) => err switch {
                 LoginError.SignatureNotProvided(var publicKey) => SendPKOkay(publicKey, cancellationToken),
-                _ => HandleError(cancellationToken),
+                _ => HandleError(err, cancellationToken),
             },
             _ => throw new InvalidEnumArgumentException()
         });
     }
 
-    private async Task HandleError(CancellationToken cancellationToken) {
+    private async Task HandleError(LoginError err, CancellationToken cancellationToken) {
+        if (_logger.IsEnabled(LogLevel.Information))
+            _logger.LogInformation("Unable to login. Error {Err}", err);
         var reply = new UserauthFailure(
             new NameList([
                 new NameList.GlobalName("publickey"),
@@ -116,10 +126,15 @@ internal class AuthService : SshService, IAuthService {
         await ReturnPacket(reply, cancellationToken);
     }
 
-    private async Task HandleSuccess(ISftpRequestHandler handler, CancellationToken cancellationToken) {
+    private async Task HandleSuccess(UserauthRequest request, ISftpRequestHandler handler, CancellationToken cancellationToken) {
         _returnedHandler = handler;
         var reply = new UserauthSuccess();
-        await ReturnPacket(reply, cancellationToken);
+        if (request.ServiceName == ISshConnectionFactory.ServiceName) {
+            _aggregate = _connectionFactory.Create(_transport, handler);
+            await ReturnPacket(reply, cancellationToken);
+            return;
+        }
+
 
     }
 
@@ -149,4 +164,5 @@ internal class AuthService : SshService, IAuthService {
         );
         return result;
     }
+
 }

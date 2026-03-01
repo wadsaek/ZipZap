@@ -52,7 +52,7 @@ public class KeyExchangeProcess {
         _logger = Logger;
     }
 
-    public async Task<SshState?> MakeKeyExchange(KeyExchangeInput input, Packet? kexInit, CancellationToken cancellationToken) {
+    public async Task<SshState?> MakeKeyExchange(KeyExchangeInput input, Payload? kexInit, CancellationToken cancellationToken) {
         var keyExchangeAlgorithms = _kexProvider.Items;
         var publicKeyAlgorithms = _serverHostKeyProvider.Items;
         var encryptionAlgorithms = _encryptionProvider.Items;
@@ -64,16 +64,16 @@ public class KeyExchangeProcess {
         var keyExchangePacket = GenerateKeyExchangePacket(keyExchangeAlgorithms, publicKeyAlgorithms, encryptionAlgorithms, macAlgorithms, compressionAlgorithms, false);
         await reader.SendPacket(keyExchangePacket, cancellationToken);
 
-        byte[] clientKexPayloadRaw; KeyExchange? clientKexPayload;
+        Payload clientKexPayloadRaw; KeyExchange? clientKexPayload;
 
         if (kexInit is null) {
             var clientkextuple = await reader.ReadUntilPacket<KeyExchange>(cancellationToken);
             if (clientkextuple is null) return null;
             (var packet, clientKexPayload) = clientkextuple.Value;
-            clientKexPayloadRaw = packet.Payload;
+            clientKexPayloadRaw = packet;
         } else {
-            if (!KeyExchange.TryParse(kexInit.Payload, out clientKexPayload)) return null;
-            clientKexPayloadRaw = kexInit.Payload;
+            if (!KeyExchange.TryParse(kexInit, out clientKexPayload)) return null;
+            clientKexPayloadRaw = kexInit;
         }
 
         var serverKexPayload = keyExchangePacket.ToPayload();

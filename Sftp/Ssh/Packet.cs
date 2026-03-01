@@ -17,17 +17,18 @@
 using System;
 using System.IO;
 using System.Security.Cryptography;
+using System.Text;
 
 namespace ZipZap.Sftp.Ssh;
 
-public record Packet(byte[] Payload, byte[] Padding) : IToByteString {
+public record Packet(Payload Payload, byte[] Padding) : IToByteString {
 
-    public uint Length => sizeof(byte) + (uint)Payload.Length + (uint)Padding.Length;
+    public uint Length => sizeof(byte) + Payload.Length + (uint)Padding.Length;
     public byte PaddingLength => (byte)Padding.Length;
 
     public uint BufferLength => Length + 4;
 
-    public Packet(byte[] payload, uint alignment, int offset = 0) : this(payload, []) {
+    public Packet(Payload payload, uint alignment, int offset = 0) : this(payload, []) {
         var paddingLength = 2 * alignment - (BufferLength - offset) % alignment;
         Padding = RandomNumberGenerator.GetBytes((int)paddingLength);
     }
@@ -49,3 +50,19 @@ public record Packet(byte[] Payload, byte[] Padding) : IToByteString {
     }
 }
 
+public sealed record Payload(byte[] Bytes) {
+    public static implicit operator byte[](Payload payload) => payload.Bytes;
+
+    public uint Length => (uint)Bytes.Length;
+
+#pragma warning disable IDE0051 // this is not unused. .NET uses this method in Payload.ToString()
+    private bool PrintMembers(StringBuilder builder) {
+        builder.Append(nameof(Bytes));
+        builder.Append(" = ");
+        builder.Append(Convert.ToHexStringLower(Bytes));
+        return true;
+    }
+#pragma warning restore IDE0051
+
+    public byte this[int n] => Bytes[n];
+}

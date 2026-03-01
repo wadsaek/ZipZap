@@ -26,28 +26,28 @@ internal abstract class SshService : ISshService {
 
     protected abstract Task ReturnPacket<T>(T packet, CancellationToken cancellationToken) where T : IServerPayload;
     protected abstract Task End(CancellationToken cancellationToken);
-    protected abstract Task HandlePacket(Packet packet, CancellationToken cancellationToken);
+    protected abstract Task HandlePacket(Payload payload, CancellationToken cancellationToken);
 
     protected bool isDisposed = false;
     private readonly Lock _lock = new();
     private Task? _handler = null;
 
-    private readonly ChannelReader<Packet> _incomingReader;
-    private readonly ChannelWriter<Packet> _incomingPacketsWriter;
+    private readonly ChannelReader<Payload> _incomingReader;
+    private readonly ChannelWriter<Payload> _incomingPacketsWriter;
 
     protected SshService() {
-        var channel = Channel.CreateUnbounded<Packet>(new() {
+        var channel = Channel.CreateUnbounded<Payload>(new() {
             SingleReader = true,
             SingleWriter = true
         });
         _incomingReader = channel.Reader;
         _incomingPacketsWriter = channel.Writer;
     }
-    protected async Task<Packet> ReadNextPacket() => await _incomingReader.ReadAsync();
+    protected async Task<Payload> ReadNextPacket() => await _incomingReader.ReadAsync();
 
     public abstract string ServiceName { get; }
 
-    public async Task SendPacket(Packet packet, CancellationToken cancellationToken) {
+    public async Task SendPacket(Payload packet, CancellationToken cancellationToken) {
         await _incomingPacketsWriter.WriteAsync(packet, cancellationToken);
         lock (_lock) {
             if (_handler == null || _handler.IsCompleted) {
@@ -61,7 +61,7 @@ internal abstract class SshService : ISshService {
     private async Task StartWorking(CancellationToken cancellationToken) {
         while (!isDisposed) {
             var packet = await _incomingReader.ReadAsync(cancellationToken);
-            var payload = packet.Payload;
+            var payload = packet;
             if (payload.Length == 0) {
                 await ReturnPacket(new Disconnect(
                     DisconnectCode.ProtocolError,
@@ -70,7 +70,7 @@ internal abstract class SshService : ISshService {
                 await End(cancellationToken);
                 return;
             }
-            await HandlePacket(packet, cancellationToken);
+            await HandlePacket(payload, cancellationToken);
         }
     }
 

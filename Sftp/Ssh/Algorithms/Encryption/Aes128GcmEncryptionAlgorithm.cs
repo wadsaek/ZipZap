@@ -65,7 +65,7 @@ internal class Aes128GcmEncryptionAlgorithm : IEncryptionAlgorithm {
 
         public uint MacSequential => _macValidator.GetCount();
 
-        public async Task<Packet?> ReadPacket(CancellationToken cancellationToken) {
+        public async Task<Payload?> ReadPacket(CancellationToken cancellationToken) {
             _macValidator.IncrementCounter();
             // the packet is encoded as a concatenation of length, encrypted data
             // and mac, which is the same as `string encrypted_data, byte[n] mac`
@@ -100,7 +100,7 @@ internal class Aes128GcmEncryptionAlgorithm : IEncryptionAlgorithm {
             var padding = new byte[paddingLength];
             if (!packetStream.SshTryReadArraySync(padding)) return null;
 
-            return new(payload, padding);
+            return new(payload);
         }
     }
 
@@ -153,7 +153,7 @@ internal class Aes128GcmEncryptionAlgorithm : IEncryptionAlgorithm {
                 .WriteArray(encrypted)
                 .WriteArray(mac)
                 .Build();
-            await _stream.SshWriteArray(result,cancellationToken);
+            await _stream.SshWriteArray(result, cancellationToken);
         }
     }
 }

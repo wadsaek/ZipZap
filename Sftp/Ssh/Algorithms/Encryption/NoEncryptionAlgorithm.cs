@@ -50,7 +50,7 @@ public class NoEncryptionAlgorithm : IEncryptionAlgorithm {
             _macValidator = macValidator;
         }
 
-        public async Task<Packet?> ReadPacket(CancellationToken cancellationToken) {
+        public async Task<Payload?> ReadPacket(CancellationToken cancellationToken) {
             /* 6 = sizeof(byte padding) + sizeof(byte msgtype) + min 4 bytes padding*/
             static bool isValidPacketLength(uint length)
                 => length >= 6 && (length + 4) % 8 == 0;
@@ -59,17 +59,18 @@ public class NoEncryptionAlgorithm : IEncryptionAlgorithm {
             /*padding MUST be at least 4 bytes*/
             if (await _stream.SshTryReadByte(cancellationToken) is not byte paddingLength || length < 4)
                 return null;
-            var payload = new byte[length - paddingLength - sizeof(byte)];
-            if (!await _stream.SshTryReadArray(payload, cancellationToken)) return null;
+            var payloadRaw = new byte[length - paddingLength - sizeof(byte)];
+            if (!await _stream.SshTryReadArray(payloadRaw, cancellationToken)) return null;
             var padding = new byte[paddingLength];
             if (!await _stream.SshTryReadArray(padding, cancellationToken)) return null;
+            var payload = new Payload(payloadRaw);
             var packet = new Packet(payload, padding);
             var mac = new byte[_macValidator.MacLength];
             if (!await _stream.SshTryReadArray(mac, cancellationToken)
                 || !await _macValidator.Validate(packet, mac, cancellationToken))
                 return null;
 
-            return packet;
+            return payload;
         }
     }
 

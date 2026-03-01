@@ -1,4 +1,4 @@
-// IPacketHandler.cs - Part of the ZipZap project for storing files online
+// SshConnection.cs - Part of the ZipZap project for storing files online
 //     Copyright (C) 2026  Barenboim Esther wadsaek@gmail.com
 //
 //     This program is free software: you can redistribute it and/or modify
@@ -20,14 +20,17 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using ZipZap.Sftp.Ssh;
+using ZipZap.Sftp.Ssh.Connection;
+using ZipZap.Sftp.Ssh.Numbers;
 using ZipZap.Sftp.Ssh.Services;
 
 namespace ZipZap.Sftp;
 
 internal interface ISshConnection : ISshService {
-    new const string ServiceName = "ssh-connection";
+    public new const string ServiceName = "ssh-connection";
 }
 internal interface ISshConnectionFactory {
+    public const string ServiceName = ISshConnection.ServiceName;
     public ISshConnection Create(ITransportClient sendPacket, ISftpRequestHandler handler);
 }
 
@@ -56,9 +59,19 @@ internal class SshConnection : SshService, ISshConnection, IDisposable {
         return Task.CompletedTask;
     }
 
-    protected override Task HandlePacket(Packet packet, CancellationToken cancellationToken) {
-        var msg = packet.Payload[0];
-        return Task.CompletedTask;
+    protected override async Task HandlePacket(Payload packet, CancellationToken cancellationToken) {
+        var msg = (Message)packet[0];
+        switch (msg) {
+            case Message.GlobalRequest: {
+                // we don't support tcp forwarding which is the only global request
+                await _transport.SendPacket(new RequestFailure(),cancellationToken);
+                return;
+            }
+
+        }
+        var disconnect = new Disconnect(DisconnectCode.ServiceNotAvailable, "ssh-connection service not implemented");
+        await _transport.SendPacket(disconnect, cancellationToken);
+        await End(cancellationToken);
     }
 
     protected override Task ReturnPacket<T>(T packet, CancellationToken cancellationToken) {
@@ -68,7 +81,7 @@ internal class SshConnection : SshService, ISshConnection, IDisposable {
 
 internal interface ISshService {
     public string ServiceName { get; }
-    public Task SendPacket(Packet packet, CancellationToken cancellationToken);
+    public Task SendPacket(Payload packet, CancellationToken cancellationToken);
 }
 
 internal class SshChannel {

@@ -1,4 +1,4 @@
-// IPayload.cs - Part of the ZipZap project for storing files online
+// IAuthServiceFactory.cs - Part of the ZipZap project for storing files online
 //     Copyright (C) 2026  Barenboim Esther wadsaek@gmail.com
 //
 //     This program is free software: you can redistribute it and/or modify
@@ -14,25 +14,9 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-using System.Diagnostics.CodeAnalysis;
+namespace ZipZap.Sftp.Ssh.Services;
 
-namespace ZipZap.Sftp.Ssh;
+internal interface IAuthServiceFactory {
+    IAuthService Create(ITransportClient transport);
+}
 
-public interface IPayload {
-    static abstract Numbers.Message Message { get; }
-}
-public interface IServerPayload : IPayload {
-    public byte[] ToPayload();
-}
-public interface IClientPayload<T> : IPayload
-where T : IClientPayload<T> {
-    public abstract static bool TryParse(byte[] payload, [NotNullWhen(true)] out T? value);
-}
-public static class PayloadExt {
-    extension(IServerPayload payload) {
-        public Packet ToPacket(uint alignment, int offset = 0) {
-            var bytes = payload.ToPayload();
-            return new(new(bytes), alignment, offset);
-        }
-    }
-}

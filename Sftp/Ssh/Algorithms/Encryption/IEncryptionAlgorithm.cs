@@ -34,7 +34,7 @@ public interface IEncryptionAlgorithm : INamed {
 
 
 public interface IDecryptor {
-    public Task<Packet?> ReadPacket(CancellationToken cancellationToken);
+    public Task<Payload?> ReadPacket(CancellationToken cancellationToken);
     public uint MacSequential { get; }
 }
 

@@ -1,4 +1,4 @@
-// IPayload.cs - Part of the ZipZap project for storing files online
+// IAuthService.cs - Part of the ZipZap project for storing files online
 //     Copyright (C) 2026  Barenboim Esther wadsaek@gmail.com
 //
 //     This program is free software: you can redistribute it and/or modify
@@ -16,23 +16,10 @@
 
 using System.Diagnostics.CodeAnalysis;
 
-namespace ZipZap.Sftp.Ssh;
+namespace ZipZap.Sftp.Ssh.Services;
 
-public interface IPayload {
-    static abstract Numbers.Message Message { get; }
+internal interface IAuthService : ISshService {
+    public new const string ServiceName = "ssh-userauth";
+    public bool TryGetRequestHandler([NotNullWhen(true)] out ISftpRequestHandler? sftpRequestHandler);
 }
-public interface IServerPayload : IPayload {
-    public byte[] ToPayload();
-}
-public interface IClientPayload<T> : IPayload
-where T : IClientPayload<T> {
-    public abstract static bool TryParse(byte[] payload, [NotNullWhen(true)] out T? value);
-}
-public static class PayloadExt {
-    extension(IServerPayload payload) {
-        public Packet ToPacket(uint alignment, int offset = 0) {
-            var bytes = payload.ToPayload();
-            return new(new(bytes), alignment, offset);
-        }
-    }
-}
+
