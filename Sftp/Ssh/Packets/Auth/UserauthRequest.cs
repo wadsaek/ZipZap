@@ -82,7 +82,8 @@ public abstract record UserauthRequest(string Username, string ServiceName) : IC
         public const string MethodName = "none";
     }
 
-    public abstract record PublicKey(string Username, string ServiceName, string AlgName, byte[] PublicKeyBytes) : UserauthRequest(Username, ServiceName) {
+    public abstract record PublicKey(string Username, string ServiceName, string AlgName, byte[] PublicKeyBytes)
+        : UserauthRequest(Username, ServiceName) {
         public const string MethodName = "publickey";
         public sealed record WithSignature(
             string Username, string ServiceName, string AlgName, byte[] PublicKeyBytes, byte[] Signature
@@ -92,7 +93,8 @@ public abstract record UserauthRequest(string Username, string ServiceName) : IC
         ) : PublicKey(Username, ServiceName, AlgName, PublicKeyBytes);
     }
 
-    public abstract record Password(string Username, string ServiceName, string CurrentPassword) : UserauthRequest(Username, ServiceName) {
+    public abstract record Password(string Username, string ServiceName, string CurrentPassword)
+        : UserauthRequest(Username, ServiceName) {
         public const string MethodName = "password";
 
         public sealed record NotChanged(

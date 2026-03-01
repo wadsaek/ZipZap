@@ -92,8 +92,8 @@ public class Backend : IBackend {
     }
 
 
-    public async Task<Result<Directory, ServiceError>> GetRoot(CancellationToken cancellationToken = default) {
-        return await Wrap<Directory>(async () => {
+    public Task<Result<Directory, ServiceError>> GetRoot(CancellationToken cancellationToken = default) {
+        return Wrap<Directory>(async () => {
             var response = await _filesStoringService.GetRootAsync(
                 new(),
                 _configuration.ToMetadata(),
