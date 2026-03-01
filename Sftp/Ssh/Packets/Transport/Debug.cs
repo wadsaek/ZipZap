@@ -27,7 +27,7 @@ internal record Debug(bool Display, string Description) : IServerPayload, IClien
     public static bool TryParse(byte[] payload, [NotNullWhen(true)] out Debug? packet) {
         packet = null;
         var stream = new MemoryStream(payload);
-        if (!(stream.SshTryReadByteSync(out var msg) && msg != (byte)Message)) return false;
+        if (!stream.ExpectMessage(Message)) return false;
         if (!stream.SshTryReadBoolSync(out var display)) return false;
         if (!stream.SshTryReadStringSync(out var description)) return false;
         if (!stream.SshTryReadStringSync(out _)) return false;

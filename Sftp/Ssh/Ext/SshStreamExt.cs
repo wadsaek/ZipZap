@@ -1,4 +1,4 @@
-// Unimplemented.cs - Part of the ZipZap project for storing files online
+// SshStreamExt.cs - Part of the ZipZap project for storing files online
 //     Copyright (C) 2026  Barenboim Esther wadsaek@gmail.com
 //
 //     This program is free software: you can redistribute it and/or modify
@@ -14,27 +14,17 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
 
 using ZipZap.Sftp.Ssh.Numbers;
 
 namespace ZipZap.Sftp.Ssh;
 
-internal record Unimplemented(uint Sequential) : IServerPayload, IClientPayload<Unimplemented> {
-    public static Message Message => Message.Unimplemented;
-
-    public static bool TryParse(byte[] payload, [NotNullWhen(true)] out Unimplemented? value) {
-        value = null;
-        var stream = new MemoryStream(payload);
-        if (!stream.ExpectMessage(Message)) return false;
-        if (!stream.SshTryReadUint32Sync(out var sequential)) return false;
-        value = new(sequential);
-        return true;
-
-    }
-
-    public byte[] ToPayload() {
-        return new SshMessageBuilder().Write(Message).Write(Sequential).Build();
+public static class SshStreamExt {
+    extension(Stream stream) {
+        public bool ExpectMessage(Message message) {
+            if (!stream.SshTryReadByteSync(out var msg)) return false;
+            return (Message)msg == message;
+        }
     }
 }

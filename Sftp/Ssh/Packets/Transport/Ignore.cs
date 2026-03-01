@@ -34,7 +34,7 @@ internal record Ignore(byte[] Data) : IServerPayload, IClientPayload<Ignore> {
     public static bool TryParse(byte[] payload, [NotNullWhen(true)] out Ignore? packet) {
         packet = null;
         var stream = new MemoryStream(payload);
-        if (!(stream.SshTryReadByteSync(out var msg) && msg != (byte)Message)) return false;
+        if (!stream.ExpectMessage(Message)) return false;
         if (!stream.SshTryReadByteStringSync(out var data)) return false;
         packet = new(data);
         return true;

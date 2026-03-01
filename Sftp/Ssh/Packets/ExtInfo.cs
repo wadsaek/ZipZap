@@ -39,8 +39,7 @@ public sealed record ExtInfo(Extension[] Extensions) : IServerPayload, IClientPa
     public static bool TryParse(byte[] payload, [NotNullWhen(true)] out ExtInfo? value) {
         value = null;
         var stream = new MemoryStream(payload);
-        if (!(stream.SshTryReadByteSync(out var msg) && msg == (byte)Message))
-            return false;
+        if (!stream.ExpectMessage(Message)) return false;
         if (!stream.SshTryReadUint32Sync(out var count)) return false;
         var extensions = new Extension?[count];
         for (var i = 0; i < count; i++) {

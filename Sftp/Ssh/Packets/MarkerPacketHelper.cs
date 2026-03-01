@@ -24,7 +24,7 @@ internal class MarkerPacketHelper {
     public static bool TryParse<T>(byte[] payload, [NotNullWhen(true)] out T? value) where T : IClientPayload<T>, new() {
         value = default;
         var stream = new MemoryStream(payload);
-        if (!(stream.SshTryReadByteSync(out var msg) && msg == (byte)T.Message))
+        if (!stream.ExpectMessage(T.Message))
             return false;
         value = new();
         return true;

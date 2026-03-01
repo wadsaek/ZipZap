@@ -62,8 +62,7 @@ public record KeyExchange(
     public static bool TryParse(byte[] payload, [NotNullWhen(true)] out KeyExchange? value) {
         value = null;
         using var stream = new MemoryStream(payload);
-        if (!stream.SshTryReadByteSync(out var msg)) return false;
-        if ((Message)msg != Message.Kexinit) return false;
+        if (!stream.ExpectMessage(Message)) return false;
         var cookie = new byte[CookieSize];
         if (!stream.SshTryReadArraySync(cookie)) return false;
         if (!stream.SshTryReadNameListSync(out var kexAlgorithms)) return false;

@@ -28,7 +28,7 @@ public abstract record UserauthRequest(string Username, string ServiceName) : IC
     public static bool TryParse(byte[] payload, [NotNullWhen(true)] out UserauthRequest? value) {
         value = null;
         var stream = new MemoryStream(payload);
-        if (!stream.SshTryReadByteSync(out var msg) || (Message)msg != Message) return false;
+        if (!stream.ExpectMessage(Message)) return false;
         if (!stream.SshTryReadStringSync(out var username)) return false;
         if (!stream.SshTryReadStringSync(out var serviceName)) return false;
         if (!stream.SshTryReadStringSync(out var methodName)) return false;

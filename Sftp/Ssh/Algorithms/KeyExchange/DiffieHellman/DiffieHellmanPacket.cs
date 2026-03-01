@@ -17,24 +17,16 @@
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Numerics;
-using System.Threading;
-using System.Threading.Tasks;
 
 using ZipZap.Sftp.Ssh.Numbers;
 
 namespace ZipZap.Sftp.Ssh.Algorithms;
 internal record KeyExchangeDiffieHelmanInit(BigInteger E) : IPayload, IClientPayload<KeyExchangeDiffieHelmanInit> {
     public static Message Message => Message.KexDhInit;
-    public static async Task<KeyExchangeDiffieHelmanInit?> TryFromPayload(byte[] payload, CancellationToken cancellationToken) {
-        var stream = new MemoryStream(payload);
-        if (await stream.SshTryReadByte(cancellationToken) != (byte)Message) return null;
-        if (await stream.SshTryReadBigInt(cancellationToken) is not BigInteger e) return null;
-        return new(e);
-    }
     public static bool TryParse(byte[] payload, [NotNullWhen(true)] out KeyExchangeDiffieHelmanInit? packet) {
         packet = null;
         var stream = new MemoryStream(payload);
-        if (!stream.SshTryReadByteSync(out var msg) || (Message)msg != Message) return false;
+        if (!stream.ExpectMessage(Message)) return false;
         if (!stream.SshTryReadBigIntSync(out var e)) return false;
         packet = new(e);
         return true;

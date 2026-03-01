@@ -27,7 +27,7 @@ public record ServiceRequest(string ServiceName) : IClientPayload<ServiceRequest
     public static bool TryParse(byte[] payload, [NotNullWhen(true)] out ServiceRequest? value) {
         value = null;
         var stream = new MemoryStream(payload);
-        if (!stream.SshTryReadByteSync(out var msg) || (Message)msg != Message) return false;
+        if (!stream.ExpectMessage(Message)) return false;
         if (!stream.SshTryReadStringSync(out var name)) return false;
         value = new(name);
         return true;

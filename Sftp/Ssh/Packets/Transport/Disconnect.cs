@@ -27,7 +27,7 @@ internal record Disconnect(DisconnectCode ReasonCode, string Description) : ISer
     public static bool TryParse(byte[] payload, [NotNullWhen(true)] out Disconnect? packet) {
         packet = null;
         var stream = new MemoryStream(payload);
-        if (!(stream.SshTryReadByteSync(out var msg) && msg != (byte)Message)) return false;
+        if (!stream.ExpectMessage(Message)) return false;
         if (!stream.SshTryReadUint32Sync(out var code)) return false;
         if (!stream.SshTryReadStringSync(out var description)) return false;
         if (!stream.SshTryReadStringSync(out _)) return false;
