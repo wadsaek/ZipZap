@@ -19,11 +19,22 @@ using System.IO;
 using System.Text;
 
 using ZipZap.Sftp.Ssh.Numbers;
+using ZipZap.LangExt.Extensions;
+using System.Linq;
 
 namespace ZipZap.Sftp.Ssh;
 
-public record ExtInfo(Extension[] Extensions) : IServerPayload, IClientPayload<ExtInfo> {
+public sealed record ExtInfo(Extension[] Extensions) : IServerPayload, IClientPayload<ExtInfo> {
     public static Message Message => Message.ExtInfo;
+
+#pragma warning disable IDE0051 // this is not unused. .NET uses this method in ExtInfo.ToString()
+    private bool PrintMembers(StringBuilder builder) {
+        builder.Append("Extensions = [ ");
+        builder.Append(Extensions.Select(e => e.ToString()).ConcatenateWith(", "));
+        builder.Append(" ]");
+        return true;
+    }
+#pragma warning restore IDE0051
 
     public static bool TryParse(byte[] payload, [NotNullWhen(true)] out ExtInfo? value) {
         value = null;
@@ -49,7 +60,7 @@ public record ExtInfo(Extension[] Extensions) : IServerPayload, IClientPayload<E
 
     public byte[] ToPayload() {
         var builder = new SshMessageBuilder();
-        builder.Write((byte)Message);
+        builder.Write(Message);
         builder.Write((uint)Extensions.Length);
         foreach (var ext in Extensions) {
             builder

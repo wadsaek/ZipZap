@@ -22,6 +22,6 @@ public record ServiceAccept(string ServiceName) : IServerPayload {
     public static Message Message => Message.ServiceAccept;
 
     public byte[] ToPayload() {
-        return new SshMessageBuilder().Write((byte)Message).Write(ServiceName).Build();
+        return new SshMessageBuilder().Write(Message).Write(ServiceName).Build();
     }
 }

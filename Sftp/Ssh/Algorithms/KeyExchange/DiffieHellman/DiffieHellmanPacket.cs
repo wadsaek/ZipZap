@@ -45,7 +45,7 @@ internal record KeyExchangeDiffieHelmanReply(byte[] PublicHostKey, BigInteger Se
 
     public byte[] ToPayload() {
         var buffer = new SshMessageBuilder()
-            .Write((byte)Message)
+            .Write(Message)
             .WriteByteString(PublicHostKey)
             .Write(ServerExponent)
             .WriteByteString(HashSignature)

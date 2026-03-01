@@ -1,4 +1,4 @@
-// NewKeys.cs - Part of the ZipZap project for storing files online
+// RequestFailure.cs - Part of the ZipZap project for storing files online
 //     Copyright (C) 2026  Barenboim Esther wadsaek@gmail.com
 //
 //     This program is free software: you can redistribute it and/or modify
@@ -18,12 +18,12 @@ using System.Diagnostics.CodeAnalysis;
 
 using ZipZap.Sftp.Ssh.Numbers;
 
-namespace ZipZap.Sftp.Ssh;
+namespace ZipZap.Sftp.Ssh.Connection;
 
-public record NewKeys : IServerPayload, IClientPayload<NewKeys> {
+public record RequestFailure : IServerPayload, IClientPayload<RequestFailure> {
     public static Message Message => Message.Newkeys;
 
-    public static bool TryParse(byte[] payload, [NotNullWhen(true)] out NewKeys? value)
+    public static bool TryParse(byte[] payload, [NotNullWhen(true)] out RequestFailure? value)
         => MarkerPacketHelper.TryParse(payload, out value);
-    public byte[] ToPayload() => MarkerPacketHelper.ToPayload<NewKeys>();
+    public byte[] ToPayload() => MarkerPacketHelper.ToPayload<RequestFailure>();
 }

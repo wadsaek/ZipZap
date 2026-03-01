@@ -41,7 +41,7 @@ public record KeyExchange(
 
     public byte[] ToPayload() {
         var buffer = new SshMessageBuilder()
-            .Write((byte)Message)
+            .Write(Message)
             .WriteArray(Cookie)
             .WriteByteString(KexAlgorithms)
             .WriteByteString(ServerHostKeyAlgorithms)

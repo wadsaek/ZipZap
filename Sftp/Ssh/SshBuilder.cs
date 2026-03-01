@@ -19,6 +19,8 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 
+using ZipZap.Sftp.Ssh.Numbers;
+
 namespace ZipZap.Sftp.Ssh;
 
 public class SshMessageBuilder {
@@ -39,6 +41,7 @@ public class SshMessageBuilder {
     private sealed record BigIntegerItem(BigInteger Value) : SshItem { public override int Length => 4 + Value.GetByteCount(); }
     private sealed record NameListItem(NameList Value) : SshItem { public override int Length => Value.GetByteStringSize(); }
 
+    public SshMessageBuilder Write(Message value) => Write((byte)value);
     public SshMessageBuilder Write(byte value) { items.Add(new ByteItem(value)); return this; }
     public SshMessageBuilder Write(string value) { items.Add(new StringItem(value)); return this; }
     public SshMessageBuilder Write(bool value) { items.Add(new BooleanItem(value)); return this; }

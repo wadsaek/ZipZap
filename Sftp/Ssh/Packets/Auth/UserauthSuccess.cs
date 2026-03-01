@@ -22,6 +22,6 @@ public sealed record UserauthSuccess() : IServerPayload {
     public static Message Message => Message.UserauthSuccess;
 
     public byte[] ToPayload() {
-        return new SshMessageBuilder().Write((byte)Message).Build();
+        return new SshMessageBuilder().Write(Message).Build();
     }
 }

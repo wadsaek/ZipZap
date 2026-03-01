@@ -22,7 +22,8 @@ public sealed record UserauthFailure(NameList Methods, bool Partial) : IServerPa
     public static Message Message => Message.UserauthFailure;
 
     public byte[] ToPayload() {
-        return new SshMessageBuilder().Write((byte)Message)
+        return new SshMessageBuilder()
+            .Write(Message)
             .Write(Methods)
             .Write(Partial)
             .Build();

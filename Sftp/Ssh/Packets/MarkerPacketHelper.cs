@@ -1,4 +1,4 @@
-// Debug.cs - Part of the ZipZap project for storing files online
+// MarkerPacketHelper.cs - Part of the ZipZap project for storing files online
 //     Copyright (C) 2026  Barenboim Esther wadsaek@gmail.com
 //
 //     This program is free software: you can redistribute it and/or modify
@@ -17,30 +17,22 @@
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 
-using ZipZap.Sftp.Ssh.Numbers;
-
 namespace ZipZap.Sftp.Ssh;
 
-internal record Debug(bool Display, string Description) : IServerPayload, IClientPayload<Debug> {
-    public static Message Message => Message.Debug;
+internal class MarkerPacketHelper {
 
-    public static bool TryParse(byte[] payload, [NotNullWhen(true)] out Debug? packet) {
-        packet = null;
+    public static bool TryParse<T>(byte[] payload, [NotNullWhen(true)] out T? value) where T : IClientPayload<T>, new() {
+        value = default;
         var stream = new MemoryStream(payload);
-        if (!(stream.SshTryReadByteSync(out var msg) && msg != (byte)Message)) return false;
-        if (!stream.SshTryReadBoolSync(out var display)) return false;
-        if (!stream.SshTryReadStringSync(out var description)) return false;
-        if (!stream.SshTryReadStringSync(out _)) return false;
-        packet = new(display, description);
+        if (!(stream.SshTryReadByteSync(out var msg) && msg == (byte)T.Message))
+            return false;
+        value = new();
         return true;
     }
 
-    public byte[] ToPayload() {
+    public static byte[] ToPayload<T>() where T : IServerPayload {
         return new SshMessageBuilder()
-             .Write((byte)Message)
-             .Write(Display)
-             .Write(Description)
-             .Write(string.Empty)
-             .Build();
+            .Write(T.Message)
+            .Build();
     }
 }

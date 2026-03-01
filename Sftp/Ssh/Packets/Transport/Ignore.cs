@@ -42,7 +42,7 @@ internal record Ignore(byte[] Data) : IServerPayload, IClientPayload<Ignore> {
 
     public byte[] ToPayload() {
         return new SshMessageBuilder()
-             .Write((byte)Message)
+             .Write(Message)
              .WriteByteString(Data)
              .Build();
     }

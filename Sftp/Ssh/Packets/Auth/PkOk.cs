@@ -22,7 +22,8 @@ public sealed record PkOk(string AlgName, byte[] Blob) : IServerPayload {
     public static Message Message => Message.UserauthPkOk;
 
     public byte[] ToPayload() {
-        return new SshMessageBuilder().Write((byte)Message)
+        return new SshMessageBuilder()
+            .Write(Message)
             .Write(AlgName)
             .WriteByteString(Blob)
             .Build();
