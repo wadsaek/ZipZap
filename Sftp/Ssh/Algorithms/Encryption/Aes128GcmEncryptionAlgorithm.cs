@@ -22,7 +22,7 @@ using System.Threading.Tasks;
 
 namespace ZipZap.Sftp.Ssh.Algorithms;
 
-// aes128-gcm as specified by rfc5468 <https://www.rfc-editor.org/rfc/rfc5647>
+// aes128-gcm as specified by rfc5647 <https://www.rfc-editor.org/rfc/rfc5647>
 // and "Fixed AES-GCM modes for the SSH protocol"
 // <https://www.ietf.org/archive/id/draft-miller-sshm-aes-gcm-00.html>
 internal class Aes128GcmEncryptionAlgorithm : IEncryptionAlgorithm {
