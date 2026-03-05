@@ -19,12 +19,14 @@ using System.Threading.Tasks;
 
 using ZipZap.Classes;
 using ZipZap.LangExt.Helpers;
+using ZipZap.Sftp.Ssh.Algorithms;
 
 namespace ZipZap.Front.Services;
 
 public interface ILoginService {
     public Task<Result<string, LoginError>> Login(string username, string password, CancellationToken cancellationToken = default);
     public Task<Result<string, SignupError>> SignUp(SignUpInfo signUpInfo, CancellationToken cancellationToken = default);
+    public Task<Result<string, SshLoginError>> LoginSsh(string username, IPublicKey publicKey, IHostKeyPair hostKeyPair, CancellationToken cancellationToken);
 }
 
 public abstract record SignupError {

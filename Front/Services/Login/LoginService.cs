@@ -20,12 +20,17 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Google.Protobuf;
+using Google.Protobuf.WellKnownTypes;
+
 using Grpc.Core;
 
+using ZipZap.Classes;
 using ZipZap.Classes.Adapters;
 using ZipZap.Classes.Helpers;
 using ZipZap.Grpc;
 using ZipZap.LangExt.Helpers;
+using ZipZap.Sftp.Ssh.Algorithms;
 
 using static ZipZap.LangExt.Helpers.ResultConstructor;
 
@@ -51,6 +56,51 @@ public class LoginService : ILoginService {
                 return Err<string, LoginError>(new LoginError.WrongCredentials());
             return Err<string, LoginError>(new LoginError.Service(_exceptionConverter.Convert(exception)));
         }
+    }
+
+    public async Task<Result<string, SshLoginError>> LoginSsh(string username, IPublicKey publicKey, IHostKeyPair hostKeyPair, CancellationToken cancellationToken = default) {
+        if (string.IsNullOrWhiteSpace(username))
+            return Err<string, SshLoginError>(new SshLoginError.EmptyUsername());
+
+        var timestamp = Timestamp.FromDateTimeOffset(DateTimeOffset.UtcNow);
+        var timestampString = timestamp.ToString();
+
+        var hostpubkey = hostKeyPair.GetPublicKey();
+        var userBytes = publicKey.ToByteString();
+        var userString = publicKey.ToAsciiString();
+        var hostBytes = hostpubkey.ToByteString();
+        var hostString = hostpubkey.ToAsciiString();
+        var unsigned = new Sftp.Ssh.SshMessageBuilder()
+            .Write(username)
+            .WriteByteString(userBytes)
+            .WriteByteString(hostBytes)
+            .Write(timestampString)
+            .Build();
+        var signature = hostKeyPair.Sign(unsigned);
+        var message = new LoginSshRequest {
+            Username = username,
+            HostPublicKey = new() { Key = hostString },
+            UserPublicKey = new() { Key = userString },
+            Timestamp = timestamp,
+            Signature = ByteString.CopyFrom(signature)
+        };
+        var response = await _filesStoringService.LoginSshAsync(message, cancellationToken: cancellationToken);
+        return response.ResultCase switch {
+            LoginSshResponse.ResultOneofCase.Token => Ok<string, SshLoginError>(response.Token),
+            LoginSshResponse.ResultOneofCase.Error => Err<string, SshLoginError>(
+                response.Error switch {
+                    LoginSshError.BadSignature => throw new Exception("Unable to sign"),
+                    LoginSshError.HostPublicKeyNotAuthorized => new SshLoginError.HostPublicKeyNotAuthorized(),
+                    LoginSshError.TimestampTooEarly => new SshLoginError.TimestampTooEarly(),
+                    LoginSshError.TimestampWasUsed => new SshLoginError.TimestampWasUsed(),
+                    LoginSshError.UserPublicKeyDoesntMatch => new SshLoginError.UserPublicKeyDoesntMatch(),
+                    _ => new SshLoginError.Other()
+                }
+            ),
+            _ or LoginSshResponse.ResultOneofCase.None => new Err<string, SshLoginError>(
+                new SshLoginError.Other()
+            )
+        };
     }
 
     public async Task<Result<string, SignupError>> SignUp(SignUpInfo signUpInfo, CancellationToken cancellationToken = default) {
