@@ -44,6 +44,7 @@ using Directory = ZipZap.Classes.Directory;
 using File = ZipZap.Classes.File;
 using Guid = System.Guid;
 using PathData = ZipZap.Classes.PathData;
+using SshKey = ZipZap.Grpc.SshKey;
 using User = ZipZap.Classes.User;
 using UserRole = ZipZap.Classes.UserRole;
 
@@ -53,18 +54,21 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
     private readonly ILogger<FilesStoringServiceImpl> _logger;
     private readonly IIO _io;
     private readonly IFsosRepository _fsosRepo;
+    private readonly IUserSshKeysRepository _userKeysRepo;
     private readonly IUserService _userService;
 
     public FilesStoringServiceImpl(
         ILogger<FilesStoringServiceImpl> logger,
         IIO io,
         IFsosRepository fsosRepo,
-        IUserService userService
+        IUserService userService,
+        IUserSshKeysRepository userKeysRepo
     ) {
         _logger = logger;
         _io = io;
         _fsosRepo = fsosRepo;
         _userService = userService;
+        _userKeysRepo = userKeysRepo;
     }
 
     /// typeparam name="T"
@@ -83,7 +87,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         => obj ?? throw new RpcException(new(StatusCode.NotFound, message));
 
     private Func<Fso, Task<bool>> OwnedBy(User owner) =>
-            async fso => (owner.Role == UserRole.Admin) || (await _fsosRepo.GetRootDirectory(fso.Id))?.Id == owner.Root.Id;
+            async fso => Predicates.IsAdmin(owner) || (await _fsosRepo.GetRootDirectory(fso.Id))?.Id == owner.Root.Id;
 
 
     private Task<Fso> GetFsoOrFailAsync(Grpc.Guid key, User owner, CancellationToken cancellationToken = default)
@@ -285,8 +289,19 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         };
     }
 
-    public override Task<Grpc.Guid> AddSshKey(Grpc.SshKey request, ServerCallContext context) {
-        return base.AddSshKey(request, context);
+    public override async Task<Grpc.Guid> AddSshKey(SshKey request, ServerCallContext context) {
+        var user = await GetUserOrThrowAsync(context);
+        var key = new SshPublicKey(request.Key);
+        var userKey = new UserSshKey(default, key, user);
+        var result = await _userKeysRepo.CreateAsync(userKey, context.CancellationToken);
+        return result switch {
+            Ok<UserSshKey, DbError>(var newKey)
+                => newKey.Id.Id.ToGrpcGuid(),
+            Err<UserSshKey, DbError>(var err)
+                => throw new RpcException(new(StatusCode.Internal, err.ToString())),
+            _
+                => throw new InvalidEnumArgumentException()
+        };
     }
 
     public override async Task<UserList> AdminGetUserList(EmptyMessage request, ServerCallContext context) {

@@ -222,4 +222,7 @@ public static class ProtoAdapter {
     extension(Grpc.Ownership ownership) {
         public Ownership ToOwnership() => new(ownership.Owner, ownership.Group);
     }
+    extension(SshKey key) {
+        public SshPublicKey ToPublicKey() => new(key.Key);
+    }
 }

@@ -1,4 +1,4 @@
-// SshKey.cs - Part of the ZipZap project for storing files online
+// IUserSshKeysRepository.cs - Part of the ZipZap project for storing files online
 //     Copyright (C) 2026  Barenboim Esther wadsaek@gmail.com
 //
 //     This program is free software: you can redistribute it and/or modify
@@ -14,8 +14,16 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-namespace ZipZap.Classes;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
-public sealed record SshKey(string Key, User User) : IEntity<(string, UserId)> {
-    public (string, UserId) Id => (Key, User.Id);
+using ZipZap.Classes;
+
+namespace ZipZap.Persistence.Repositories;
+
+public interface IUserSshKeysRepository : IRepository<UserSshKey, SshUserKeyId> {
+    public Task<IEnumerable<UserSshKey>> GetForUserId(UserId userId, CancellationToken cancellationToken = default);
+    public Task<IEnumerable<UserSshKey>> GetForUsername(string username, CancellationToken cancellationToken = default);
+    public Task<IEnumerable<UserSshKey>> GetByKey(SshPublicKey key, CancellationToken cancellationToken = default);
 }
