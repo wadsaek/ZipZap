@@ -56,19 +56,25 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
     private readonly IFsosRepository _fsosRepo;
     private readonly IUserSshKeysRepository _userKeysRepo;
     private readonly IUserService _userService;
+    private readonly ISshService _sshService;
+    private readonly ITrustedAuthorityKeysRepository _trustedKeysRepo;
 
     public FilesStoringServiceImpl(
         ILogger<FilesStoringServiceImpl> logger,
         IIO io,
         IFsosRepository fsosRepo,
         IUserService userService,
-        IUserSshKeysRepository userKeysRepo
+        ISshService sshService,
+        IUserSshKeysRepository userKeysRepo,
+        ITrustedAuthorityKeysRepository trustedKeysRepo
     ) {
         _logger = logger;
         _io = io;
         _fsosRepo = fsosRepo;
         _userService = userService;
         _userKeysRepo = userKeysRepo;
+        _sshService = sshService;
+        _trustedKeysRepo = trustedKeysRepo;
     }
 
     /// typeparam name="T"
@@ -392,6 +398,44 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         if (await _fsosRepo.GetDeepestSharedFso(id, user.Id, cancellationToken) is not Directory dir)
             return null;
         return dir;
+    }
+
+    public override async Task<EmptyMessage> AdminAddSshHostKey(AdminAddSshHostKeyRequest request, ServerCallContext context) {
+        var user = await GetUserOrThrowAsync(context);
+        ThrowIfNotAdmin(user);
+        var sshKey = request.Key.ToPublicKey();
+        var hostKey = new TrustedAuthorityKey(default, request.ServerName, sshKey, DateTimeOffset.UtcNow, user);
+        var result = await _trustedKeysRepo.CreateAsync(hostKey, context.CancellationToken);
+        return result switch {
+            Ok<TrustedAuthorityKey, DbError>
+                => new EmptyMessage(),
+            Err<TrustedAuthorityKey, DbError>(var err)
+                => throw new RpcException(new(StatusCode.Internal, err.ToString())),
+            _
+                => throw new InvalidEnumArgumentException()
+        };
+    }
+
+    public override async Task<LoginSshResponse> LoginSsh(LoginSshRequest request, ServerCallContext context) {
+        var timestamp = request.Timestamp.ToDateTimeOffset();
+        if (DateTimeOffset.UtcNow - timestamp > TimeSpan.FromSeconds(5)) return new() { Error = LoginSshError.TimestampTooEarly };
+        var result = await _sshService.LoginSsh(
+            request.Username,
+            request.UserPublicKey.ToPublicKey(),
+            request.HostPublicKey.ToPublicKey(),
+            request.Timestamp,
+            request.Signature.ToArray(),
+            context.CancellationToken
+        );
+        return result switch {
+            Ok<string, SshLoginError>(var token) => new() {
+                Token = token
+            },
+            Err<string, SshLoginError>(var err) => new() {
+                Error = err.ToGrpcError()
+            },
+            _ => throw new InvalidEnumArgumentException()
+        };
     }
 }
 

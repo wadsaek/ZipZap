@@ -1,7 +1,61 @@
 syntax = "proto3";
+import "google/protobuf/timestamp.proto";
 
 option csharp_namespace = "ZipZap.Grpc";
 
 message SshKey{
   string key = 1;
+}
+
+message AdminAddSshHostKeyRequest{
+  SshKey key = 1;
+  string serverName = 2;
+}
+
+// Auth without a password with a channel this simple requires trust.
+// this message should ensure this trust.
+// A front-end client can be a trusted authority if it has
+// its public key uploaded to the server by an administrator
+// using the `AdminAddSshHostKey` rpc.
+// To prove that the client does indeed have the private key
+// I decided to use a private key signature - just like the
+// ssh protocol does (RFC 4252).
+// We don't have a session id to prepend in order to make the signature
+// unique, so i'm doing the next best thing - include the timestamp in the hash
+message LoginSshRequest{
+  // to locate the user
+  string username = 1;
+  // to verify that a user has actually uploaded the public key
+  SshKey userPublicKey = 2;
+  // to verify that this request is from a trusted authority.
+  // in this case an ssh server whose public key
+  // was earlier uploaded to ZipZap.FileService by an admin
+  SshKey hostPublicKey = 3;
+
+  // part of the signature -- to ensure that the signature can't be cached or eavesdropped on
+  google.protobuf.Timestamp timestamp = 4;
+
+  // signature of:
+  // string username
+  // string userPublicKey
+  // string hostPublicKey
+  // string timestamp
+  //
+  // (ssh-encoded)
+  bytes signature = 5;
+}
+message LoginSshResponse{
+  oneof result {
+    string token = 1;
+    LoginSshError error = 2;
+  }
+}
+
+enum LoginSshError{
+  BAD_SIGNATURE = 0;
+  TIMESTAMP_WAS_USED = 1;
+  TIMESTAMP_TOO_EARLY = 2;
+  USER_PUBLIC_KEY_DOESNT_MATCH = 3;
+  HOST_PUBLIC_KEY_NOT_AUTHORIZED = 4;
+  OTHER = 5;
 }

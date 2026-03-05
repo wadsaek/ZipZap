@@ -225,4 +225,15 @@ public static class ProtoAdapter {
     extension(SshKey key) {
         public SshPublicKey ToPublicKey() => new(key.Key);
     }
+    extension(SshLoginError err) {
+        public LoginSshError ToGrpcError() => err switch {
+            SshLoginError.UserPublicKeyDoesntMatch or SshLoginError.EmptyUsername => LoginSshError.UserPublicKeyDoesntMatch,
+            SshLoginError.HostPublicKeyNotAuthorized => LoginSshError.HostPublicKeyNotAuthorized,
+            SshLoginError.BadSignature => LoginSshError.BadSignature,
+            SshLoginError.TimestampTooEarly => LoginSshError.TimestampTooEarly,
+            SshLoginError.TimestampWasUsed => LoginSshError.TimestampWasUsed,
+            SshLoginError.Other => LoginSshError.Other,
+            _ => throw new InvalidEnumArgumentException()
+        };
+    }
 }

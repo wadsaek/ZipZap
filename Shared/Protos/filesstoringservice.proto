@@ -88,6 +88,7 @@ message GetFsoWithRootRequest{
 service FilesStoringService {
   rpc SaveFso(SaveFsoRequest) returns (SaveFsoResponse);
   rpc GetFso(GetFsoRequest) returns (GetFsoResponse);
+  rpc GetFsoWithRoot(GetFsoWithRootRequest) returns (GetFsoResponse);
   rpc GetRoot(EmptyMessage) returns (GetRootResponse);
   rpc DeleteFso(DeleteFsoRequest) returns (EmptyMessage);
   rpc RemoveFrenchLanguagePack(EmptyMessage) returns (EmptyMessage);
@@ -96,6 +97,7 @@ service FilesStoringService {
   rpc GetFullPath(Guid) returns (FullPathMessage);
 
   rpc Login(LoginRequest) returns (LoginResponse);
+  rpc LoginSsh(LoginSshRequest) returns (LoginSshResponse);
   rpc SignUp(SignUpRequest) returns (SignUpResponse);
   rpc GetSelf(EmptyMessage) returns (User);
   rpc RemoveSelf(EmptyMessage) returns (User);
@@ -103,5 +105,5 @@ service FilesStoringService {
 
   rpc AdminGetUserList(EmptyMessage) returns (UserList);
   rpc AdminRemoveUser(Guid) returns (EmptyMessage);
-  rpc GetFsoWithRoot(GetFsoWithRootRequest) returns (GetFsoResponse);
+  rpc AdminAddSshHostKey(AdminAddSshHostKeyRequest) returns (EmptyMessage);
 }
