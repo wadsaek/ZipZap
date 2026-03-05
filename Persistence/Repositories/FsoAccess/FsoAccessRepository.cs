@@ -1,4 +1,4 @@
-﻿// FsosRepository.cs - Part of the ZipZap project for storing files online
+﻿// FsoAccessRepository.cs - Part of the ZipZap project for storing files online
 //     Copyright (C) 2026  Barenboim Esther wadsaek@gmail.com
 //
 //     This program is free software: you can redistribute it and/or modify
