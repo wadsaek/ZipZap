@@ -222,4 +222,25 @@ BEGIN
 
     END IF;
 END $MIGRATION$;
+
+DO
+$MIGRATION$
+BEGIN
+    IF NOT EXISTS (SELECT * FROM migrations WHERE migration_name = 'add_front_keys_table') THEN
+
+        INSERT INTO migrations VALUES ('add_front_keys_table');
+
+        CREATE TABLE IF NOT EXISTS authorized_servers (
+            id uuid NOT NULL DEFAULT (gen_random_uuid()) PRIMARY KEY,
+            server_name character varying(256) NULL,
+            server_key text NOT NULL,
+            added_time timestamptz NOT NULL DEFAUlT (LOCALTIMESTAMP),
+            admin_id uuid NULL REFERENCES users (id) ON DELETE SET NULL
+        );
+
+        ALTER TABLE ssh_keys
+            ALTER key TYPE text;
+    END IF;
+END $MIGRATION$;
+
 COMMIT;
