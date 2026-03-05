@@ -1,4 +1,4 @@
-// IUserService.cs - Part of the ZipZap project for storing files online
+// ITokenService.cs - Part of the ZipZap project for storing files online
 //     Copyright (C) 2026  Barenboim Esther wadsaek@gmail.com
 //
 //     This program is free software: you can redistribute it and/or modify
@@ -14,23 +14,11 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-
 using ZipZap.Classes;
-using ZipZap.Classes.Helpers;
-using ZipZap.LangExt.Helpers;
-using ZipZap.Persistence.Models;
 
 namespace ZipZap.FileService.Services;
 
-public interface IUserService {
-    Task<string?> Login(string username, string password, CancellationToken cancellationToken);
-    Task<User?> GetUser(string token, CancellationToken cancellationToken);
-    Task<Result<Unit, DbError>> RemoveUser(UserId id, CancellationToken cancellationToken);
-    Task<IEnumerable<User>> GetAllUsers(CancellationToken token);
-    byte[] HashPassword(string password);
-    Task<Result<User, DbError>> CreateAsync(User user, CancellationToken cancellationToken);
+public interface ITokenService {
+    string GenerateToken(User user);
+    public bool TryGetUserId(string token, out UserId userId);
 }
-

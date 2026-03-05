@@ -117,8 +117,12 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
     private async Task<User> GetUserOrThrowAsync(ServerCallContext context) {
         var entry = context.RequestHeaders.Get(Constants.AUTHORIZATION) ?? ThrowUnauthenticated<Entry>($"No {Constants.AUTHORIZATION} header");
         if (entry.IsBinary) ThrowUnauthenticated<Unit>("Authorization header can't be binary");
-        var user = await _userService.GetUser(entry.Value);
+        var user = await _userService.GetUser(entry.Value, context.CancellationToken);
         return user ?? ThrowUnauthenticated<User>();
+    }
+    public static void ThrowIfNotAdmin(User user) {
+        if (user.Role != UserRole.Admin)
+            throw new RpcException(new(StatusCode.PermissionDenied, "You are not an admin"));
     }
 
     public override async Task<EmptyMessage> DeleteFso(DeleteFsoRequest request, ServerCallContext context) {
@@ -221,7 +225,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
     }
 
     public override async Task<LoginResponse> Login(LoginRequest request, ServerCallContext context) {
-        var token = await _userService.Login(request.Username, request.Password);
+        var token = await _userService.Login(request.Username, request.Password, context.CancellationToken);
         return new() { Token = token ?? ThrowUnauthenticated<string>("Wrong credentials") };
     }
 
@@ -258,7 +262,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         await EnsureAdminOrThrow(context);
         var guid = ParseGuidOrThrow(request);
         var id = new UserId(guid);
-        return await _userService.RemoveUser(id) switch {
+        return await _userService.RemoveUser(id, context.CancellationToken) switch {
             Ok<Unit, DbError> => new EmptyMessage(),
             Err<Unit, DbError>(var err) => err switch {
                 DbError.NothingChanged => throw new RpcException(new(StatusCode.Internal, $"Was unable to delete user with id {id}")),
@@ -270,7 +274,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
 
     public override async Task<Grpc.User> RemoveSelf(EmptyMessage request, ServerCallContext context) {
         var user = await GetUserOrThrowAsync(context);
-        var result = await _userService.RemoveUser(user.Id);
+        var result = await _userService.RemoveUser(user.Id, context.CancellationToken);
         return result switch {
             Ok<Unit, DbError> => user.ToGrpcUser(),
             Err<Unit, DbError>(var err) => err switch {
@@ -291,11 +295,13 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         return users.ToUserList();
     }
 
+
+
     private async Task<User> EnsureAdminOrThrow(ServerCallContext context) {
         if (_logger.IsEnabled(LogLevel.Information))
             _logger.LogInformation("{Peer}", context.Peer);
         var user = await GetUserOrThrowAsync(context);
-        if (user.Role != UserRole.Admin) throw new RpcException(new(StatusCode.PermissionDenied, "You are not an admin"));
+        ThrowIfNotAdmin(user);
         return user;
     }
 
@@ -326,7 +332,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
             },
             _ => throw new InvalidEnumArgumentException()
         };
-        var token = await _userService.Login(user.Username, request.Password);
+        var token = await _userService.Login(user.Username, request.Password, context.CancellationToken);
         return new() { Ok = new() { Token = token ?? ThrowUnauthenticated<string>("Wrong credentials") } };
     }
 
@@ -376,4 +382,5 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
 
 internal static class Predicates {
     public static Func<object, bool> AlwaysTrue => _ => true;
+    public static Func<User, bool> IsAdmin => u => u.Role == UserRole.Admin;
 }

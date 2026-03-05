@@ -88,6 +88,7 @@ public class Program {
         builder.Services.AddGrpcReflection();
         builder.Services.AddScoped<IIO, IO>();
         builder.Services.AddScoped<IUserService, UserService>();
+        builder.Services.AddScoped<ITokenService, TokenService>();
 
         builder.Services.AddScoped(_ => GetRsaSecurityKey());
 
