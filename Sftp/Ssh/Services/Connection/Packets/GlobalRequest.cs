@@ -1,4 +1,4 @@
-// RequestFailure.cs - Part of the ZipZap project for storing files online
+// GlobalRequest.cs - Part of the ZipZap project for storing files online
 //     Copyright (C) 2026  Barenboim Esther wadsaek@gmail.com
 //
 //     This program is free software: you can redistribute it and/or modify
@@ -15,15 +15,26 @@
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 
 using ZipZap.Sftp.Ssh.Numbers;
 
-namespace ZipZap.Sftp.Ssh.Connection;
+namespace ZipZap.Sftp.Ssh.Services.Connection.Packets;
 
-public record RequestFailure : IServerPayload, IClientPayload<RequestFailure> {
+// NOTE: this is a more complex packet, but we don't support most of its
+// intricasies. this simple implementation should work wonders.
+public record GlobalRequest(bool WantReply) : IClientPayload<GlobalRequest> {
     public static Message Message => Message.Newkeys;
 
-    public static bool TryParse(byte[] payload, [NotNullWhen(true)] out RequestFailure? value)
-        => MarkerPacketHelper.TryParse(payload, out value);
-    public byte[] ToPayload() => MarkerPacketHelper.ToPayload<RequestFailure>();
+    public static bool TryParse(byte[] payload, [NotNullWhen(true)] out GlobalRequest? value) {
+        value = null;
+        var stream = new MemoryStream(payload);
+        if (!stream.ExpectMessage(Message)) return false;
+        if (!stream.SshTryReadStringSync(out _)) return false;
+        if (!stream.SshTryReadBoolSync(out var wantReply)) return false;
+        value = new(wantReply);
+        return true;
+
+    }
+
 }

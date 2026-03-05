@@ -61,20 +61,20 @@ public record NameList(NameList.Item[] Names) : IToByteString {
     }
 
     internal static bool TryParse(string str, [NotNullWhen(true)] out NameList? nameList) {
-            nameList = null;
+        nameList = null;
 
-            if (str is "") {
-                nameList = new([]);
-                return true;
-            }
-            var maybeNames = str.Split(',');
-            var names = new List<Item>(maybeNames.Length);
-            foreach (var name in maybeNames) {
-                if (!Item.TryParse(name, out var item))
-                    return false;
-                names.Add(item);
-            }
-            nameList = new(names.ToArray());
+        if (str is "") {
+            nameList = new([]);
             return true;
+        }
+        var maybeNames = str.Split(',');
+        var names = new List<Item>(maybeNames.Length);
+        foreach (var name in maybeNames) {
+            if (!Item.TryParse(name, out var item))
+                return false;
+            names.Add(item);
+        }
+        nameList = new(names.ToArray());
+        return true;
     }
 }

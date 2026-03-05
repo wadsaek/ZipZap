@@ -1,4 +1,4 @@
-// MarkerPacketHelper.cs - Part of the ZipZap project for storing files online
+// ChannelOpenConfirmation.cs - Part of the ZipZap project for storing files online
 //     Copyright (C) 2026  Barenboim Esther wadsaek@gmail.com
 //
 //     This program is free software: you can redistribute it and/or modify
@@ -14,27 +14,28 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-using System.Diagnostics.CodeAnalysis;
-using System.IO;
-
 using ZipZap.Sftp.Ssh.Numbers;
 
-namespace ZipZap.Sftp.Ssh;
+namespace ZipZap.Sftp.Ssh.Services.Connection.Packets;
 
-internal class MarkerPacketHelper {
+// byte      SSH_MSG_CHANNEL_OPEN_CONFIRMATION
+// uint32    recipient channel
+// uint32    sender channel
+// uint32    initial window size
+// uint32    maximum packet size
+public record ChannelOpenConfirmation<T>(uint Recipient, uint Sender, uint WindowSize, uint MaxPacketSize, T SpecificData)
+: IServerPayload
+where T : ChannelSpecificData {
+    public static Message Message => Message.ChannelOpenConfirmation;
 
-    public static bool TryParse<T>(byte[] payload, [NotNullWhen(true)] out T? value, Message message) where T : IClientPayload<T>, new() {
-        value = default;
-        var stream = new MemoryStream(payload);
-        if (!stream.ExpectMessage(message))
-            return false;
-        value = new();
-        return true;
-    }
-
-    public static byte[] ToPayload(Message message) {
+    public byte[] ToPayload() {
         return new SshMessageBuilder()
-            .Write(message)
+            .Write(Message)
+            .Write(Recipient)
+            .Write(Sender)
+            .Write(WindowSize)
+            .Write(MaxPacketSize)
+            .WriteArray(SpecificData.ToPayload())
             .Build();
     }
 }

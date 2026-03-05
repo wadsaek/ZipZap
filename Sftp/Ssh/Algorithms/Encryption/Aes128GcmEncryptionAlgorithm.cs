@@ -121,9 +121,9 @@ internal class Aes128GcmEncryptionAlgorithm : IEncryptionAlgorithm {
             ivstream.SshTryReadUInt64Sync(out _incrementing);
         }
 
-        public uint MacSequential => throw new NotImplementedException();
+        public uint MacSequential => _mac.GetCount();
 
-        public async Task SendPacket<TPayload>(TPayload serverPayload, CancellationToken cancellationToken) where TPayload : IServerPayload {
+        public async Task SendPacket(IServerPayload serverPayload, CancellationToken cancellationToken) {
             _mac.IncrementCounter();
 
             var packet = serverPayload.ToPacket(16, 4);

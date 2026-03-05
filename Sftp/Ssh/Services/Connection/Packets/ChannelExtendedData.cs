@@ -1,4 +1,4 @@
-// DiffieHellmanPacket.cs - Part of the ZipZap project for storing files online
+// ChannelExtendedData.cs - Part of the ZipZap project for storing files online
 //     Copyright (C) 2026  Barenboim Esther wadsaek@gmail.com
 //
 //     This program is free software: you can redistribute it and/or modify
@@ -16,34 +16,27 @@
 
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
-using System.Numerics;
 
 using ZipZap.Sftp.Ssh.Numbers;
+namespace ZipZap.Sftp.Ssh.Services.Connection.Packets;
 
-namespace ZipZap.Sftp.Ssh.Algorithms;
+sealed record ChannelExtendedData(uint Recipient, ChannelExtendedDataType DataType, byte[] Bytes) : IServerPayload, IClientPayload<ChannelExtendedData>, IChannelPayload {
+    public static Message Message => Message.ChannelExtendedData;
 
-internal record KeyExchangeDiffieHelmanInit(BigInteger E) : IPayload, IClientPayload<KeyExchangeDiffieHelmanInit> {
-    public static Message Message => Message.KexDhInit;
-    public static bool TryParse(byte[] payload, [NotNullWhen(true)] out KeyExchangeDiffieHelmanInit? packet) {
-        packet = null;
+    public uint ChannelWindowLength => 4 + 4 + (uint)Bytes.Length;
+
+    public static bool TryParse(byte[] payload, [NotNullWhen(true)] out ChannelExtendedData? value) {
+        value = null;
         var stream = new MemoryStream(payload);
         if (!stream.ExpectMessage(Message)) return false;
-        if (!stream.SshTryReadBigIntSync(out var e)) return false;
-        packet = new(e);
+        if (!stream.SshTryReadUint32Sync(out var recipient)) return false;
+        if (!stream.SshTryReadUint32Sync(out var type)) return false;
+        if (!stream.SshTryReadByteStringSync(out var bytes)) return false;
+        value = new(recipient, (ChannelExtendedDataType)type, bytes);
         return true;
     }
-}
-internal record KeyExchangeDiffieHelmanReply(byte[] PublicHostKey, BigInteger ServerExponent, byte[] HashSignature) : IServerPayload {
-    public static Message Message => Message.KexDhReply;
 
     public byte[] ToPayload() {
-        var buffer = new SshMessageBuilder()
-            .Write(Message)
-            .WriteByteString(PublicHostKey)
-            .Write(ServerExponent)
-            .WriteByteString(HashSignature)
-            .Build();
-
-        return buffer;
+        throw new System.NotImplementedException();
     }
 }

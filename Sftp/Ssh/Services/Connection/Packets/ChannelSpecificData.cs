@@ -1,4 +1,4 @@
-// IPayload.cs - Part of the ZipZap project for storing files online
+// ChannelSpecificData.cs - Part of the ZipZap project for storing files online
 //     Copyright (C) 2026  Barenboim Esther wadsaek@gmail.com
 //
 //     This program is free software: you can redistribute it and/or modify
@@ -13,26 +13,20 @@
 //
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
+namespace ZipZap.Sftp.Ssh.Services.Connection.Packets;
 
-using System.Diagnostics.CodeAnalysis;
+public abstract record ChannelSpecificData {
+    public abstract string GetChannelType();
+    public abstract byte[] ToPayload();
+    public sealed record Session : ChannelSpecificData {
+        public const string ChannelType = "session";
+        public override string GetChannelType() => ChannelType;
 
-namespace ZipZap.Sftp.Ssh;
+        public override byte[] ToPayload() => [];
+    }
+    public sealed record UnrecognizedData(string ChannelType, byte[] Value) : ChannelSpecificData {
+        public override string GetChannelType() => ChannelType;
 
-public interface IPayload {
-    // static abstract Numbers.Message Message { get; }
-}
-public interface IServerPayload : IPayload {
-    public byte[] ToPayload();
-}
-public interface IClientPayload<T> : IPayload
-where T : IClientPayload<T> {
-    public abstract static bool TryParse(byte[] payload, [NotNullWhen(true)] out T? value);
-}
-public static class PayloadExt {
-    extension(IServerPayload payload) {
-        public Packet ToPacket(uint alignment, int offset = 0) {
-            var bytes = payload.ToPayload();
-            return new(new(bytes), alignment, offset);
-        }
+        public override byte[] ToPayload() => Value;
     }
 }

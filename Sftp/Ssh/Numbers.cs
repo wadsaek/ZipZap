@@ -98,13 +98,13 @@ internal enum DisconnectCode : uint {
     IllegalUserName = 15
 }
 
-internal enum ChannelConnectionFailure : uint {
+public enum ChannelOpenFailureCode : uint {
     AdministrativelyProhibited = 1,
     ConnectFailed = 2,
     UnknownChannelType = 3,
     ResourceShortage = 4
 }
 
-internal enum ChannelExtendedData : uint {
+internal enum ChannelExtendedDataType : uint {
     Stderr = 1
 }

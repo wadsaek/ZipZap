@@ -1,4 +1,4 @@
-// MarkerPacketHelper.cs - Part of the ZipZap project for storing files online
+// ChannelData.cs - Part of the ZipZap project for storing files online
 //     Copyright (C) 2026  Barenboim Esther wadsaek@gmail.com
 //
 //     This program is free software: you can redistribute it and/or modify
@@ -19,22 +19,28 @@ using System.IO;
 
 using ZipZap.Sftp.Ssh.Numbers;
 
-namespace ZipZap.Sftp.Ssh;
+namespace ZipZap.Sftp.Ssh.Services.Connection.Packets;
 
-internal class MarkerPacketHelper {
+public sealed record ChannelData(uint RecipientChannel, byte[] Data) : IServerPayload, IClientPayload<ChannelData>, IChannelPayload {
+    public static Message Message => Message.ChannelData;
 
-    public static bool TryParse<T>(byte[] payload, [NotNullWhen(true)] out T? value, Message message) where T : IClientPayload<T>, new() {
-        value = default;
+    public uint ChannelWindowLength => (uint)Data.Length + 4;
+
+    public static bool TryParse(byte[] payload, [NotNullWhen(true)] out ChannelData? value) {
+        value = null;
         var stream = new MemoryStream(payload);
-        if (!stream.ExpectMessage(message))
-            return false;
-        value = new();
+        stream.ExpectMessage(Message);
+        if (!stream.SshTryReadUint32Sync(out var recipient)) return false;
+        if (!stream.SshTryReadByteStringSync(out var bytes)) return false;
+        value = new(recipient, bytes);
         return true;
     }
 
-    public static byte[] ToPayload(Message message) {
+    public byte[] ToPayload() {
         return new SshMessageBuilder()
-            .Write(message)
+            .Write(Message)
+            .Write(RecipientChannel)
+            .WriteByteString(Data)
             .Build();
     }
 }

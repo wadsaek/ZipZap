@@ -22,7 +22,7 @@ using System.Threading.Tasks;
 namespace ZipZap.Sftp.Ssh.Algorithms;
 
 public interface IKeyExchangeAlgorithm : INamed {
-    Task<KeyExchangeResult?> ExchangeKeysAsync(IHostKeyPair hostKeyPair,KexInitPair kexInitPair,KeyExchangeInput input, CancellationToken cancellationToken);
+    Task<KeyExchangeResult?> ExchangeKeysAsync(IHostKeyPair hostKeyPair, KexInitPair kexInitPair, KeyExchangeInput input, CancellationToken cancellationToken);
     Func<byte[], byte[]> Hash { get; }
 }
 

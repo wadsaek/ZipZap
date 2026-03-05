@@ -37,7 +37,7 @@ public class NoEncryptionAlgorithm : IEncryptionAlgorithm {
     public IEncryptor GetEncryptor(Stream stream, byte[] IV, byte[] Key, IMacGenerator mac) {
         if (IV.Length != IVLength) throw new ArgumentException($"{nameof(IV)} should be of length {IVLength}");
         if (Key.Length != KeyLength) throw new ArgumentException($"{nameof(Key)} should be of length {KeyLength}");
-        return new NoEncryptionEncryptor(stream,mac);
+        return new NoEncryptionEncryptor(stream, mac);
     }
     private class NoEncryptionDecryptor : IDecryptor {
         private readonly Stream _stream;
@@ -85,14 +85,13 @@ public class NoEncryptionAlgorithm : IEncryptionAlgorithm {
 
         public uint MacSequential => _macGenerator.GetCount();
 
-        public async Task SendPacket<T>(T serverPayload, CancellationToken cancellationToken)
-        where T : IServerPayload {
+        public async Task SendPacket(IServerPayload serverPayload, CancellationToken cancellationToken) {
             var packet = serverPayload.ToPacket(8);
             var mac = await _macGenerator.Generate(packet, cancellationToken);
             var output = new byte[4 + packet.Length + mac.Length];
             packet.WriteTo(output);
             mac.CopyTo(output, packet.Length);
-            await _stream.SshWriteArray(output,cancellationToken);
+            await _stream.SshWriteArray(output, cancellationToken);
         }
     }
 }

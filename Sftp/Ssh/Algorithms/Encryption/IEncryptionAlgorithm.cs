@@ -48,8 +48,7 @@ public interface IEncryptor {
     // ```cs
     // public Task<byte[]> EncryptPacket(Packet packet, CancellationToken cancellationToken);
     // ```
-    public Task SendPacket<TPayload>(TPayload serverPayload, CancellationToken cancellationToken)
-    where TPayload : IServerPayload;
+    public Task SendPacket(IServerPayload serverPayload, CancellationToken cancellationToken);
 
     public uint MacSequential { get; }
 }

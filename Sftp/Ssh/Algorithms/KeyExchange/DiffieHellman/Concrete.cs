@@ -29,7 +29,7 @@ public class DiffieHelmanGroup14Sha256 : IKeyExchangeAlgorithm {
 
     public Func<byte[], byte[]> Hash => SHA256.HashData;
 
-    Task<KeyExchangeResult?> IKeyExchangeAlgorithm.ExchangeKeysAsync(IHostKeyPair hostKeyPair,KexInitPair kexInitPair, KeyExchangeInput input, CancellationToken cancellationToken) {
-        return new DiffieHelman(Group, Generator, Hash).ExchangeKeysAsync(hostKeyPair,kexInitPair, input, cancellationToken);
+    Task<KeyExchangeResult?> IKeyExchangeAlgorithm.ExchangeKeysAsync(IHostKeyPair hostKeyPair, KexInitPair kexInitPair, KeyExchangeInput input, CancellationToken cancellationToken) {
+        return new DiffieHelman(Group, Generator, Hash).ExchangeKeysAsync(hostKeyPair, kexInitPair, input, cancellationToken);
     }
 }

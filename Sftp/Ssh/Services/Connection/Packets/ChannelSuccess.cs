@@ -1,4 +1,4 @@
-// NewKeys.cs - Part of the ZipZap project for storing files online
+// ChannelSuccess.cs - Part of the ZipZap project for storing files online
 //     Copyright (C) 2026  Barenboim Esther wadsaek@gmail.com
 //
 //     This program is free software: you can redistribute it and/or modify
@@ -15,15 +15,26 @@
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 
 using ZipZap.Sftp.Ssh.Numbers;
+namespace ZipZap.Sftp.Ssh.Services.Connection.Packets;
 
-namespace ZipZap.Sftp.Ssh;
+public sealed record ChannelSuccess(uint Recipient) : IServerPayload, IClientPayload<ChannelSuccess> {
+    public static Message Message => Message.ChannelSuccess;
+    public static bool TryParse(byte[] payload, [NotNullWhen(true)] out ChannelSuccess? value) {
+        value = null;
+        var stream = new MemoryStream(payload);
+        if (!stream.ExpectMessage(Message)) return false;
+        if (!stream.SshTryReadUint32Sync(out var recipient)) return false;
+        value = new(recipient);
+        return true;
+    }
 
-public record NewKeys : IServerPayload, IClientPayload<NewKeys> {
-    public static Message Message => Message.Newkeys;
-
-    public static bool TryParse(byte[] payload, [NotNullWhen(true)] out NewKeys? value)
-        => MarkerPacketHelper.TryParse(payload, out value, Message);
-    public byte[] ToPayload() => MarkerPacketHelper.ToPayload(Message);
+    public byte[] ToPayload() {
+        return new SshMessageBuilder()
+            .Write(Message)
+            .Write(Recipient)
+            .Build();
+    }
 }

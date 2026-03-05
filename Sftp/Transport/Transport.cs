@@ -27,6 +27,7 @@ using ZipZap.Sftp.Ssh;
 using ZipZap.Sftp.Ssh.Algorithms;
 using ZipZap.Sftp.Ssh.Numbers;
 using ZipZap.Sftp.Ssh.Services;
+using ZipZap.Sftp.Ssh.Services.Connection;
 
 namespace ZipZap.Sftp;
 
@@ -73,8 +74,7 @@ internal class Transport {
         }
 
 
-        public async Task SendPacket<T>(T packet, CancellationToken cancellationToken)
-        where T : IServerPayload {
+        public async Task SendPacket(IServerPayload packet, CancellationToken cancellationToken) {
             if (_untilNextIgnore-- == 0) {
                 _untilNextIgnore = RandomNumberGenerator.GetInt32(5);
                 await SshState.Encryptor.SendPacket(Ignore.Random(), cancellationToken);
@@ -267,7 +267,7 @@ internal class Transport {
                         await handleState.State.Encryptor.SendPacket(disconnect, cancellationToken);
                         return false;
                     }
-                    await handleState.CurrentService.SendPacket(packet, cancellationToken);
+                    await handleState.CurrentService.Send(packet, cancellationToken);
                     break;
                 }
         }
@@ -299,8 +299,7 @@ internal class Transport {
         where T : IClientPayload<T>
         => _transport.ReadUntilPacket<T>(_decryptor, _encryptor, cancellationToken);
 
-        public async Task SendPacket<T>(T packet, CancellationToken cancellationToken)
-        where T : IServerPayload {
+        public async Task SendPacket(IServerPayload packet, CancellationToken cancellationToken) {
             if (_untilNextIgnore-- == 0) {
                 _untilNextIgnore = RandomNumberGenerator.GetInt32(5);
                 await _encryptor.SendPacket(Ignore.Random(), cancellationToken);
@@ -380,8 +379,7 @@ public interface ITransPacketReader {
     public Task<(Payload, T)?> ReadUntilPacket<T>(CancellationToken cancellationToken)
     where T : IClientPayload<T>;
 
-    public Task SendPacket<T>(T packet, CancellationToken cancellationToken)
-    where T : IServerPayload;
+    public Task SendPacket(IServerPayload packet, CancellationToken cancellationToken);
 
     public uint SequentialCtS { get; }
     public uint SequentialStC { get; }
@@ -427,6 +425,6 @@ public interface ITransportClient {
     public byte[] SessionId { get; }
     public bool NoFlowControlEnabled { get; }
     public Task SendUnimplemented(CancellationToken cancellationToken);
-    Task SendPacket<T>(T Packet, CancellationToken cancellationToken) where T : IServerPayload;
+    Task SendPacket(IServerPayload Packet, CancellationToken cancellationToken);
     void End();
 }

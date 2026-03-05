@@ -17,6 +17,7 @@
 using Microsoft.Extensions.Logging;
 
 using ZipZap.Sftp.Ssh.Algorithms;
+using ZipZap.Sftp.Ssh.Services.Connection;
 
 namespace ZipZap.Sftp.Ssh.Services;
 

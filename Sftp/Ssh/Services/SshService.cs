@@ -14,67 +14,13 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-using System.Threading;
-using System.Threading.Channels;
-using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
-using ZipZap.Sftp.Ssh.Numbers;
+using ZipZap.Sftp.Ssh.Services.Connection;
 
 namespace ZipZap.Sftp.Ssh.Services;
 
-internal abstract class SshService : ISshService {
-
-    protected abstract Task ReturnPacket<T>(T packet, CancellationToken cancellationToken) where T : IServerPayload;
-    protected abstract Task End(CancellationToken cancellationToken);
-    protected abstract Task HandlePacket(Payload payload, CancellationToken cancellationToken);
-
-    protected bool isDisposed = false;
-    private readonly Lock _lock = new();
-    private Task? _handler = null;
-
-    private readonly ChannelReader<Payload> _incomingReader;
-    private readonly ChannelWriter<Payload> _incomingPacketsWriter;
-
-    protected SshService() {
-        var channel = Channel.CreateUnbounded<Payload>(new() {
-            SingleReader = true,
-            SingleWriter = true
-        });
-        _incomingReader = channel.Reader;
-        _incomingPacketsWriter = channel.Writer;
-    }
-    protected async Task<Payload> ReadNextPacket() => await _incomingReader.ReadAsync();
-
-    public abstract string ServiceName { get; }
-
-    public async Task SendPacket(Payload packet, CancellationToken cancellationToken) {
-        await _incomingPacketsWriter.WriteAsync(packet, cancellationToken);
-        lock (_lock) {
-            if (_handler == null || _handler.IsCompleted) {
-                if (_handler?.IsCompletedSuccessfully == false)
-                    throw _handler.Exception!;
-                _handler = StartWorking(cancellationToken);
-            }
-        }
-    }
-
-    private async Task StartWorking(CancellationToken cancellationToken) {
-        while (!isDisposed) {
-            var packet = await _incomingReader.ReadAsync(cancellationToken);
-            var payload = packet;
-            if (payload.Length == 0) {
-                await ReturnPacket(new Disconnect(
-                    DisconnectCode.ProtocolError,
-                    "Zero length packet encountered"
-                    ), cancellationToken);
-                await End(cancellationToken);
-                return;
-            }
-            await HandlePacket(payload, cancellationToken);
-        }
-    }
-
-    public void Dispose() {
-        isDisposed = true;
+abstract class SshService : SshBackgroundHandler<Payload, IServerPayload>, ISshService {
+    protected SshService(ILogger logger) : base(logger) {
     }
 }

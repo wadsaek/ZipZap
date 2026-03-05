@@ -18,8 +18,10 @@ using System.Collections.Immutable;
 
 using Microsoft.Extensions.DependencyInjection;
 
+using ZipZap.Sftp.Sftp;
 using ZipZap.Sftp.Ssh.Algorithms;
 using ZipZap.Sftp.Ssh.Services;
+using ZipZap.Sftp.Ssh.Services.Connection;
 
 namespace ZipZap.Sftp;
 
@@ -29,8 +31,10 @@ public static class DI {
             services.AddScoped<SftpService>();
             services.AddScoped<Transport>();
             services.AddScoped<KeyExchangeProcess>();
-            services.AddScoped<ISshConnectionFactory, PacketHandlerFactory>();
+            services.AddScoped<ISshChannelFactory, SshChannelFactory>();
+            services.AddScoped<ISshConnectionFactory, SshConnectionFactory>();
             services.AddScoped<IAuthServiceFactory, AuthServiceFactory>();
+            services.AddScoped<ISftpFactory, SftpFactory>();
 
             services.AddScoped<IProvider<IEncryptionAlgorithm>, EncryptionAlgorithmProvider>();
             services.AddScoped<Aes128GcmEncryptionAlgorithm>();
@@ -65,9 +69,6 @@ internal class ServerHostKeyProvider : IProvider<IServerHostKeyAlgorithm> {
     public IImmutableList<IServerHostKeyAlgorithm> Items => [_rsaServerKeyAlgorithm];
 }
 
-internal interface IPublicKeyProvider : IProvider<IPublicKeyAlgorithm> {
-    public IPublicKey? TryGetPublicKey(byte[] key);
-}
 internal class PublicKeyProvider : IProvider<IPublicKeyAlgorithm> {
     private readonly RsaPublicKeyAlgorithm _rsaPublicKeyAlgorithm;
 
@@ -76,15 +77,6 @@ internal class PublicKeyProvider : IProvider<IPublicKeyAlgorithm> {
     }
 
     public IImmutableList<IPublicKeyAlgorithm> Items => [_rsaPublicKeyAlgorithm];
-
-    public bool TryGetPublicKey(byte[] key, out IPublicKey? publicKey) {
-        publicKey = null;
-        foreach (var alg in Items) {
-            if (alg.TryParse(key, out publicKey)) return true;
-        }
-
-        return false;
-    }
 }
 internal class CompressionProvider : IProvider<ICompressionAlgorithm> {
     public IImmutableList<ICompressionAlgorithm> Items => [new NoneCompression()];

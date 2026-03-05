@@ -14,19 +14,22 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+using System;
+using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-using ZipZap.LangExt.Helpers;
-using static ZipZap.LangExt.Helpers.ResultConstructor;
-using ZipZap.Sftp.Ssh.Auth;
-using ZipZap.Sftp.Ssh.Algorithms;
-using System.ComponentModel;
-using System.Linq;
-using System;
-using ZipZap.Sftp.Ssh.Numbers;
 using Microsoft.Extensions.Logging;
+
+using ZipZap.LangExt.Helpers;
+using ZipZap.Sftp.Ssh.Algorithms;
+using ZipZap.Sftp.Ssh.Numbers;
+using ZipZap.Sftp.Ssh.Services.Auth.Packets;
+using ZipZap.Sftp.Ssh.Services.Connection;
+
+using static ZipZap.LangExt.Helpers.ResultConstructor;
 
 namespace ZipZap.Sftp.Ssh.Services;
 
@@ -46,7 +49,7 @@ internal class AuthService : SshService, IAuthService {
         IProvider<IServerHostKeyAlgorithm> hostKeys,
         ISshConnectionFactory connectionFactory,
         ILogger<AuthService> logger
-    ) {
+    ) : base(logger) {
         _transport = transport;
         _handler = handler;
         _publicKeys = publicKeys;
@@ -63,18 +66,18 @@ internal class AuthService : SshService, IAuthService {
         return sftpRequestHandler is not null;
     }
 
-    protected override Task ReturnPacket<T>(T packet, CancellationToken cancellationToken) {
+    protected override Task ReturnPacket(IServerPayload packet, CancellationToken cancellationToken) {
         return _transport.SendPacket(packet, cancellationToken);
     }
 
-    protected override Task End(CancellationToken cancellationToken) {
+    protected override async Task End(Disconnect disconnect, CancellationToken cancellationToken) {
+        await ReturnPacket(disconnect, cancellationToken);
         _transport.End();
-        return Task.CompletedTask;
     }
 
     protected override Task HandlePacket(Payload packet, CancellationToken cancellationToken) {
         if (IsPassThrough())
-            return _aggregate.SendPacket(packet, cancellationToken);
+            return _aggregate.Send(packet, cancellationToken);
         return HandleAuthPacket(packet, cancellationToken);
     }
 
@@ -90,8 +93,7 @@ internal class AuthService : SshService, IAuthService {
         }
         if (request.ServiceName != ISshConnectionFactory.ServiceName) {
             var disconnect = new Disconnect(DisconnectCode.ServiceNotAvailable, "requested service not availible");
-            await _transport.SendPacket(disconnect, cancellationToken);
-            await End(cancellationToken);
+            await End(disconnect, cancellationToken);
             return;
         }
         var result = request switch {

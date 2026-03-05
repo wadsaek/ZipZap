@@ -1,4 +1,4 @@
-// UserauthSuccess.cs - Part of the ZipZap project for storing files online
+// ChannelEof.cs - Part of the ZipZap project for storing files online
 //     Copyright (C) 2026  Barenboim Esther wadsaek@gmail.com
 //
 //     This program is free software: you can redistribute it and/or modify
@@ -14,14 +14,28 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+using System.Diagnostics.CodeAnalysis;
+using System.IO;
+
 using ZipZap.Sftp.Ssh.Numbers;
 
-namespace ZipZap.Sftp.Ssh.Auth;
+namespace ZipZap.Sftp.Ssh.Services.Connection.Packets;
 
-public sealed record UserauthSuccess() : IServerPayload {
-    public static Message Message => Message.UserauthSuccess;
+public sealed record ChannelEof(uint Recipient) : IServerPayload, IClientPayload<ChannelEof> {
+    public static Message Message => Message.ChannelEof;
+    public static bool TryParse(byte[] payload, [NotNullWhen(true)] out ChannelEof? value) {
+        value = null;
+        var stream = new MemoryStream(payload);
+        if (!stream.ExpectMessage(Message)) return false;
+        if (!stream.SshTryReadUint32Sync(out var recipient)) return false;
+        value = new(recipient);
+        return true;
+    }
 
     public byte[] ToPayload() {
-        return new SshMessageBuilder().Write(Message).Build();
+        return new SshMessageBuilder()
+            .Write(Message)
+            .Write(Recipient)
+            .Build();
     }
 }

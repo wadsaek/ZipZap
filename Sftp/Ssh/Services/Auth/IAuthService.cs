@@ -16,6 +16,8 @@
 
 using System.Diagnostics.CodeAnalysis;
 
+using ZipZap.Sftp.Ssh.Services.Connection;
+
 namespace ZipZap.Sftp.Ssh.Services;
 
 internal interface IAuthService : ISshService {

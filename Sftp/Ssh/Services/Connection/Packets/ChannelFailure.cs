@@ -1,4 +1,4 @@
-// PkOk.cs - Part of the ZipZap project for storing files online
+// ChannelFailure.cs - Part of the ZipZap project for storing files online
 //     Copyright (C) 2026  Barenboim Esther wadsaek@gmail.com
 //
 //     This program is free software: you can redistribute it and/or modify
@@ -14,18 +14,27 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+using System.Diagnostics.CodeAnalysis;
+using System.IO;
+
 using ZipZap.Sftp.Ssh.Numbers;
+namespace ZipZap.Sftp.Ssh.Services.Connection.Packets;
 
-namespace ZipZap.Sftp.Ssh.Auth;
-
-public sealed record PkOk(string AlgName, byte[] Blob) : IServerPayload {
-    public static Message Message => Message.UserauthPkOk;
+public sealed record ChannelFailure(uint Recipient) : IServerPayload, IClientPayload<ChannelFailure> {
+    public static Message Message => Message.ChannelFailure;
+    public static bool TryParse(byte[] payload, [NotNullWhen(true)] out ChannelFailure? value) {
+        value = null;
+        var stream = new MemoryStream(payload);
+        if (!stream.ExpectMessage(Message)) return false;
+        if (!stream.SshTryReadUint32Sync(out var recipient)) return false;
+        value = new(recipient);
+        return true;
+    }
 
     public byte[] ToPayload() {
         return new SshMessageBuilder()
             .Write(Message)
-            .Write(AlgName)
-            .WriteByteString(Blob)
+            .Write(Recipient)
             .Build();
     }
 }

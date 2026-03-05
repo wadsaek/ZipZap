@@ -20,7 +20,7 @@ using System.IO;
 
 using ZipZap.Sftp.Ssh.Numbers;
 
-namespace ZipZap.Sftp.Ssh.Auth;
+namespace ZipZap.Sftp.Ssh.Services.Auth.Packets;
 
 public abstract record UserauthRequest(string Username, string ServiceName) : IClientPayload<UserauthRequest> {
     public static Message Message => Message.UserauthRequest;
