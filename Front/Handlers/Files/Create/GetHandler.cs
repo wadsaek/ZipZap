@@ -35,15 +35,13 @@ public class GetHandler {
             return Err<GetHandler, GetHandlerError>(new GetHandlerError.Unauthorized());
         var backend = backendFactory.Create(new(token));
         var fsoResult = await backend.GetFsoByIdAsync(id);
-        if (fsoResult is Err<Fso, ServiceError>(var err)) {
-            return err switch {
-                ServiceError.NotFound => Err<GetHandler, GetHandlerError>(new GetHandlerError.NotFound()),
-                ServiceError.Unauthorized => Err<GetHandler, GetHandlerError>(new GetHandlerError.Unauthorized()),
-                _ => Err<GetHandler, GetHandlerError>(new GetHandlerError.HandlerServiceError(err))
-            };
-        }
-
-        return Ok<GetHandler, GetHandlerError>(new());
+        return fsoResult
+        .Select(_ => new GetHandler())
+        .SelectErr(err => err switch {
+            ServiceError.NotFound => new GetHandlerError.NotFound() as GetHandlerError,
+            ServiceError.Unauthorized => new GetHandlerError.Unauthorized(),
+            _ => new GetHandlerError.HandlerServiceError(err)
+        });
     }
 
     public abstract record GetHandlerError {

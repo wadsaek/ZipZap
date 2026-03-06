@@ -257,42 +257,43 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         if (fso.Data.VirtualLocation is null)
             fsData = fsData with { VirtualLocation = null };
         var updated = fso with { Data = fsData };
-        var result = await _fsosRepo.UpdateAsync(updated) switch {
-            Ok<Unit, DbError> => new EmptyMessage(),
-            Err<Unit, DbError>(var err) => err switch {
-                DbError.NothingChanged => throw new RpcException(new(StatusCode.NotFound, $"Was unable to update fso ${fso}")),
-                _ => throw new RpcException(new(StatusCode.Internal, $"got a weird issue {err}"))
-            },
-            _ => throw new InvalidEnumArgumentException()
-        };
-        return result;
+        var result = await _fsosRepo.UpdateAsync(updated);
+        return result
+        .Select(_ => new EmptyMessage())
+        .UnwrapOrElse(err => err switch {
+            DbError.NothingChanged => throw new RpcException(new(StatusCode.NotFound, $"Was unable to update fso ${fso}")),
+            _ => throw new RpcException(new(StatusCode.Internal, $"got a weird issue {err}"))
+        });
     }
 
     public override async Task<EmptyMessage> AdminRemoveUser(Grpc.Guid request, ServerCallContext context) {
         await EnsureAdminOrThrow(context);
         var guid = ParseGuidOrThrow(request);
         var id = new UserId(guid);
-        return await _userService.RemoveUser(id, context.CancellationToken) switch {
-            Ok<Unit, DbError> => new EmptyMessage(),
-            Err<Unit, DbError>(var err) => err switch {
-                DbError.NothingChanged => throw new RpcException(new(StatusCode.Internal, $"Was unable to delete user with id {id}")),
-                _ => throw new RpcException(new(StatusCode.Internal, $"got a weird issue {err}"))
-            },
-            _ => throw new InvalidEnumArgumentException()
-        };
+        var result = await _userService.RemoveUser(id, context.CancellationToken);
+        return result
+        .Select(_ => new EmptyMessage())
+        .UnwrapOrElse(err => err switch {
+            DbError.NothingChanged => throw new RpcException(new(StatusCode.Internal, $"Was unable to delete user with id {id}")),
+            _ => throw new RpcException(new(StatusCode.Internal, $"got a weird issue {err}"))
+        });
     }
 
     public override async Task<Grpc.User> RemoveSelf(EmptyMessage request, ServerCallContext context) {
         var user = await GetUserOrThrowAsync(context);
         var result = await _userService.RemoveUser(user.Id, context.CancellationToken);
-        return result switch {
-            Ok<Unit, DbError> => user.ToGrpcUser(),
-            Err<Unit, DbError>(var err) => err switch {
-                DbError.NothingChanged => throw new RpcException(new(StatusCode.Internal, $"Was unable to delete user with id {user.Id}")),
-                _ => throw new RpcException(new(StatusCode.Internal, $"got a weird issue {err}"))
-            },
-            _ => throw new InvalidEnumArgumentException()
-        };
+        return result
+        .Select(_ => user.ToGrpcUser())
+        .UnwrapOrElse(err => err switch {
+            DbError.NothingChanged => throw new RpcException(new(
+                StatusCode.Internal,
+                $"Was unable to delete user with id {user.Id}"
+            )),
+            _ => throw new RpcException(new(
+                StatusCode.Internal,
+                $"got a weird issue {err}"
+            ))
+        });
     }
 
     public override async Task<Grpc.Guid> AddSshKey(SshKey request, ServerCallContext context) {
@@ -300,14 +301,11 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         var key = new SshPublicKey(request.Key);
         var userKey = new UserSshKey(default, key, user);
         var result = await _userKeysRepo.CreateAsync(userKey, context.CancellationToken);
-        return result switch {
-            Ok<UserSshKey, DbError>(var newKey)
-                => newKey.Id.Id.ToGrpcGuid(),
-            Err<UserSshKey, DbError>(var err)
-                => throw new RpcException(new(StatusCode.Internal, err.ToString())),
-            _
-                => throw new InvalidEnumArgumentException()
-        };
+        return result
+        .Select(newKey => newKey.Id.Id.ToGrpcGuid())
+        .UnwrapOrElse(err
+            => throw new RpcException(new(StatusCode.Internal, err.ToString()))
+        );
     }
 
     public override async Task<UserList> AdminGetUserList(EmptyMessage request, ServerCallContext context) {
@@ -338,23 +336,27 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
             null!
         );
         var root = new Directory(default, new(null, Permissions.DirectoryDefault, "/", ownership));
-        root = await _fsosRepo.CreateAsync(root, context.CancellationToken) switch {
-            Ok<Fso, DbError>(var fso) => fso as Directory ?? throw new RpcException(new(StatusCode.Internal, "The created root is not a directory")),
-            Err<Fso, DbError>(var err) => throw new RpcException(new(StatusCode.Internal, err.ToString())),
-            _ => throw new InvalidEnumArgumentException()
-        };
-        user = user with { Root = root };
-        user = await _userService.CreateAsync(user, context.CancellationToken) switch {
-            Ok<User, DbError>(var returned) => returned,
-            Err<User, DbError>(var err) => err switch {
-                DbError.UniqueViolation
-                    => throw new RpcException(new(StatusCode.AlreadyExists, "This user already exists")),
-                _ => throw new RpcException(new(StatusCode.Internal, err.ToString())),
-            },
-            _ => throw new InvalidEnumArgumentException()
-        };
-        var token = await _userService.Login(user.Username, request.Password, context.CancellationToken);
-        return new() { Ok = new() { Token = token ?? ThrowUnauthenticated<string>("Wrong credentials") } };
+        return await _fsosRepo.CreateAsync(root, context.CancellationToken)
+        .SelectAsync(fso =>
+            fso as Directory
+                ?? throw new RpcException(new(
+                    StatusCode.Internal,
+                    "The created root is not a directory"
+                ))
+        )
+        .SelectManyAsync(async root => {
+            user = user with { Root = root };
+            return await _userService.CreateAsync(user, context.CancellationToken);
+        })
+        .SelectAsync(async user => {
+            var token = await _userService.Login(user.Username, request.Password, context.CancellationToken);
+            return new SignUpResponse { Ok = new() { Token = token ?? ThrowUnauthenticated<string>("Wrong credentials") } };
+        })
+        .UnwrapOrElseAsync(err => err switch {
+            DbError.UniqueViolation
+                => throw new RpcException(new(StatusCode.AlreadyExists, "This user already exists")),
+            _ => throw new RpcException(new(StatusCode.Internal, err.ToString())),
+        });
     }
 
     public override async Task<FullPathMessage> GetFullPath(Grpc.Guid request, ServerCallContext context) {
@@ -375,8 +377,6 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
             UserRole.Admin => await _fsosRepo.GetRootDirectory(id, context.CancellationToken),
             UserRole.User => await HandleRootAnchorShenanigansRegularUser(id, user, context.CancellationToken),
             _ => throw new InvalidEnumArgumentException()
-
-
         };
         root = ThrowNotFoundIfNull(root);
         var pathData = request.Path.ToPathData(root.Id);
@@ -406,14 +406,12 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         var sshKey = request.Key.ToPublicKey();
         var hostKey = new TrustedAuthorityKey(default, request.ServerName, sshKey, DateTimeOffset.UtcNow, user);
         var result = await _trustedKeysRepo.CreateAsync(hostKey, context.CancellationToken);
-        return result switch {
-            Ok<TrustedAuthorityKey, DbError>
-                => new EmptyMessage(),
-            Err<TrustedAuthorityKey, DbError>(var err)
-                => throw new RpcException(new(StatusCode.Internal, err.ToString())),
-            _
-                => throw new InvalidEnumArgumentException()
-        };
+        return result
+        .Select(_ => new EmptyMessage())
+        .UnwrapOrElse(err => throw new RpcException(new(
+            StatusCode.Internal,
+            err.ToString()
+        )));
     }
 
     public override async Task<LoginSshResponse> LoginSsh(LoginSshRequest request, ServerCallContext context) {
@@ -427,15 +425,13 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
             request.Signature.ToArray(),
             context.CancellationToken
         );
-        return result switch {
-            Ok<string, SshLoginError>(var token) => new() {
-                Token = token
-            },
-            Err<string, SshLoginError>(var err) => new() {
-                Error = err.ToGrpcError()
-            },
-            _ => throw new InvalidEnumArgumentException()
-        };
+        return result
+        .Select(token =>
+            new LoginSshResponse { Token = token }
+        )
+        .UnwrapOrElse(err =>
+            new LoginSshResponse { Error = err.ToGrpcError() }
+        );
     }
 }
 

@@ -50,10 +50,7 @@ public class IndexModel : PageModel {
             return;
 
         var backend = _backendFactory.Create(new(token));
-        User = await backend.GetSelf(cancellationToken) switch {
-            Ok<User, ServiceError>(var user) => user,
-            _ => null
-        };
+        User = await backend.GetSelf(cancellationToken).UnwrapAsync();
     }
 
     public async Task<IActionResult> OnPost() {

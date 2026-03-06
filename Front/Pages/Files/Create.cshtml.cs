@@ -48,21 +48,19 @@ public class CreateModel : PageModel {
     }
 
     public async Task<IActionResult> OnGetAsync([FromQuery] Guid id) {
-        return await GetHandler.OnGetAsync(id.ToFsoId(), Request, _backendFactory) switch {
-            Err<GetHandler, Error>(Error.Unauthorized) => RedirectToPage("/"),
-            Err<GetHandler, Error>(Error.HandlerServiceError) => RedirectToPage("/Error"),
-            Err<GetHandler, Error>(Error.NotFound) => NotFound(),
-            Ok<GetHandler, Error>(var handler) => SetupHandler(handler),
+        return await GetHandler.OnGetAsync(id.ToFsoId(), Request, _backendFactory)
+        .SelectAsync(handler => {
+            GetHandler = handler;
+            return Page() as IActionResult;
+        })
+        .UnwrapOrElseAsync(err => err switch {
+            Error.Unauthorized => RedirectToPage("/"),
+            Error.HandlerServiceError => RedirectToPage("/Error"),
+            Error.NotFound => NotFound(),
             _ => throw new InvalidEnumArgumentException()
-        };
+        });
     }
     public GetHandler? GetHandler { get; private set; }
-
-    private PageResult SetupHandler(GetHandler handler) {
-        GetHandler = handler;
-        return Page();
-    }
-
 
     public async Task<IActionResult> OnPostAsync([FromQuery] Guid id) {
         if (!Permissions.TryParse(Perms, out var permissions)) {
@@ -85,20 +83,18 @@ public class CreateModel : PageModel {
             FsoType.Directory => await UploadDirectory(backend, data),
             _ => throw new InvalidEnumArgumentException()
         };
-        return request switch {
-            Ok<Fso, ServiceError>(var fso) => Redirect($"/Files/View/{fso.Id}?type=id"),
-            Err<Fso, ServiceError>(var err) => err switch {
-                ServiceError.BadRequest when FsoType == FsoType.RegularFile && File is null => HandleEmptyFile(),
-                ServiceError.BadRequest => HandleBadRequest(),
-                ServiceError.BadResult or ServiceError.Unknown => throw new("bad result encountered"),
-                ServiceError.NotFound => HandleNotFound(),
-                ServiceError.Unauthorized => Redirect("/"),
-                ServiceError.AlreadyExists => HandleExists(),
-                ServiceError.FailedPrecondition(var message) => HandleFailedPrecondition(message),
-                _ => throw new InvalidEnumArgumentException()
-            },
+        return request
+        .Select(fso => Redirect($"/Files/View/{fso.Id}?type=id") as IActionResult)
+        .UnwrapOrElse(err => err switch {
+            ServiceError.BadRequest when FsoType == FsoType.RegularFile && File is null => HandleEmptyFile(),
+            ServiceError.BadRequest => HandleBadRequest(),
+            ServiceError.BadResult or ServiceError.Unknown => throw new("bad result encountered"),
+            ServiceError.NotFound => HandleNotFound(),
+            ServiceError.Unauthorized => Redirect("/"),
+            ServiceError.AlreadyExists => HandleExists(),
+            ServiceError.FailedPrecondition(var message) => HandleFailedPrecondition(message),
             _ => throw new InvalidEnumArgumentException()
-        };
+        });
     }
 
     private PageResult HandleExists() {

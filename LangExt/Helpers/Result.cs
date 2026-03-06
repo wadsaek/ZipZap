@@ -18,6 +18,7 @@ namespace ZipZap.LangExt.Helpers;
 
 using System;
 using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
 using static ResultConstructor;
@@ -65,6 +66,11 @@ public static class ResultExt {
             Err<T, E>(E error) => otherwise(error),
             _ => throw new InvalidEnumArgumentException(nameof(Result<,>))
         };
+        public async Task<T> UnwrapOrElseAsync(Func<E, Task<T>> otherwise) => result switch {
+            Ok<T, E>(T data) => data,
+            Err<T, E>(E error) => await otherwise(error),
+            _ => throw new InvalidEnumArgumentException(nameof(Result<,>))
+        };
         public T? Unwrap() => result switch {
             Ok<T, E>(T data) => data,
             _ => default
@@ -77,7 +83,6 @@ public static class ResultExt {
             _ => throw new InvalidEnumArgumentException(nameof(Result<,>))
 
         };
-
         public Result<U, E> SelectMany<U>(Func<T, Result<U, E>> selector) => result switch {
             Ok<T, E>(T data) => selector(data),
             Err<T, E>(E error) => new Err<U, E>(error),
@@ -93,5 +98,57 @@ public static class ResultExt {
             Err<T, E>(E error) => new Err<U, E>(error),
             _ => throw new InvalidEnumArgumentException(nameof(Result<,>))
         };
+
+        public Result<T, U> SelectErr<U>(Func<E, U> selector) => result switch {
+            Ok<T, E>(T data) => new Ok<T, U>(data),
+            Err<T, E>(E error) => new Err<T, U>(selector(error)),
+            _ => throw new InvalidEnumArgumentException(nameof(Result<,>))
+        };
+        public async Task<Result<T, U>> SelectErrAsync<U>(Func<E, Task<U>> selector) => result switch {
+            Ok<T, E>(T data) => new Ok<T, U>(data),
+            Err<T, E>(E error) => new Err<T, U>(await selector(error)),
+            _ => throw new InvalidEnumArgumentException(nameof(Result<,>))
+        };
+        public Result<T, U> ErrSelectMany<U>(Func<E, Result<T, U>> selector) => result switch {
+
+            Ok<T, E>(T data) => new Ok<T, U>(data),
+            Err<T, E>(E error) => selector(error),
+            _ => throw new InvalidEnumArgumentException(nameof(Result<,>))
+        };
+        public async Task<Result<T, U>> ErrSelectManyAsync<U>(Func<E, Task<Result<T, U>>> selector) => result switch {
+            Ok<T, E>(T data) => new Ok<T, U>(data),
+            Err<T, E>(E error) => await selector(error),
+            _ => throw new InvalidEnumArgumentException(nameof(Result<,>))
+        };
     }
+    extension<T, E>(Task<Result<T, E>> result) {
+        public async Task<Result<U, E>> SelectAsync<U>(Func<T, U> selector)
+            => (await result).Select(selector);
+
+        public async Task<Result<U, E>> SelectAsync<U>(Func<T, Task<U>> selector)
+            => await (await result).SelectAsync(selector);
+
+        public async Task<Result<U, E>> SelectManyAsync<U>(Func<T, Task<Result<U, E>>> selector)
+            => await (await result).SelectManyAsync(selector);
+
+        public async Task<Result<T, U>> SelectErrAsync<U>(Func<E, U> selector)
+            => (await result).SelectErr(selector);
+
+        public async Task<Result<T, U>> SelectErrAsync<U>(Func<E, Task<U>> selector)
+            => await (await result).SelectErrAsync(selector);
+
+        // sometimes you want to just throw exceptions,
+        // this requires one less await to do so,
+        // but both methods' signatures fit the goal
+        [OverloadResolutionPriority(1)]
+        public async Task<T> UnwrapOrElseAsync(Func<E, T> selector)
+            => (await result).UnwrapOrElse(selector);
+
+        public async Task<T> UnwrapOrElseAsync(Func<E, Task<T>> selector)
+            => await (await result).UnwrapOrElseAsync(selector);
+
+
+        public async Task<T?> UnwrapAsync()
+            => (await result).Unwrap();
+    };
 }

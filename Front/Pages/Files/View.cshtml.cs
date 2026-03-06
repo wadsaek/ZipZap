@@ -52,32 +52,29 @@ public class FileViewModel : PageModel {
     public async Task<IActionResult> OnGetAsync(string path, [FromQuery] IdType type, CancellationToken cancellationToken)
         => await _getHandler.OnGetAsync(
                 new(path, type), Request, cancellationToken
-            ) switch {
-                Ok<GetHandler.GetHandlerResult, GetError>(var handler) => SetupHandler(handler),
-                Err<GetHandler.GetHandlerResult, GetError>(GetError.ShouldRedirect(var target)) => Redirect(target),
-                Err<GetHandler.GetHandlerResult, GetError>(GetError.BadRequest) => BadRequest(),
-                Err<GetHandler.GetHandlerResult, GetError>(GetError.NotFound) => NotFound(),
-                _ => throw new InvalidEnumArgumentException()
-
-            };
-
-    private PageResult SetupHandler(GetHandler.GetHandlerResult handler) {
-        Result = handler;
-        return Page();
-    }
+            )
+        .SelectAsync(result => {
+            Result = result;
+            return Page() as IActionResult;
+        })
+        .UnwrapOrElseAsync(err => err switch {
+            GetError.ShouldRedirect(var target) => Redirect(target),
+            GetError.BadRequest => BadRequest(),
+            GetError.NotFound => NotFound(),
+            _ => throw new InvalidEnumArgumentException()
+        });
 
     public GetHandler.GetHandlerResult? Result { get; set; }
 
-    public async Task<IActionResult> OnPostDelete([FromRoute] Guid path) {
-        return await DeleteHandler.OnDeleteAsync(path.ToFsoId(), Request, _backendFactory) switch {
-
-            Ok<Unit, DeleteError> => Redirect("."),
-            Err<Unit, DeleteError>(DeleteError.Internal) => ReportInternalAndRedirect(),
-            Err<Unit, DeleteError>(DeleteError.BadRequest) => BadRequest(),
-            Err<Unit, DeleteError>(DeleteError.NotFound) => NotFound(),
+    public async Task<IActionResult> OnPostDelete([FromRoute] Guid path)
+        => await DeleteHandler.OnDeleteAsync(path.ToFsoId(), Request, _backendFactory)
+        .SelectAsync(_ => Redirect(".") as IActionResult)
+        .UnwrapOrElseAsync(err => err switch {
+            DeleteError.Internal => ReportInternalAndRedirect(),
+            DeleteError.BadRequest => BadRequest(),
+            DeleteError.NotFound => NotFound(),
             _ => throw new InvalidEnumArgumentException()
-        };
-    }
+        });
     private RedirectResult ReportInternalAndRedirect() {
 
         if (_logger.IsEnabled(LogLevel.Critical))

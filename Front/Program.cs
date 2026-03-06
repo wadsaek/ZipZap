@@ -130,34 +130,35 @@ internal class SftpHandler : ISftpLoginHandler, ISftpRequestHandler {
     private async Task<Result<ISftpRequestHandler, LoginError>> TryLoginPublicKeyRaw(uint triesLeft, string username, IPublicKey userPublicKey, IHostKeyPair serverHostKey, CancellationToken cancellationToken) {
         if (triesLeft == 0) return new Err<ISftpRequestHandler, LoginError>(new LoginError.Other());
         var result = await _login.LoginSsh(username, userPublicKey, serverHostKey, cancellationToken);
-        if (result is Ok<string, SshLoginError>(var token)) {
+        return await result
+        .Select(token => {
             _backend = _backendFactory.Create(new(token));
-            return new Ok<ISftpRequestHandler, LoginError>(this);
-        }
-        var error = (result as Err<string, SshLoginError>)!.Error;
-        if (error is SshLoginError.TimestampTooEarly or SshLoginError.TimestampWasUsed)
-            return await TryLoginPublicKeyRaw(triesLeft - 1, username, userPublicKey, serverHostKey, cancellationToken);
-        LoginError returned = error switch {
-            SshLoginError.EmptyUsername => new LoginError.EmptyCredentials(),
-            SshLoginError.UserPublicKeyDoesntMatch => new LoginError.WrongCredentials(),
-            SshLoginError.HostPublicKeyNotAuthorized => new LoginError.HostPublicKeyNotAuthorized(),
-            _ or SshLoginError.Other => new LoginError.Other()
-        };
-        return new Err<ISftpRequestHandler, LoginError>(returned);
+            return this as ISftpRequestHandler;
+        })
+        .ErrSelectManyAsync(async error => {
+            if (error is SshLoginError.TimestampTooEarly or SshLoginError.TimestampWasUsed)
+                return await TryLoginPublicKeyRaw(triesLeft - 1, username, userPublicKey, serverHostKey, cancellationToken);
+            LoginError returned = error switch {
+                SshLoginError.EmptyUsername => new LoginError.EmptyCredentials(),
+                SshLoginError.UserPublicKeyDoesntMatch => new LoginError.WrongCredentials(),
+                SshLoginError.HostPublicKeyNotAuthorized => new LoginError.HostPublicKeyNotAuthorized(),
+                _ or SshLoginError.Other => new LoginError.Other()
+            };
+            return new Err<ISftpRequestHandler, LoginError>(returned);
+        });
     }
 
     public async Task<Result<ISftpRequestHandler, LoginError>> TryLoginPassword(string username, string password, CancellationToken cancellationToken) {
         var result = await _login.Login(username, password, cancellationToken);
-        if (result is Ok<string, Services.LoginError>(var token)) {
+        return result
+        .Select(token => {
             _backend = _backendFactory.Create(new(token));
-            return new Ok<ISftpRequestHandler, LoginError>(this);
-        }
-        var error = (result as Err<string, Services.LoginError>)!.Error;
-        LoginError returned = error switch {
-            Services.LoginError.EmptyCredentials => new LoginError.EmptyCredentials(),
+            return this as ISftpRequestHandler;
+        })
+        .SelectErr(error => error switch {
+            Services.LoginError.EmptyCredentials => new LoginError.EmptyCredentials() as LoginError,
             Services.LoginError.WrongCredentials => new LoginError.WrongCredentials(),
             _ => new LoginError.Other()
-        };
-        return new Err<ISftpRequestHandler, LoginError>(returned);
+        });
     }
 }

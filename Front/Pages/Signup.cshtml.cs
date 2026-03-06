@@ -45,24 +45,20 @@ public class Signup : PageModel {
             new(Uid, Gid)),
             cancellationToken
         );
-        return result switch {
-            Ok<string, Errs>(var token) => HandleToken(token),
-            Err<string, Errs>(var err) => err switch {
-                Errs.EmptyCredentials => ReturnError("One or more fields is empty"),
-                Errs.InvalidEmail => ReturnError("Your email is invalid"),
-                Errs.InvalidLogin => ReturnError("Your login is invalid"),
-                Errs.InvalidPassword => ReturnError("Your password is invalid"),
-                Errs.UserExists => ReturnError("User with this username already exists"),
-                _ => ReturnError(err.ToString())
-            },
-            _ => throw new InvalidEnumArgumentException()
-        };
-    }
+        return result
+        .Select(token => {
 
-    private RedirectResult HandleToken(string token) {
-        Error = null;
-        Response.Cookies.Append(Constants.AUTHORIZATION, token);
-        return Redirect("/");
+            Response.Cookies.Append(Constants.AUTHORIZATION, token);
+            return Redirect("/") as IActionResult;
+        })
+        .UnwrapOrElse(err => err switch {
+            Errs.EmptyCredentials => ReturnError("One or more fields is empty"),
+            Errs.InvalidEmail => ReturnError("Your email is invalid"),
+            Errs.InvalidLogin => ReturnError("Your login is invalid"),
+            Errs.InvalidPassword => ReturnError("Your password is invalid"),
+            Errs.UserExists => ReturnError("User with this username already exists"),
+            _ => ReturnError(err.ToString())
+        });
     }
 
     private PageResult ReturnError(string v) {

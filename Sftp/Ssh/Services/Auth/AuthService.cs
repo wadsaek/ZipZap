@@ -101,13 +101,11 @@ internal class AuthService : SshService, IAuthService {
             UserauthRequest.PublicKey publickeyRequest => await HandlePublicKey(publickeyRequest, cancellationToken),
             _ or UserauthRequest.Unrecognized or UserauthRequest.None => Err<ISftpRequestHandler, LoginError>(new LoginError.EmptyCredentials()),
         };
-        await (result switch {
-            Ok<ISftpRequestHandler, LoginError>(var handler) => HandleSuccess(request, handler, cancellationToken),
-            Err<ISftpRequestHandler, LoginError>(var err) => err switch {
-                LoginError.SignatureNotProvided(var publicKey) => SendPKOkay(publicKey, cancellationToken),
-                _ => HandleError(err, cancellationToken),
-            },
-            _ => throw new InvalidEnumArgumentException()
+        await result
+        .Select(handler => HandleSuccess(request, handler, cancellationToken))
+        .UnwrapOrElse(err => err switch {
+            LoginError.SignatureNotProvided(var publicKey) => SendPKOkay(publicKey, cancellationToken),
+            _ => HandleError(err, cancellationToken),
         });
     }
 
