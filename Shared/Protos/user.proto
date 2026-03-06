@@ -21,3 +21,9 @@ enum UserRole {
 message UserList{
   repeated User user = 1;
 }
+message UserSpecification {
+  oneof identifier {
+    Guid id = 1;
+    string username = 2;
+  }
+}

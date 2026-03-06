@@ -20,10 +20,23 @@ using ZipZap.Classes.Helpers;
 
 namespace ZipZap.Classes;
 
-public sealed record UserSshKey(
-    SshUserKeyId Id,
-    SshPublicKey Key,
-    MaybeEntity<User, UserId> User
-) : IEntity<SshUserKeyId>;
+public sealed record UserSshKeyRaw(SshUserKeyId Id, SshPublicKey Key);
+
+public sealed record UserSshKey(UserSshKeyRaw Raw, MaybeEntity<User, UserId> User)
+: IEntity<SshUserKeyId> {
+    public SshUserKeyId Id => Raw.Id;
+    public SshPublicKey Key => Raw.Key;
+
+    public UserSshKey(SshUserKeyId id, SshPublicKey key, MaybeEntity<User, UserId> user)
+        : this(new(id, key), user) { }
+
+    public static implicit operator UserSshKeyRaw(UserSshKey key) => key.Raw;
+}
+public static class UserSshKeyExt {
+    extension(UserSshKeyRaw raw) {
+        public UserSshKey Wrap(MaybeEntity<User, UserId> user)
+            => new(raw, user);
+    }
+}
 
 public record struct SshUserKeyId(Guid Id) : IStrongId;

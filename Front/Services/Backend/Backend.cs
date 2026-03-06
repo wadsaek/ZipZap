@@ -30,6 +30,7 @@ using ZipZap.Classes.Extensions;
 using ZipZap.Classes.Helpers;
 using ZipZap.Grpc;
 using ZipZap.LangExt.Helpers;
+using ZipZap.Sftp.Ssh.Algorithms;
 
 using static ZipZap.LangExt.Helpers.ResultConstructor;
 
@@ -247,9 +248,67 @@ public class Backend : IBackend {
                 AnchorId = anchor.Value.ToGrpcGuid()
             },
             _configuration.ToMetadata(),
-            cancellationToken: cancellationToken)
-        );
+            cancellationToken: cancellationToken
+        ));
         return result.Select(f => f.ToFso());
+    }
+
+    public async Task<Result<User, ServiceError>> AdminGetUserById(UserId id, CancellationToken cancellationToken = default) {
+        var result = await Wrap(async () => await _filesStoringService.AdminGetUserAsync(
+            new() { Id = id.Value.ToGrpcGuid() },
+            _configuration.ToMetadata(),
+            cancellationToken: cancellationToken
+        ));
+        return result.Select(u => u.ToUser());
+    }
+
+    public async Task<Result<User, ServiceError>> AdminGetUserByUsername(string username, CancellationToken cancellationToken = default) {
+        var result = await Wrap(async () => await _filesStoringService.AdminGetUserAsync(
+            new() { Username = username },
+            _configuration.ToMetadata(),
+            cancellationToken: cancellationToken
+        ));
+        return result.Select(u => u.ToUser());
+    }
+    public async Task<Result<Unit, ServiceError>> AdminAddSshHostKey(IPublicKey key, string serverName, CancellationToken cancellationToken = default) {
+        var result = await Wrap(async () => await _filesStoringService.AdminAddSshHostKeyAsync(
+            new() { ServerName = serverName, Key = new() { Key = key.ToAsciiString() } },
+            _configuration.ToMetadata(),
+            cancellationToken: cancellationToken
+        ));
+        return result.Select(e => new Unit());
+    }
+
+    public async Task<Result<UserSshKeyRaw, ServiceError>> AddSshKey(SshPublicKey key, CancellationToken cancellationToken = default) {
+        var result = await Wrap(
+            async () => await _filesStoringService.AddSshKeyAsync(
+                key.ToGrpcSshKey(),
+                _configuration.ToMetadata(),
+                cancellationToken: cancellationToken
+        ));
+        return result
+            .Select(g => g.ToGuid())
+            .Select(id => new UserSshKeyRaw(new(id), key));
+    }
+
+    public async Task<Result<IEnumerable<UserSshKeyRaw>, ServiceError>> GetSshKeys(CancellationToken cancellationToken = default) {
+        var result = await Wrap(
+            async () => await _filesStoringService.GetSshKeysAsync(
+                new(),
+                _configuration.ToMetadata(),
+                cancellationToken: cancellationToken
+        ));
+        return result.Select(list => list.ToSshKeys());
+    }
+
+    public async Task<Result<IEnumerable<UserSshKeyRaw>, ServiceError>> AdminGetSshKeysForUser(UserId key, CancellationToken cancellationToken = default) {
+        var result = await Wrap(
+            async () => await _filesStoringService.AdminGetSshKeysForUserAsync(
+                key.Value.ToGrpcGuid(),
+                _configuration.ToMetadata(),
+                cancellationToken: cancellationToken
+        ));
+        return result.Select(list => list.ToSshKeys());
     }
 }
 public record BackendConfiguration(string AuthToken);

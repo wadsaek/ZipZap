@@ -222,9 +222,14 @@ public static class ProtoAdapter {
     extension(Grpc.Ownership ownership) {
         public Ownership ToOwnership() => new(ownership.Owner, ownership.Group);
     }
+
     extension(SshKey key) {
         public SshPublicKey ToPublicKey() => new(key.Key);
     }
+    extension(SshPublicKey key) {
+        public SshKey ToGrpcSshKey() => new() { Key = key.Value };
+    }
+
     extension(SshLoginError err) {
         public LoginSshError ToGrpcError() => err switch {
             SshLoginError.UserPublicKeyDoesntMatch or SshLoginError.EmptyUsername => LoginSshError.UserPublicKeyDoesntMatch,
@@ -235,5 +240,21 @@ public static class ProtoAdapter {
             SshLoginError.Other => LoginSshError.Other,
             _ => throw new InvalidEnumArgumentException()
         };
+    }
+    extension(IEnumerable<UserSshKey> keys) {
+        public UserSshKeyList ToSshKeyList() {
+            var list = new UserSshKeyList();
+            list.Keys.AddRange(keys.Select(
+                static k => new Grpc.UserSshKey() {
+                    Key = k.Key.ToGrpcSshKey(),
+                    Id = k.Id.Id.ToGrpcGuid()
+                }
+            ));
+            return list;
+        }
+    }
+    extension(UserSshKeyList keys) {
+        public IEnumerable<UserSshKeyRaw> ToSshKeys()
+            => keys.Keys.Select(k => new UserSshKeyRaw(new(k.Id.ToGuid()), k.Key.ToPublicKey()));
     }
 }

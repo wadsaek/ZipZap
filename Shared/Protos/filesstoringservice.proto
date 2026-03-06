@@ -102,8 +102,11 @@ service FilesStoringService {
   rpc GetSelf(EmptyMessage) returns (User);
   rpc RemoveSelf(EmptyMessage) returns (User);
   rpc AddSshKey(SshKey) returns (Guid);
+  rpc GetSshKeys(EmptyMessage) returns (UserSshKeyList);
 
   rpc AdminGetUserList(EmptyMessage) returns (UserList);
+  rpc AdminGetUser(UserSpecification) returns (User);
   rpc AdminRemoveUser(Guid) returns (EmptyMessage);
   rpc AdminAddSshHostKey(AdminAddSshHostKeyRequest) returns (EmptyMessage);
+  rpc AdminGetSshKeysForUser(Guid) returns (UserSshKeyList);
 }

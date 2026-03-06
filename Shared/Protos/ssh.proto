@@ -1,5 +1,6 @@
 syntax = "proto3";
 import "google/protobuf/timestamp.proto";
+import "guid.proto";
 
 option csharp_namespace = "ZipZap.Grpc";
 
@@ -58,4 +59,11 @@ enum LoginSshError{
   USER_PUBLIC_KEY_DOESNT_MATCH = 3;
   HOST_PUBLIC_KEY_NOT_AUTHORIZED = 4;
   OTHER = 5;
+}
+message UserSshKey {
+  Guid id = 1;
+  SshKey key = 2;
+}
+message UserSshKeyList{
+  repeated UserSshKey keys = 1;
 }

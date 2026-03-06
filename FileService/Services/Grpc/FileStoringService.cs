@@ -47,6 +47,7 @@ using PathData = ZipZap.Classes.PathData;
 using SshKey = ZipZap.Grpc.SshKey;
 using User = ZipZap.Classes.User;
 using UserRole = ZipZap.Classes.UserRole;
+using UserSshKey = ZipZap.Classes.UserSshKey;
 
 namespace ZipZap.FileService.Services;
 
@@ -57,6 +58,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
     private readonly IUserSshKeysRepository _userKeysRepo;
     private readonly IUserService _userService;
     private readonly ISshService _sshService;
+    private readonly IUserRepository _usersRepo;
     private readonly ITrustedAuthorityKeysRepository _trustedKeysRepo;
 
     public FilesStoringServiceImpl(
@@ -66,7 +68,8 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         IUserService userService,
         ISshService sshService,
         IUserSshKeysRepository userKeysRepo,
-        ITrustedAuthorityKeysRepository trustedKeysRepo
+        ITrustedAuthorityKeysRepository trustedKeysRepo,
+        IUserRepository usersRepo
     ) {
         _logger = logger;
         _io = io;
@@ -75,6 +78,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         _userKeysRepo = userKeysRepo;
         _sshService = sshService;
         _trustedKeysRepo = trustedKeysRepo;
+        _usersRepo = usersRepo;
     }
 
     /// typeparam name="T"
@@ -308,6 +312,10 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         );
     }
 
+    public override async Task<UserSshKeyList> GetSshKeys(EmptyMessage request, ServerCallContext context) {
+        return await base.GetSshKeys(request, context);
+    }
+
     public override async Task<UserList> AdminGetUserList(EmptyMessage request, ServerCallContext context) {
         await EnsureAdminOrThrow(context);
         var users = await _userService.GetAllUsers(context.CancellationToken);
@@ -375,7 +383,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         var id = ParseGuidOrThrow(request.AnchorId).ToFsoId();
         var root = user.Role switch {
             UserRole.Admin => await _fsosRepo.GetRootDirectory(id, context.CancellationToken),
-            UserRole.User => await HandleRootAnchorShenanigansRegularUser(id, user, context.CancellationToken),
+            UserRole.User => await FindDeepestSharedFso(id, user, context.CancellationToken),
             _ => throw new InvalidEnumArgumentException()
         };
         root = ThrowNotFoundIfNull(root);
@@ -391,7 +399,11 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         return await ToGetFsoResponse(fso);
     }
 
-    private async Task<Directory?> HandleRootAnchorShenanigansRegularUser(FsoId id, User user, CancellationToken cancellationToken) {
+    /// <summary>
+    /// finds the deepest `fso` that is a parent of <paramref name="id"/>,
+    /// such that the <paramref name="user"/> has access to it through `fsoAccess`
+    /// </summary>
+    private async Task<Directory?> FindDeepestSharedFso(FsoId id, User user, CancellationToken cancellationToken) {
         if (await _fsosRepo.GetRootDirectory(id, cancellationToken)
             is Directory root && root.Id == user.Root.Id)
             return root;
@@ -432,6 +444,24 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         .UnwrapOrElse(err =>
             new LoginSshResponse { Error = err.ToGrpcError() }
         );
+    }
+    public override async Task<Grpc.User> AdminGetUser(UserSpecification request, ServerCallContext context) {
+        var user = await GetUserOrThrowAsync(context);
+        ThrowIfNotAdmin(user);
+        var requestedUser = request.IdentifierCase switch {
+            UserSpecification.IdentifierOneofCase.Id => await _usersRepo.GetByIdAsync(ParseGuidOrThrow(request.Id).ToUserId(), context.CancellationToken),
+            UserSpecification.IdentifierOneofCase.Username => await _usersRepo.GetUserByUsername(request.Username, context.CancellationToken),
+            UserSpecification.IdentifierOneofCase.None or _ => throw new InvalidEnumArgumentException()
+        };
+        return ThrowNotFoundIfNull(requestedUser).ToGrpcUser();
+    }
+    public override async Task<UserSshKeyList> AdminGetSshKeysForUser(Grpc.Guid request, ServerCallContext context) {
+        var id = ParseGuidOrThrow(request).ToUserId();
+        var user = await GetUserOrThrowAsync(context);
+        ThrowIfNotAdmin(user);
+        var keys = await _userKeysRepo.GetForUserId(id);
+        return keys.ToSshKeyList();
+
     }
 }
 
