@@ -38,7 +38,7 @@ public static class DeleteHandler {
 
     }
 
-    public static async Task<Result<Unit, DeleteHandlerError>> OnDeleteAsync(FsoId id, HttpRequest request, IFactory<IBackend, BackendConfiguration> backendFactory) {
+    public static async Task<Result<Unit, DeleteHandlerError>> OnDeleteAsync(FsoId id, HttpRequest request, IBackendFactory backendFactory) {
         var token = request.Cookies[Constants.AUTHORIZATION];
         if (token is null)
             return Err<Unit, DeleteHandlerError>(new DeleteHandlerError.NotFound());

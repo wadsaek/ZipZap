@@ -28,9 +28,9 @@ using ZipZap.LangExt.Helpers;
 namespace ZipZap.Front.Services;
 
 public class FsoService : IFsoService {
-    private readonly IFactory<IBackend, BackendConfiguration> _factory;
+    private readonly IBackendFactory _factory;
 
-    public FsoService(IFactory<IBackend, BackendConfiguration> factory) {
+    public FsoService(IBackendFactory factory) {
         _factory = factory;
     }
 

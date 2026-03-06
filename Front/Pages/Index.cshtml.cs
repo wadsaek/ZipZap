@@ -31,11 +31,11 @@ using ZipZap.LangExt.Helpers;
 namespace ZipZap.Front.Pages;
 
 public class IndexModel : PageModel {
-    private readonly IFactory<IBackend, BackendConfiguration> _backendFactory;
+    private readonly IBackendFactory _backendFactory;
     private readonly ILogger<IndexModel> _logger;
     private readonly ILoginService _loginService;
 
-    public IndexModel(IFactory<IBackend, BackendConfiguration> backendFactory, ILoginService loginService, ILogger<IndexModel> logger) {
+    public IndexModel(IBackendFactory backendFactory, ILoginService loginService, ILogger<IndexModel> logger) {
         _backendFactory = backendFactory;
         _loginService = loginService;
         _logger = logger;

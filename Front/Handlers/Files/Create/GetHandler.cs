@@ -29,7 +29,7 @@ using static ZipZap.LangExt.Helpers.ResultConstructor;
 namespace ZipZap.Front.Handlers.Files.Create;
 
 public class GetHandler {
-    public static async Task<Result<GetHandler, GetHandlerError>> OnGetAsync(FsoId id, HttpRequest request, IFactory<IBackend, BackendConfiguration> backendFactory) {
+    public static async Task<Result<GetHandler, GetHandlerError>> OnGetAsync(FsoId id, HttpRequest request, IBackendFactory backendFactory) {
         var token = request.Cookies[Constants.AUTHORIZATION];
         if (token is null)
             return Err<GetHandler, GetHandlerError>(new GetHandlerError.Unauthorized());

@@ -20,7 +20,7 @@ using ZipZap.Grpc;
 
 namespace ZipZap.Front.Factories;
 
-public class BackendFactory : IFactory<IBackend, BackendConfiguration> {
+public class BackendFactory : IBackendFactory {
     private readonly FilesStoringService.FilesStoringServiceClient _client;
     private readonly ExceptionConverter<ServiceError> _exceptionConverter;
 

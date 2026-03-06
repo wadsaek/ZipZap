@@ -24,11 +24,9 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
 
 using ZipZap.Classes.Extensions;
-using ZipZap.Classes.Helpers;
 using ZipZap.Front.Factories;
 using ZipZap.Front.Handlers;
 using ZipZap.Front.Handlers.Files.View;
-using ZipZap.Front.Services;
 using ZipZap.LangExt.Helpers;
 
 namespace ZipZap.Front.Pages.Files;
@@ -39,15 +37,15 @@ using GetError = GetHandler.GetHandlerError;
 public class FileViewModel : PageModel {
 
     private readonly ILogger<FileViewModel> _logger;
-    private readonly IFactory<IBackend, BackendConfiguration> _backendFactory;
+    private readonly IBackendFactory _backendFactory;
 
-    public FileViewModel(ILogger<FileViewModel> logger, IFactory<IBackend, BackendConfiguration> backendFactory, IGetHandler getHandler) {
+    public FileViewModel(ILogger<FileViewModel> logger, IBackendFactory backendFactory, IGetHandler getHandler) {
         _logger = logger;
         _backendFactory = backendFactory;
         _getHandler = getHandler;
     }
 
-    private IGetHandler _getHandler;
+    private readonly IGetHandler _getHandler;
 
     public async Task<IActionResult> OnGetAsync(string path, [FromQuery] IdType type, CancellationToken cancellationToken)
         => await _getHandler.OnGetAsync(
@@ -75,6 +73,7 @@ public class FileViewModel : PageModel {
             DeleteError.NotFound => NotFound(),
             _ => throw new InvalidEnumArgumentException()
         });
+
     private RedirectResult ReportInternalAndRedirect() {
 
         if (_logger.IsEnabled(LogLevel.Critical))

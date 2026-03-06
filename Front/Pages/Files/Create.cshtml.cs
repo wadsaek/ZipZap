@@ -40,9 +40,9 @@ namespace ZipZap.Front.Pages.Files;
 using Error = GetHandler.GetHandlerError;
 public class CreateModel : PageModel {
     private readonly ILogger<CreateModel> _logger;
-    private readonly IFactory<IBackend, BackendConfiguration> _backendFactory;
+    private readonly IBackendFactory _backendFactory;
 
-    public CreateModel(ILogger<CreateModel> logger, IFactory<IBackend, BackendConfiguration> backendFactory) {
+    public CreateModel(ILogger<CreateModel> logger, IBackendFactory backendFactory) {
         _logger = logger;
         _backendFactory = backendFactory;
     }

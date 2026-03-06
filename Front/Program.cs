@@ -49,7 +49,7 @@ public class Program {
             options.ChannelOptionsActions.Add(chOptions
                     => chOptions.MaxReceiveMessageSize = (int)FileSize.FromMegaBytes(16).Bytes);
         });
-        builder.Services.AddScoped<IFactory<IBackend, BackendConfiguration>, BackendFactory>();
+        builder.Services.AddScoped<IBackendFactory, BackendFactory>();
         builder.Services.AddScoped(_ => ServiceExceptionHandler.GetExceptionConverter());
         builder.Services.AddScoped<ILoginService, LoginService>();
         builder.Services.AddScoped<IFsoService, FsoService>();
@@ -101,10 +101,10 @@ internal class SftpConfiguration : ISftpConfiguration {
     }
 }
 internal class SftpHandlerFactory : ISftpRequestHandlerFactory {
-    private readonly IFactory<IBackend, BackendConfiguration> _factory;
+    private readonly IBackendFactory _factory;
     private readonly ILoginService _login;
 
-    public SftpHandlerFactory(IFactory<IBackend, BackendConfiguration> factory, ILoginService login) {
+    public SftpHandlerFactory(IBackendFactory factory, ILoginService login) {
         _factory = factory;
         _login = login;
     }
@@ -114,12 +114,12 @@ internal class SftpHandlerFactory : ISftpRequestHandlerFactory {
     }
 }
 internal class SftpHandler : ISftpLoginHandler, ISftpRequestHandler {
-    private readonly IFactory<IBackend, BackendConfiguration> _backendFactory;
+    private readonly IBackendFactory _backendFactory;
     private readonly ILoginService _login;
 
     private IBackend? _backend = null;
 
-    public SftpHandler(IFactory<IBackend, BackendConfiguration> backendFactory, ILoginService login) {
+    public SftpHandler(IBackendFactory backendFactory, ILoginService login) {
         _backendFactory = backendFactory;
         _login = login;
     }
