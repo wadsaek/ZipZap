@@ -81,8 +81,10 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         _usersRepo = usersRepo;
     }
 
-    /// typeparam name="T"
+    /// <summary>throws `Unauthenticated` RpcException</summary>
+    /// <typeparam name="T"/>
     /// Does not change the behavior in any way
+    /// </typeparam>
     [DoesNotReturn]
     private static T ThrowUnauthenticated<T>(string detail = "Unauthenticated")
         => throw new RpcException(new(StatusCode.Unauthenticated, detail));
@@ -271,9 +273,12 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
     }
 
     public override async Task<EmptyMessage> AdminRemoveUser(Grpc.Guid request, ServerCallContext context) {
-        await EnsureAdminOrThrow(context);
+        var currentUser = await EnsureAdminOrThrow(context);
         var guid = ParseGuidOrThrow(request);
         var id = new UserId(guid);
+        if(currentUser.Id == id){
+            throw new RpcException(new (StatusCode.PermissionDenied, "You can't delete yourself"));
+        }
         var result = await _userService.RemoveUser(id, context.CancellationToken);
         return result
         .Select(_ => new EmptyMessage())

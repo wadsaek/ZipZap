@@ -53,7 +53,6 @@ public class UserService : IUserService {
             return null;
 
         return _tokenService.GenerateToken(user);
-
     }
 
     public async Task<User?> GetUser(string token, CancellationToken cancellationToken) {
