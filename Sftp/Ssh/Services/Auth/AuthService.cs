@@ -134,8 +134,6 @@ internal class AuthService : SshService, IAuthService {
             await ReturnPacket(reply, cancellationToken);
             return;
         }
-
-
     }
 
     private async Task<Result<ISftpRequestHandler, LoginError>> HandlePublicKey(UserauthRequest.PublicKey publickeyRequest, CancellationToken cancellationToken) {

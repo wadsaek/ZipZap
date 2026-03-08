@@ -137,22 +137,22 @@ public class KeyExchangeProcess {
         return (newEncryptor, newDecryptor);
     }
     private AlgorithmCollection? GetAlgorithmsFromKexInit(KeyExchange clientKexPayload, KeyExchange serverKexPayload) {
-        if (_logger.IsEnabled(LogLevel.Information))
-            _logger.LogInformation("Recieved kex algorithms: {KexAlgorithms}", clientKexPayload.KexAlgorithms);
+        if (_logger.IsEnabled(LogLevel.Debug))
+            _logger.LogDebug("Recieved kex algorithms: {KexAlgorithms}", clientKexPayload.KexAlgorithms);
 
         var keyExchangeAlgorithmName = clientKexPayload.KexAlgorithms.Names.FirstOrDefault(a => Enumerable.Contains(serverKexPayload.KexAlgorithms.Names, a));
         if (keyExchangeAlgorithmName is null) {
-            if (_logger.IsEnabled(LogLevel.Information)) {
-                _logger.LogInformation("no key exchange algorithm");
-                _logger.LogInformation("our   : {KexAlgorithms}", serverKexPayload.KexAlgorithms);
-                _logger.LogInformation("their : {KexAlgorithms}", clientKexPayload.KexAlgorithms);
+            if (_logger.IsEnabled(LogLevel.Debug)) {
+                _logger.LogDebug("no key exchange algorithm");
+                _logger.LogDebug("our   : {KexAlgorithms}", serverKexPayload.KexAlgorithms);
+                _logger.LogDebug("their : {KexAlgorithms}", clientKexPayload.KexAlgorithms);
             }
             return null;
         }
 
         var keyExchangeAlgorithm = _kexProvider.Items.FirstOrDefault(a => a.Name == keyExchangeAlgorithmName)!;
-        if (_logger.IsEnabled(LogLevel.Information))
-            _logger.LogInformation("using keyExchangeAlgorithm {KeyExchangeAlgorithm}", keyExchangeAlgorithm);
+        if (_logger.IsEnabled(LogLevel.Debug))
+            _logger.LogDebug("using keyExchangeAlgorithm {KeyExchangeAlgorithm}", keyExchangeAlgorithm);
 
         var cts = GetEncryptionAndMac(
             clientKexPayload,
@@ -175,11 +175,11 @@ public class KeyExchangeProcess {
 
         var publicKeyAlgorithm = _serverHostKeyProvider.Items.FirstOrDefault(a => a.Name == publicKeyAlgorithmName)!;
 
-        if (_logger.IsEnabled(LogLevel.Information)) {
-            _logger.LogInformation("Using PublicKeyAlgorithm {PublicKeyAlgorithm}", publicKeyAlgorithm);
-            _logger.LogInformation("Using MacAlgorithm {MacAlgorithm} for sending and {CtS} for reading", macStC, macCtS);
-            _logger.LogInformation("Using encryptionAlgorithm {EncStc} for sending and {CtS} for reading", encStC, encCtS);
-            _logger.LogInformation("sending KeyExchangeAlgorithm {KeyExchangeAlgorithm}", keyExchangeAlgorithm);
+        if (_logger.IsEnabled(LogLevel.Debug)) {
+            _logger.LogDebug("Using PublicKeyAlgorithm {PublicKeyAlgorithm}", publicKeyAlgorithm);
+            _logger.LogDebug("Using MacAlgorithm {MacAlgorithm} for sending and {CtS} for reading", macStC, macCtS);
+            _logger.LogDebug("Using encryptionAlgorithm {EncStc} for sending and {CtS} for reading", encStC, encCtS);
+            _logger.LogDebug("sending KeyExchangeAlgorithm {KeyExchangeAlgorithm}", keyExchangeAlgorithm);
         }
         return new(
             keyExchangeAlgorithm,
@@ -199,10 +199,10 @@ public class KeyExchangeProcess {
 
         var encCtSName = EncList(client).Names.FirstOrDefault(a => server.EncryptionAlgorithmsCtS.Names.Contains(a));
         if (encCtSName is null) {
-            if (_logger.IsEnabled(LogLevel.Information)) {
-                _logger.LogInformation("no mac algorithm");
-                _logger.LogInformation("our   : {MacAlgorithm}", server.MacAlgorithmsCtS);
-                _logger.LogInformation("their : {MacAlgorithm}", client.MacAlgorithmsCtS);
+            if (_logger.IsEnabled(LogLevel.Debug)) {
+                _logger.LogDebug("no mac algorithm");
+                _logger.LogDebug("our   : {MacAlgorithm}", server.MacAlgorithmsCtS);
+                _logger.LogDebug("their : {MacAlgorithm}", client.MacAlgorithmsCtS);
             }
             return null;
         }
@@ -210,23 +210,23 @@ public class KeyExchangeProcess {
 
         IMacAlgorithm macAlgorithm = new NoMacAlgorithm();
         if (encAlgorithm.OverridesMac) {
-            if (_logger.IsEnabled(LogLevel.Information)) {
-                _logger.LogInformation("got {encAlgorithm} algorithm, no Mac needed. Skipping.", encAlgorithm);
+            if (_logger.IsEnabled(LogLevel.Trace)) {
+                _logger.LogTrace("got {encAlgorithm} algorithm, no Mac needed. Skipping.", encAlgorithm);
             }
         } else {
             var macAlgorithmCtSName = MacList(client).Names.FirstOrDefault(a => Enumerable.Contains(server.MacAlgorithmsCtS.Names, a));
             if (macAlgorithmCtSName is null) {
-                if (_logger.IsEnabled(LogLevel.Information)) {
-                    _logger.LogInformation("no mac algorithm");
-                    _logger.LogInformation("our   : {MacAlgorithm}", server.MacAlgorithmsCtS);
-                    _logger.LogInformation("their : {MacAlgorithm}", client.MacAlgorithmsCtS);
+                if (_logger.IsEnabled(LogLevel.Debug)) {
+                    _logger.LogDebug("no mac algorithm");
+                    _logger.LogDebug("our   : {MacAlgorithm}", server.MacAlgorithmsCtS);
+                    _logger.LogDebug("their : {MacAlgorithm}", client.MacAlgorithmsCtS);
                 }
                 return null;
             }
 
             macAlgorithm = _macProvider.Items.FirstOrDefault(a => a.Name == macAlgorithmCtSName)!;
-            if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("using macAlgorithm {MacAlgorithm}", macAlgorithm);
+            if (_logger.IsEnabled(LogLevel.Debug))
+                _logger.LogDebug("using macAlgorithm {MacAlgorithm}", macAlgorithm);
         }
         return (encAlgorithm, macAlgorithm);
     }

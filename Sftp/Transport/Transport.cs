@@ -189,8 +189,8 @@ internal class Transport {
                         await handleState.State.Encryptor.SendPacket(disconnect, cancellationToken);
                         return false;
                     }
-                    if (_logger.IsEnabled(LogLevel.Information))
-                        _logger.LogInformation("recieved extensions: {ExtInfo}", extInfo);
+                    if (_logger.IsEnabled(LogLevel.Debug))
+                        _logger.LogDebug("recieved extensions: {ExtInfo}", extInfo);
                     var noFlowExt = extInfo.Extensions.FirstOrDefault(e => e is Extension.NoFlowControl);
                     // we prefer it, so if the client supports it we can enable it
                     handleState.TransportClient.NoFlowControlEnabled = noFlowExt is not null;
