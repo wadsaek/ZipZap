@@ -25,6 +25,7 @@ using Npgsql;
 
 using ZipZap.Classes;
 using ZipZap.Classes.Helpers;
+using ZipZap.LangExt.Extensions;
 using ZipZap.LangExt.Helpers;
 using ZipZap.Persistence.Data;
 using ZipZap.Persistence.Extensions;
@@ -37,16 +38,19 @@ internal class UserReposirory : IUserRepository {
     private readonly EntityHelper<UserInner, User, Guid> _userHelper;
     private readonly EntityHelper<FsoInner, Fso, Guid> _fsoHelper;
     private readonly IBasicRepository<User, UserInner, Guid> _basic;
+    private readonly IFsosRepository _fsosRepo;
 
     public UserReposirory(
             NpgsqlConnection conn,
             EntityHelper<UserInner, User, Guid> userHelper,
             EntityHelper<FsoInner, Fso, Guid> fsoHelper,
-            IBasicRepository<User, UserInner, Guid> basic) {
+            IBasicRepository<User, UserInner, Guid> basic,
+            IFsosRepository fsosRepo) {
         _conn = conn;
         _userHelper = userHelper;
         _fsoHelper = fsoHelper;
         _basic = basic;
+        _fsosRepo = fsosRepo;
     }
     private string UserTableName => _userHelper.TableName;
     private string FileTableName => _fsoHelper.TableName;
@@ -62,16 +66,47 @@ internal class UserReposirory : IUserRepository {
         );
 
     public Task<Result<Unit, DbError>> DeleteAsync(User entity, CancellationToken token = default)
-        => DeleteAsync(entity.Id, token);
+        => _fsosRepo.DeleteAsync(entity.Root, token);
 
-    public Task<Result<Unit, DbError>> DeleteAsync(UserId id, CancellationToken token = default)
-        => _basic.DeleteAsync(id.Value, token);
+    public async Task<Result<Unit, DbError>> DeleteAsync(UserId id, CancellationToken cancellationToken = default) {
+        var deleted = await DeleteRangeAsync([id], cancellationToken);
+        return deleted.SelectMany(DbHelper.EnsureSingle);
+    }
 
     public Task<Result<int, DbError>> DeleteRangeAsync(IEnumerable<User> entities, CancellationToken token = default)
-        => DeleteRangeAsync(entities.Select(e => e.Id), token);
+        => _fsosRepo.DeleteRangeAsync(entities.Select(u => u.Root.Id), token);
 
-    public Task<Result<int, DbError>> DeleteRangeAsync(IEnumerable<UserId> ids, CancellationToken token = default)
-        => _basic.DeleteRangeAsync(ids.Select(id => id.Value), token);
+    public async Task<Result<int, DbError>> DeleteRangeAsync(IEnumerable<UserId> ids, CancellationToken cancellationToken = default) {
+        var idsList = ids.ToArray();
+        await using var disposable = await _conn.OpenAsyncDisposable(cancellationToken);
+        await using var transaction = await _conn.BeginTransactionAsync(cancellationToken);
+        var cmdBuilder = new StringBuilder($"""
+            DELETE FROM {FileTableName}
+            WHERE {FileTableName}.{_fsoHelper.IdCol} IN
+            (SELECT {FileTableName}.{_fsoHelper.IdCol} FROM {UserTableName}
+             JOIN {FileTableName} ON
+             {UserTableName}.{_userHelper.GetColumnName(nameof(UserInner.Root))}
+             = {FileTableName}.{_fsoHelper.IdCol}
+             WHERE {UserTableName}.{_userHelper.IdCol} IN
+             (
+            """);
+        var parameters = new NpgsqlParameter<Guid>[idsList.Length];
+        foreach (var (i, id) in idsList.Index()) {
+            var index = i + 1;
+            cmdBuilder.AppendFormat("${0}, ", index);
+            parameters[i] = new NpgsqlParameter<Guid> { Value = id.Value };
+        }
+        cmdBuilder.RemoveLastCharacters(2);
+        cmdBuilder.Append("""
+             )
+            )
+            """);
+        var cmd = _conn.CreateCommand(cmdBuilder.ToString());
+        cmd.Parameters.AddRange(parameters.ToArray());
+        var deleted = await cmd.ExecuteNonQueryAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return new Ok<int, DbError>(deleted);
+    }
 
     public Task<Result<Unit, DbError>> UpdateAsync(User entity, CancellationToken token = default)
         => _basic.UpdateAsync(entity, token);
