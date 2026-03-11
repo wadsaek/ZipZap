@@ -17,8 +17,12 @@
 using System.Threading;
 using System.Threading.Tasks;
 
+using ZipZap.Sftp.Sftp.Numbers;
+
 using ZipZap.LangExt.Helpers;
+using ZipZap.Sftp.Sftp;
 using ZipZap.Sftp.Ssh.Algorithms;
+using ZipZap.Sftp.Ssh;
 
 namespace ZipZap.Sftp;
 
@@ -40,10 +44,59 @@ public interface ISftpLoginHandler {
 }
 
 public interface ISftpRequestHandler {
+    public Task<Result<Handle, Status>> Open(
+        string filename,
+        OpenFlags flags,
+        FileAttributes attributes,
+        CancellationToken cancellationToken
+    );
+
+    public Task<Status> Close(Handle handle, CancellationToken cancellationToken);
+
+    public Task<Result<byte[], Status>> Read(Handle handle, ulong offset, uint length, CancellationToken cancellationToken);
+
+    public Task<Status> Write(Handle handle, ulong offset, byte[] data, CancellationToken cancellationToken);
+    public Task<Status> Remove(string path, CancellationToken cancellationToken);
+
+    public Task<Status> Rename(string oldpath, string newpath, CancellationToken cancellationToken);
+
+    public Task<Status> MkDir(string path, FileAttributes fileAttributes, CancellationToken cancellationToken);
+    public Task<Status> RmDir(string path, CancellationToken cancellationToken);
+
+    public Task<Result<Handle, Status>> OpenDir(string path, CancellationToken cancellationToken);
+
+    public Task<Result<FileName[], Status>> ReadDir(string path, CancellationToken cancellationToken);
+
+    public Task<Result<FileAttributes, Status>> Stat(string path, CancellationToken cancellationToken);
+    public Task<Result<FileAttributes, Status>> LStat(string path, CancellationToken cancellationToken);
+    public Task<Result<FileAttributes, Status>> FStat(Handle handle, CancellationToken cancellationToken);
+    public Task<Status> SetStat(string path, FileAttributes fileAttributes, CancellationToken cancellationToken);
+    public Task<Status> LSetStat(string path, FileAttributes fileAttributes, CancellationToken cancellationToken);
+    public Task<Status> FSetStat(Handle hanle, FileAttributes fileAttributes, CancellationToken cancellationToken);
+
+
+    public Task<Result<FileName, Status>> Readlink(string path, CancellationToken cancellationToken);
+    public Task<Status> Symlink(string linkpath, string targetpath, CancellationToken cancellationToken);
+
+    public Task<Result<FileName, Status>> RealPath(string path, CancellationToken cancellationToken);
 }
 
-public class Unit {
+public record FileName(string Filename, string LongName, FileAttributes Attributes) {
+    internal byte[] ToBytes() => new SshMessageBuilder()
+       .Write(Filename)
+       .Write(LongName)
+       .WriteArray(Attributes.ToByteArray())
+       .Build();
 }
+
+public record Status(SftpError Code, string ErrorMessage) {
+    internal Sftp.Status ToStatusPacket(uint id) => new(id, Code, ErrorMessage);
+}
+
+public record Handle(string Value) {
+}
+
+public class Unit;
 
 public abstract record LoginError {
     public sealed record HostPublicKeyNotAuthorized : LoginError {

@@ -70,7 +70,7 @@ public class LoginService : ILoginService {
         var userString = publicKey.ToAsciiString();
         var hostBytes = hostpubkey.ToByteString();
         var hostString = hostpubkey.ToAsciiString();
-        var unsigned = new Sftp.Ssh.SshMessageBuilder()
+        var unsigned = new ZipZap.Sftp.Ssh.SshMessageBuilder()
             .Write(username)
             .WriteByteString(userBytes)
             .WriteByteString(hostBytes)
