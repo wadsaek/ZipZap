@@ -25,7 +25,7 @@ namespace ZipZap.Sftp.Ssh.Services.Connection.Packets;
 // string    request type in US-ASCII characters only
 // boolean   want reply
 // ....      type-specific data follows
-public abstract record ChannelRequest(uint Recipient, bool WantReply, ChannelRequestSpecificData SpecificData) : IClientPayload<ChannelRequest> {
+public abstract record ChannelRequest(uint Recipient, bool WantReply, ChannelRequestSpecificData SpecificData) : IClientPayload<ChannelRequest>, IServerPayload {
     public static Message Message => Message.ChannelRequest;
 
     public static bool TryParse(byte[] payload, [MaybeNullWhen(false)] out ChannelRequest value) {
@@ -41,6 +41,11 @@ public abstract record ChannelRequest(uint Recipient, bool WantReply, ChannelReq
                     value = new ChannelRequestGen<ChannelRequestSpecificData.Subsystem>(recipient, wantReply, data);
                     return true;
                 }
+            case ChannelRequestSpecificData.ExitStatus.RequestType: {
+                    if (!ChannelRequestSpecificData.ExitStatus.TryParse(stream, out var data)) return false;
+                    value = new ChannelRequestGen<ChannelRequestSpecificData.ExitStatus>(recipient, wantReply, data);
+                    return true;
+                }
             default: {
                     value = new ChannelRequestGen<ChannelRequestSpecificData.UnrecognizedData>(
                         recipient,
@@ -53,6 +58,16 @@ public abstract record ChannelRequest(uint Recipient, bool WantReply, ChannelReq
                     return true;
                 }
         }
+    }
+
+    public byte[] ToPayload() {
+        return new SshMessageBuilder()
+            .Write(Message)
+            .Write(Recipient)
+            .Write(SpecificData.GetRequestType())
+            .Write(WantReply)
+            .WriteArray(SpecificData.ToPayload())
+            .Build();
     }
 
     public sealed record ChannelRequestGen<T>(uint Recipient, bool WantReply, T SpecificDataGen)
@@ -75,6 +90,20 @@ public abstract record ChannelRequestSpecificData {
 
         }
     }
+    public sealed record ExitStatus(uint Status) : ChannelRequestSpecificData {
+        public const string RequestType = "exit-status";
+        public override string GetRequestType() => RequestType;
+
+        public override byte[] ToPayload() => new SshMessageBuilder().Write(Status).Build();
+        public static bool TryParse(MemoryStream stream, [MaybeNullWhen(false)] out ExitStatus value) {
+            value = null;
+            if (!stream.SshTryReadUint32Sync(out var status)) return false;
+            value = new(status);
+            return true;
+
+        }
+    }
+
     public sealed record UnrecognizedData(string ChannelType, byte[] Value) : ChannelRequestSpecificData {
         public override string GetRequestType() => ChannelType;
 

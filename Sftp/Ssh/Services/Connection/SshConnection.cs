@@ -135,6 +135,31 @@ internal class SshConnection : SshService, ISshConnection, IDisposable {
                     await channel.SendData(data, cancellationToken);
                     break;
                 }
+            case Message.ChannelClose: {
+                    if (!ChannelClose.TryParse(packet, out var close)) {
+                        await Unparsable(nameof(ChannelClose), cancellationToken);
+                        return;
+                    }
+                    if (await TryGetChannel(close.Recipient, cancellationToken) is not { } channel) return;
+                    if (channel.Status == ClosedStatus.Open)
+                        await _transport.SendPacket(new ChannelClose(channel.PeerId), cancellationToken);
+
+                    await channel.Close(cancellationToken);
+                    await RemoveChannel(close.Recipient);
+                    return;
+                }
+            case Message.ChannelEof: {
+                    if (!ChannelEof.TryParse(packet, out var eof)) {
+                        await Unparsable(nameof(ChannelEof), cancellationToken);
+                        return;
+                    }
+                    if (await TryGetChannel(eof.Recipient, cancellationToken) is not { } channel) return;
+                    if (channel.Status == ClosedStatus.Open)
+                        await _transport.SendPacket(new ChannelClose(channel.PeerId), cancellationToken);
+
+                    await channel.RegisterEof(cancellationToken);
+                    return;
+                }
             default: {
                     if (_logger.IsEnabled(LogLevel.Critical))
                         _logger.LogCritical("Recieved unsupported message: {Message}", msg);

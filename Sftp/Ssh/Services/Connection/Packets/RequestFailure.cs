@@ -24,6 +24,6 @@ public record RequestFailure : IServerPayload, IClientPayload<RequestFailure> {
     public static Message Message => Message.Newkeys;
 
     public static bool TryParse(byte[] payload, [NotNullWhen(true)] out RequestFailure? value)
-        => MarkerPacketHelper.TryParse(payload, out value,Message);
+        => MarkerPacketHelper.TryParse(payload, out value, Message);
     public byte[] ToPayload() => MarkerPacketHelper.ToPayload(Message);
 }

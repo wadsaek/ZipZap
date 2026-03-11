@@ -14,8 +14,8 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-using System;
 using System.Collections.Concurrent;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -66,6 +66,9 @@ internal abstract class SshChannel : SshBackgroundHandler<ChannelData, byte[]>, 
         _channelData = _channelData with { ClosedStatus = ClosedStatus.Closed };
         return Task.CompletedTask;
     }
+    protected Task SendPacket(IServerPayload packet, CancellationToken cancellationToken) {
+        return _client.SendPacket(packet, cancellationToken);
+    }
 
     public abstract Task HandleRequest(ChannelRequest request, CancellationToken cancellationToken);
 
@@ -79,8 +82,11 @@ internal abstract class SshChannel : SshBackgroundHandler<ChannelData, byte[]>, 
     }
 
     protected override async Task ReturnPacket(byte[] bytes, CancellationToken cancellationToken) {
-        var data = new ChannelData(PeerId, bytes);
-        await SendOrEnqueue(data, cancellationToken);
+        var chunks = bytes.Chunk((int)PacketSizeStC);
+        foreach (var chunk in chunks) {
+            var data = new ChannelData(PeerId, chunk);
+            await SendOrEnqueue(data, cancellationToken);
+        }
     }
 
     private async Task SendOrEnqueue(IChannelPayload data, CancellationToken cancellationToken) {

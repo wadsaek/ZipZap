@@ -26,6 +26,7 @@ using ZipZap.Sftp.Ssh.Services.Connection.Packets;
 namespace ZipZap.Sftp.Ssh.Services.Connection;
 
 using SubsystemRequest = ChannelRequest.ChannelRequestGen<ChannelRequestSpecificData.Subsystem>;
+using ExitStatusRequest = ChannelRequest.ChannelRequestGen<ChannelRequestSpecificData.ExitStatus>;
 
 internal class SshSessionChannel : SshChannel {
     private readonly ITransportClient _client;
@@ -59,13 +60,20 @@ internal class SshSessionChannel : SshChannel {
     public override async Task HandleRequest(ChannelRequest request, CancellationToken cancellationToken) {
         switch (request) {
             case SubsystemRequest req: {
-                    await TryOpenSubsystem(req,cancellationToken);
+                    await TryOpenSubsystem(req, cancellationToken);
+                    return;
+                }
+            default: {
+                    if (request.WantReply) {
+                        var packet = new ChannelFailure(PeerId);
+                        await _client.SendPacket(packet, cancellationToken);
+                    }
                     return;
                 }
         }
     }
 
-    private async Task TryOpenSubsystem(SubsystemRequest req,CancellationToken cancellationToken) {
+    private async Task TryOpenSubsystem(SubsystemRequest req, CancellationToken cancellationToken) {
         var success = false;
         if (req.SpecificDataGen.Name == "sftp") {
             _subsystem = _factory.Create(_handler, new SessionClient(this));
@@ -73,7 +81,7 @@ internal class SshSessionChannel : SshChannel {
         }
         if (req.WantReply) {
             IServerPayload packet = success ? new ChannelSuccess(PeerId) : new ChannelFailure(PeerId);
-            await _client.SendPacket(packet,cancellationToken);
+            await _client.SendPacket(packet, cancellationToken);
         }
     }
 
@@ -91,6 +99,14 @@ internal class SshSessionChannel : SshChannel {
 
         public Task End(Disconnect disconnect, CancellationToken cancellationToken) {
             return sshSessionChannel.End(disconnect, cancellationToken);
+        }
+
+        public async Task Exit(uint StatusCode, CancellationToken cancellationToken) {
+            var exitPacket = new ExitStatusRequest(sshSessionChannel.PeerId, false, new(StatusCode));
+            await sshSessionChannel.SendPacket(exitPacket, cancellationToken);
+            var closePacket = new ChannelClose(sshSessionChannel.PeerId);
+            sshSessionChannel.ClosedStatus = ClosedStatus.WaitingForConfirmation;
+            await sshSessionChannel.SendPacket(closePacket, cancellationToken);
         }
 
         public Task ReturnPacket(byte[] packet, CancellationToken cancellationToken) {
