@@ -15,6 +15,8 @@
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System;
+using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 
 using ZipZap.Classes.Helpers;
 
@@ -25,7 +27,40 @@ public sealed record TrustedAuthorityKey(
     string ServerName,
     SshPublicKey Key,
     DateTimeOffset TimeAdded,
-    MaybeEntity<User, UserId> Admin
-) : IEntity<TrustedAuthorityKeyId>;
+    MaybeEntity<User, UserId>? Admin
+) : IEntity<TrustedAuthorityKeyId> {
+
+    public TrustedAuthorityKeyWithUser WithUser(User? user)
+        => new(
+            Id, ServerName, Key, TimeAdded,
+            Admin is not null ? user : null
+        );
+    [OverloadResolutionPriority(1)]
+    public TrustedAuthorityKeyWithUser WithUserOr(Func<UserId, User> user)
+        => new(
+            Id, ServerName, Key, TimeAdded,
+            Admin is not null ?
+                (Admin as ExistsEntity<User, UserId>)?.Entity ?? user(Admin.Id)
+                : null
+        );
+    public async Task<TrustedAuthorityKeyWithUser> WithUserOr(Func<UserId, Task<User>> user)
+        => new(
+            Id, ServerName, Key, TimeAdded,
+            Admin is not null
+                ? (Admin as ExistsEntity<User, UserId>)?.Entity ?? await user(Admin.Id)
+                : null
+        );
+};
+
+public sealed record TrustedAuthorityKeyWithUser(
+    TrustedAuthorityKeyId Id,
+    string ServerName,
+    SshPublicKey Key,
+    DateTimeOffset TimeAdded,
+    User? Admin
+) : IEntity<TrustedAuthorityKeyId> {
+    public TrustedAuthorityKey ToRegularKey()
+        => new(Id, ServerName, Key, TimeAdded, Admin is not null ? new ExistsEntity<User, UserId>(Admin) : null);
+}
 
 public record struct TrustedAuthorityKeyId(Guid Id) : IStrongId;

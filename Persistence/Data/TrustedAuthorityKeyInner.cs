@@ -24,7 +24,7 @@ namespace ZipZap.Persistence.Data;
 
 [SqlTable("authorized_servers")]
 public class TrustedAuthorityKeyInner : ITranslatable<TrustedAuthorityKey>, ISqlRetrievable, IInner<Guid> {
-    public TrustedAuthorityKeyInner(Guid id, string key, string serverName, Guid adminId, DateTimeOffset timeAdded) {
+    public TrustedAuthorityKeyInner(Guid id, string key, string serverName, Guid? adminId, DateTimeOffset timeAdded) {
         Id = id;
         ServerKey = key;
         ServerName = serverName;
@@ -53,7 +53,7 @@ public class TrustedAuthorityKeyInner : ITranslatable<TrustedAuthorityKey>, ISql
     public string ServerName { get; init; }
 
     [SqlColumn("admin_id")]
-    public Guid AdminId { get; init; }
+    public Guid? AdminId { get; init; }
 
     [SqlColumn("added_time")]
     public DateTimeOffset AddedTime { get; init; }
@@ -62,7 +62,7 @@ public class TrustedAuthorityKeyInner : ITranslatable<TrustedAuthorityKey>, ISql
         key.Id.Id,
         key.Key.Value,
         key.ServerName,
-        key.Admin.Id.Value,
+        key.Admin?.Id.Value,
         key.TimeAdded
     );
 
@@ -72,7 +72,7 @@ public class TrustedAuthorityKeyInner : ITranslatable<TrustedAuthorityKey>, ISql
             ServerName,
             new(ServerKey),
             AddedTime,
-            AdminId.ToUserId()
+            AdminId?.ToUserId()
         );
 
     static ITranslatable<TrustedAuthorityKey> ITranslatable<TrustedAuthorityKey>.From(TrustedAuthorityKey entity)

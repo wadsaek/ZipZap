@@ -16,6 +16,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -43,18 +44,21 @@ internal class TrustedAuthorityKeysRepository : ITrustedAuthorityKeysRepository 
     private readonly EntityHelper<UserInner, User, Guid> _userHelper;
     private readonly ExceptionConverter<DbError> _converter;
     private readonly IBasicRepository<Key, KeyInner, Guid> _basic;
+    private readonly IUserRepository _userRepo;
 
     public TrustedAuthorityKeysRepository(
         ExceptionConverter<DbError> converter,
         NpgsqlConnection conn,
         EntityHelper<UserInner, User, Guid> userHelper,
         EntityHelper<KeyInner, Key, Guid> helper,
-        IBasicRepository<Key, KeyInner, Guid> basic) {
+        IBasicRepository<Key, KeyInner, Guid> basic,
+        IUserRepository userRepo) {
         _converter = converter;
         _basic = basic;
         _conn = conn;
         _userHelper = userHelper;
         _helper = helper;
+        _userRepo = userRepo;
     }
 
     public Task<IEnumerable<Key>> GetAll(CancellationToken token = default) {
@@ -153,4 +157,18 @@ internal class TrustedAuthorityKeysRepository : ITrustedAuthorityKeysRepository 
         return keys;
     }
 
+    public async Task<IEnumerable<TrustedAuthorityKeyWithUser>> GetAllWithUser(CancellationToken cancellationToken = default) {
+        var all = await GetAll(cancellationToken);
+        var arr = all.ToArray();
+        var returned = new TrustedAuthorityKeyWithUser[arr.Length];
+        foreach (var (i, key) in arr.Index()) {
+            returned[i] = key.Admin switch {
+                null => key.WithUser(null),
+                ExistsEntity<User, UserId>(var user) => key.WithUser(user),
+                OnlyId<User, UserId>(var id) => key.WithUser(await _userRepo.GetByIdAsync(id, cancellationToken)),
+                _ => throw new InvalidEnumArgumentException()
+            };
+        }
+        return returned;
+    }
 }

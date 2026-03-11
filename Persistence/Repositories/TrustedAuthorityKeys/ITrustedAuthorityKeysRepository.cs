@@ -22,9 +22,11 @@ using ZipZap.Classes;
 
 namespace ZipZap.Persistence.Repositories;
 using Key = TrustedAuthorityKey;
+using KeyWithUser = TrustedAuthorityKeyWithUser;
 using KeyId = TrustedAuthorityKeyId;
 
 public interface ITrustedAuthorityKeysRepository : IRepository<Key, KeyId> {
+    public Task<IEnumerable<KeyWithUser>> GetAllWithUser(CancellationToken cancellationToken = default);
     public Task<IEnumerable<Key>> GetForAdminId(UserId userId, CancellationToken cancellationToken = default);
     public Task<IEnumerable<Key>> GetForUsername(string username, CancellationToken cancellationToken = default);
     public Task<IEnumerable<Key>> GetForServerName(string username, CancellationToken cancellationToken = default);
