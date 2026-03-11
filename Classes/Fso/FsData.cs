@@ -15,6 +15,7 @@
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using ZipZap.Classes.Helpers;
+using ZipZap.LangExt.Helpers;
 
 namespace ZipZap.Classes;
 
@@ -23,7 +24,23 @@ public record FsData(
     Permissions Permissions,
     string Name,
     Ownership Ownership
-);
+) {
+    public static Result<FsData, FsDataError> TryNew(MaybeEntity<Directory, FsoId> location, Permissions permissions, string name, Ownership ownership) {
+        if (string.IsNullOrWhiteSpace(name))
+            return new Err<FsData, FsDataError>(new FsDataError.EmptyName());
+
+        return new Ok<FsData, FsDataError>(new(
+            location,
+            permissions,
+            name,
+            ownership
+        ));
+    }
+}
+
+public abstract record FsDataError {
+    public sealed record EmptyName : FsDataError;
+}
 
 public record Ownership(
     int FsoOwner,

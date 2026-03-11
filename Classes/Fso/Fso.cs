@@ -17,6 +17,8 @@
 using System;
 using System.Collections.Generic;
 
+using ZipZap.LangExt.Helpers;
+
 namespace ZipZap.Classes;
 
 
@@ -41,10 +43,22 @@ public sealed record File(FsoId Id, FsData Data) : Fso(Id, Data) {
     public override string ToString() => $"-{base.ToString()}";
 }
 public sealed record Symlink(FsoId Id, FsData Data, string Target) : Fso(Id, Data) {
+    public static Result<Symlink, SymlinkError> TryCreate(FsoId id, FsData data, string target) {
+        if (string.IsNullOrWhiteSpace(target))
+            return new Err<Symlink, SymlinkError>(new SymlinkError.EmptyTarget());
+
+        return new Ok<Symlink, SymlinkError>(new(id, data, target));
+    }
+
     public override string ToString() => $"l{base.ToString()} -> {Target}";
     protected override string ToShortFormatString() => $"{base.ToShortFormatString()} -> {Target}";
 
 }
+
+public record SymlinkError {
+    public sealed record EmptyTarget : SymlinkError;
+}
+
 public sealed record Directory(FsoId Id, FsData Data) : Fso(Id, Data) {
     public IEnumerable<Fso> MaybeChildren { get; init; } = [];
     public override string ToString() => $"d{base.ToString()}";

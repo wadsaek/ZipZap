@@ -160,31 +160,41 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         var user = await GetUserOrThrowAsync(context);
         var parentDir = await GetParentFromRequest(context, request, user);
         var ownership = request.Data.Ownership.ToOwnership();
-        var data = new FsData(parentDir.AsMaybe(), Permissions.FileDefault, request.Data.Name, ownership);
+        var data = FsData.TryNew(parentDir.AsMaybe(), Permissions.FileDefault, request.Data.Name, ownership)
+        .UnwrapOrElse(err => err switch {
+            FsDataError.EmptyName => throw new RpcException(new(StatusCode.InvalidArgument, "Name cannot be empty")),
+            _ => throw new InvalidEnumArgumentException(),
+        });
         Fso fso = request.SpecificDataCase switch {
             SaveFsoRequest.SpecificDataOneofCase.FileData => new File(default, data),
             SaveFsoRequest.SpecificDataOneofCase.DirectoryData => new Directory(default, data),
-            SaveFsoRequest.SpecificDataOneofCase.SymlinkData => new Symlink(default, data, request.SymlinkData.Target),
+            SaveFsoRequest.SpecificDataOneofCase.SymlinkData => Symlink.TryCreate(default, data, request.SymlinkData.Target)
+                .UnwrapOrElse(err => err switch {
+                    SymlinkError.EmptyTarget
+                        => throw new RpcException(new(StatusCode.InvalidArgument, "Symlink target cannot be empty")),
+                    _ => throw new InvalidEnumArgumentException()
+                }),
             _ => throw new InvalidEnumArgumentException()
         };
         var createResult = await _fsosRepo.CreateAsync(fso);
-        fso = createResult switch {
-            Err<Fso, DbError>(DbError.UniqueViolation)
-                => throw new RpcException(new(StatusCode.AlreadyExists, "This fso already exists")),
-            Err<Fso, DbError>
-                => throw new RpcException(new(StatusCode.Internal, "failed to create file in db")),
-            Ok<Fso, DbError>(var fsoInner) => fsoInner,
-            _ => throw new InvalidEnumArgumentException(nameof(createResult))
-        };
-        if (fso is File file)
-            await _io.WriteAsync(file.PhysicalPath, new MemoryStream(request.FileData.Content.ToByteArray()));
-        return new() { FileId = fso.Id.Value.ToGrpcGuid() };
+        return await createResult.SelectAsync(async fso => {
+            if (fso is File file)
+                await _io.WriteAsync(file.PhysicalPath, new MemoryStream(request.FileData.Content.ToByteArray()));
+            return new SaveFsoResponse() { FileId = fso.Id.Value.ToGrpcGuid() };
+
+        }).UnwrapOrElseAsync(err =>
+            err switch {
+                DbError.UniqueViolation
+                    => throw new RpcException(new(StatusCode.AlreadyExists, "This fso already exists")),
+                _
+                    => throw new RpcException(new(StatusCode.Internal, "Failed to create file in db")),
+            });
     }
 
     public override async Task<GetRootResponse> GetRoot(EmptyMessage request, ServerCallContext context) {
         var user = await GetUserOrThrowAsync(context);
         var root = user.Root switch {
-            OnlyId<Directory, FsoId> => throw new RpcException(new(StatusCode.Internal, "failed to get root")),
+            OnlyId<Directory, FsoId> => throw new RpcException(new(StatusCode.Internal, "Failed to get root")),
             ExistsEntity<Directory, FsoId>(var dir) => dir,
             _ => throw new InvalidEnumArgumentException(nameof(user.Root))
         };
@@ -276,8 +286,8 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         var currentUser = await EnsureAdminOrThrow(context);
         var guid = ParseGuidOrThrow(request);
         var id = new UserId(guid);
-        if(currentUser.Id == id){
-            throw new RpcException(new (StatusCode.PermissionDenied, "You can't delete yourself"));
+        if (currentUser.Id == id) {
+            throw new RpcException(new(StatusCode.PermissionDenied, "You can't delete yourself"));
         }
         var result = await _userService.RemoveUser(id, context.CancellationToken);
         return result
@@ -418,8 +428,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
     }
 
     public override async Task<EmptyMessage> AdminAddSshHostKey(AdminAddSshHostKeyRequest request, ServerCallContext context) {
-        var user = await GetUserOrThrowAsync(context);
-        ThrowIfNotAdmin(user);
+        var user = await EnsureAdminOrThrow(context);
         var sshKey = request.Key.ToPublicKey();
         var hostKey = new TrustedAuthorityKey(default, request.ServerName, sshKey, DateTimeOffset.UtcNow, user);
         var result = await _trustedKeysRepo.CreateAsync(hostKey, context.CancellationToken);
@@ -451,8 +460,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         );
     }
     public override async Task<Grpc.User> AdminGetUser(UserSpecification request, ServerCallContext context) {
-        var user = await GetUserOrThrowAsync(context);
-        ThrowIfNotAdmin(user);
+        await EnsureAdminOrThrow(context);
         var requestedUser = request.IdentifierCase switch {
             UserSpecification.IdentifierOneofCase.Id => await _usersRepo.GetByIdAsync(ParseGuidOrThrow(request.Id).ToUserId(), context.CancellationToken),
             UserSpecification.IdentifierOneofCase.Username => await _usersRepo.GetUserByUsername(request.Username, context.CancellationToken),
