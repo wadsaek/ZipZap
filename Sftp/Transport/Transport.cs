@@ -14,8 +14,10 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+using System;
 using System.IO;
 using System.Linq;
+using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
@@ -61,25 +63,44 @@ internal class Transport {
         // the client info when doing a rekey.
         public SshState SshState { get; set; }
         public CancellationTokenSource TokenSource { get; }
+        private readonly ILogger<Transport> _logger;
 
         public byte[] SessionId => SshState.SessionId;
         public uint LastPacketId => SshState.Decryptor.MacSequential - 1;
 
         public bool NoFlowControlEnabled { get; set; }
 
-        internal TransportClient(SshState sshState, CancellationTokenSource tokenSource, bool noFlowControlEnabled) {
+        internal TransportClient(SshState sshState, CancellationTokenSource tokenSource, bool noFlowControlEnabled, ILogger<Transport> logger) {
             SshState = sshState;
             TokenSource = tokenSource;
             NoFlowControlEnabled = noFlowControlEnabled;
+            _logger = logger;
         }
 
 
         public async Task SendPacket(IServerPayload packet, CancellationToken cancellationToken) {
-            if (_untilNextIgnore-- == 0) {
-                _untilNextIgnore = RandomNumberGenerator.GetInt32(5);
-                await SshState.Encryptor.SendPacket(Ignore.Random(), cancellationToken);
+            try {
+                if (_untilNextIgnore-- == 0) {
+                    _untilNextIgnore = RandomNumberGenerator.GetInt32(5);
+                    await SshState.Encryptor.SendPacket(Ignore.Random(), cancellationToken);
+                }
+                await SshState.Encryptor.SendPacket(packet, cancellationToken);
+            } catch (IOException exception) {
+                if (exception.GetBaseException() is SocketException { SocketErrorCode: SocketError.Shutdown }) {
+                    HandleDisconnect(cancellationToken);
+                }
+                throw;
+            } catch (ObjectDisposedException) {
+                HandleDisconnect(cancellationToken);
             }
-            await SshState.Encryptor.SendPacket(packet, cancellationToken);
+
+        }
+
+        private void HandleDisconnect(CancellationToken cancellationToken) {
+            _logger.LogInformation("Client disconnected");
+            End();
+            cancellationToken.ThrowIfCancellationRequested();
+            return;
         }
 
         public void End() {
@@ -121,7 +142,7 @@ internal class Transport {
         if (state.SupportsExtensions)
             await SendExtensions(state, cancellationToken);
 
-        var transportClient = new TransportClient(state, linkedTokenSource, false);
+        var transportClient = new TransportClient(state, linkedTokenSource, false, _logger);
 
         var handlerState = new HandleState {
             State = state,

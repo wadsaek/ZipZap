@@ -29,8 +29,16 @@ public static class SshStreamReadExt {
     extension(Stream stream) {
         public async Task<bool> SshTryReadArray(byte[] bytes, CancellationToken cancellationToken) {
             if (bytes.Length == 0) return true;
-            var bytesRead = await stream.ReadAsync(bytes, cancellationToken);
-            return bytesRead == bytes.Length;
+            try {
+                await stream.ReadExactlyAsync(
+                        bytes,
+                        0, bytes.Length,
+                        cancellationToken
+                );
+                return true;
+            } catch (EndOfStreamException) {
+                return false;
+            }
         }
 
         public async Task<byte?> SshTryReadByte(CancellationToken cancellationToken) {

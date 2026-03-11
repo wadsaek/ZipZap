@@ -14,6 +14,7 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+using System;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -24,7 +25,7 @@ using ZipZap.Sftp.Ssh.Numbers;
 
 namespace ZipZap.Sftp.Ssh.Services;
 
-internal abstract class SshBackgroundHandler<TReceive,TSend>  {
+internal abstract class SshBackgroundHandler<TReceive, TSend> {
 
     protected abstract Task ReturnPacket(TSend packet, CancellationToken cancellationToken);
     protected abstract Task End(Disconnect disconnect, CancellationToken cancellationToken);
@@ -59,7 +60,7 @@ internal abstract class SshBackgroundHandler<TReceive,TSend>  {
                 _handler = StartWorking(cancellationToken);
             }
         }
-  }
+    }
 
     private async Task StartWorking(CancellationToken cancellationToken) {
         while (!isDisposed) {
@@ -67,7 +68,10 @@ internal abstract class SshBackgroundHandler<TReceive,TSend>  {
             var payload = packet;
             try {
                 await HandlePacket(payload, cancellationToken);
-            } catch (System.Exception ex) {
+            } catch(OperationCanceledException){
+                return;
+            }
+            catch (Exception ex) {
                 if (_logger.IsEnabled(LogLevel.Critical))
                     _logger.LogCritical("Received exception {Ex}", ex);
 
