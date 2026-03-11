@@ -15,9 +15,6 @@
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System;
-using System.Security.Cryptography;
-using System.Threading;
-using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
@@ -27,7 +24,6 @@ using Microsoft.Extensions.Hosting;
 using ZipZap.Classes;
 using ZipZap.Front.Factories;
 using ZipZap.Front.Handlers.Exceptions;
-using ZipZap.Front.Handlers.Files.View;
 using ZipZap.Front.Services;
 using ZipZap.Front.Sftp;
 using ZipZap.Sftp;
@@ -47,10 +43,11 @@ public class Program {
                     => chOptions.MaxReceiveMessageSize = (int)FileSize.FromMegaBytes(16).Bytes);
         });
         builder.Services.AddScoped<IBackendFactory, BackendFactory>();
+        builder.Services.AddScoped<IRequestBackendFactory, RequestBackendFactory>();
         builder.Services.AddScoped(_ => ServiceExceptionHandler.GetExceptionConverter());
         builder.Services.AddScoped<ILoginService, LoginService>();
         builder.Services.AddScoped<IFsoService, FsoService>();
-        builder.Services.AddScoped<IGetHandler, GetHandler>();
+        builder.Services.AddScoped<Handlers.Files.View.IGetHandler, Handlers.Files.View.GetHandler>();
 
         builder.Services
             .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)

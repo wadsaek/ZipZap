@@ -1,4 +1,4 @@
-// IFactory.cs - Part of the ZipZap project for storing files online
+// RequestBackendFactory.cs - Part of the ZipZap project for storing files online
 //     Copyright (C) 2026  Barenboim Esther wadsaek@gmail.com
 //
 //     This program is free software: you can redistribute it and/or modify
@@ -14,10 +14,23 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+using Microsoft.AspNetCore.Http;
+
+using ZipZap.Classes.Helpers;
 using ZipZap.Front.Services;
 
 namespace ZipZap.Front.Factories;
 
-public interface IBackendFactory {
-    public IBackend Create(BackendConfiguration configuration);
+public class RequestBackendFactory : IRequestBackendFactory {
+    private readonly IBackendFactory _factory;
+
+    public RequestBackendFactory(IBackendFactory factory) {
+        _factory = factory;
+    }
+
+    public IBackend? TryGetFromRequest(HttpRequest request) {
+        var token = request.Cookies[Constants.AUTHORIZATION];
+        if (token is null) return null;
+        return _factory.Create(new(token));
+    }
 }
