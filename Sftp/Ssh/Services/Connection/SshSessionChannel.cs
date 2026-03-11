@@ -38,8 +38,7 @@ internal class SshSessionChannel : SshChannel {
         ITransportClient client,
         ISftpFactory sftpFactory,
         ISftpRequestHandler handler
-    )
-        : base(channelData, logger, client) {
+        ) : base(channelData, logger, client) {
         _client = client;
         _factory = sftpFactory;
         _handler = handler;
@@ -48,6 +47,8 @@ internal class SshSessionChannel : SshChannel {
     private ISubsystem? _subsystem = null;
 
     public override string ServiceName => "session";
+
+    public ClosedStatus ClosedStatus { get; private set; }
 
     protected override async Task HandleExtendedDataImpl(ChannelExtendedData data, CancellationToken cancellationToken) {
         if (!IsEof) return;
@@ -96,6 +97,12 @@ internal class SshSessionChannel : SshChannel {
             return sshSessionChannel.ReturnPacket(packet, cancellationToken);
         }
     }
+
+}
+public enum ClosedStatus {
+    Open,
+    WaitingForConfirmation,
+    Closed
 }
 
 

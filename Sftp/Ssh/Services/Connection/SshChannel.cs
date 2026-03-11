@@ -25,7 +25,7 @@ using ZipZap.Sftp.Ssh.Services.Connection.Packets;
 
 namespace ZipZap.Sftp.Ssh.Services.Connection;
 
-public record SshChannelData(uint PeerId, uint WindowSizeCtS, uint WindowSizeStC, uint PacketSizeCtS, uint PacketSizeStC, bool IsClosed);
+public record SshChannelData(uint PeerId, uint WindowSizeCtS, uint WindowSizeStC, uint PacketSizeCtS, uint PacketSizeStC, ClosedStatus ClosedStatus);
 
 internal abstract class SshChannel : SshBackgroundHandler<ChannelData, byte[]>, ISshChannel {
 
@@ -46,8 +46,9 @@ internal abstract class SshChannel : SshBackgroundHandler<ChannelData, byte[]>, 
     public uint WindowSizeStC => _channelData.WindowSizeStC;
     public uint PacketSizeCtS => _channelData.PacketSizeCtS;
     public uint PacketSizeStC => _channelData.PacketSizeStC;
-    public bool IsClosed => _channelData.IsClosed;
+    public ClosedStatus Status => _channelData.ClosedStatus;
     public bool IsEof { get; set; }
+
 
     private readonly ILogger _logger;
     private readonly ITransportClient _client;
@@ -56,14 +57,13 @@ internal abstract class SshChannel : SshBackgroundHandler<ChannelData, byte[]>, 
         return Send(payload, cancellationToken);
     }
 
-
     public Task RegisterEof(CancellationToken cancellationToken) {
         IsEof = true;
         return Task.CompletedTask;
     }
 
     public Task Close(CancellationToken cancellationToken) {
-        _channelData = _channelData with { IsClosed = true };
+        _channelData = _channelData with { ClosedStatus = ClosedStatus.Closed };
         return Task.CompletedTask;
     }
 

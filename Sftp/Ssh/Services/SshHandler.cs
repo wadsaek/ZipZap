@@ -89,4 +89,10 @@ internal abstract class SshBackgroundHandler<TReceive, TSend> {
     public void Dispose() {
         isDisposed = true;
     }
+    protected async Task BadPacket(string message, CancellationToken cancellationToken) {
+
+        var disconnect = new Disconnect(DisconnectCode.ProtocolError, message);
+        await End(disconnect, cancellationToken);
+    }
+    protected Task Unparsable(string packetName, CancellationToken cancellationToken) => BadPacket($"Unable to parse {packetName}", cancellationToken);
 }

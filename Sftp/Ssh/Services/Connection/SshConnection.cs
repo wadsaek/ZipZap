@@ -16,6 +16,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -27,8 +28,9 @@ using ZipZap.Sftp.Ssh.Services.Connection.Packets;
 
 namespace ZipZap.Sftp.Ssh.Services.Connection;
 
-using SessionOpen = ChannelOpen.ChannelOpenGen<ChannelSpecificData.Session>;
+using Message = Numbers.Message;
 using SessionConfirm = ChannelOpenConfirmation<ChannelSpecificData.Session>;
+using SessionOpen = ChannelOpen.ChannelOpenGen<ChannelSpecificData.Session>;
 
 internal interface ISshConnection : ISshService {
     public new const string ServiceName = "ssh-connection";
@@ -57,7 +59,7 @@ internal class SshConnection : SshService, ISshConnection, IDisposable {
     private readonly ITransportClient _transport;
     private readonly ISftpRequestHandler _requestHandler;
     private readonly ILogger<SshConnection> _logger;
-    private readonly List<ISshChannel> _channels = [];
+    private readonly Dictionary<uint, ISshChannel> _channels = [];
     private readonly ISshChannelFactory _channelFactory;
 
     public SshConnection(ITransportClient sendPacket, ISftpRequestHandler sftpRequestHandler, ILogger<SshConnection> logger, ISshChannelFactory channelFactory) : base(logger) {
@@ -102,7 +104,7 @@ internal class SshConnection : SshService, ISshConnection, IDisposable {
                         return;
                     }
                     var channelId = await OpenSession(sessionRequest, cancellationToken);
-                    var channel = _channels[(int)channelId];
+                    var channel = _channels[channelId];
                     var confirmation = new SessionConfirm(
                         channel.PeerId,
                         channelId,
@@ -134,6 +136,8 @@ internal class SshConnection : SshService, ISshConnection, IDisposable {
                     break;
                 }
             default: {
+                    if (_logger.IsEnabled(LogLevel.Critical))
+                        _logger.LogCritical("Recieved unsupported message: {Message}", msg);
                     var disconnect_ = new Disconnect(
                             DisconnectCode.ServiceNotAvailable,
                             "ssh-connection service not implemented"
@@ -144,19 +148,23 @@ internal class SshConnection : SshService, ISshConnection, IDisposable {
         }
     }
 
+    private async Task RemoveChannel(uint recipient) {
+        _channels.Remove(recipient);
+    }
+
     private async ValueTask<ISshChannel?> TryGetChannel(uint Recipient, CancellationToken cancellationToken) {
         if (!await IsValidRecipient(Recipient, cancellationToken)) return null;
-        return _channels[(int)Recipient];
+        return _channels[Recipient];
     }
     private async ValueTask<bool> IsValidRecipient(uint Recipent, CancellationToken cancellationToken) {
-        if (Recipent >= _channels.Count || _channels[(int)Recipent].IsClosed) {
+        if (!_channels.TryGetValue(Recipent, out var value) || value.Status == ClosedStatus.Closed) {
             await BadPacket("Invalid channel requested.", cancellationToken);
             return false;
         }
         return true;
     }
 
-    private Task<uint> OpenSession(SessionOpen sessionRequest, CancellationToken cancellationToken) {
+    private async Task<uint> OpenSession(SessionOpen sessionRequest, CancellationToken cancellationToken) {
         cancellationToken.ThrowIfCancellationRequested();
 
         var channel = _channelFactory.CreateSessionChannel(
@@ -165,16 +173,17 @@ internal class SshConnection : SshService, ISshConnection, IDisposable {
             sessionRequest.MaxPacketSize,
             _transport, _requestHandler
         );
-        _channels.Add(channel);
-        return Task.FromResult((uint)_channels.Count - 1);
+        var index = Enumerable
+            .Range(0, 255)
+            .Select(i => (uint)i)
+            .FirstOrDefault(i => !_channels.ContainsKey(i), uint.MaxValue);
+        if (index == uint.MaxValue) {
+            await End(new Disconnect(DisconnectCode.TooManyConnections, "too many channels open"), cancellationToken);
+        }
+        _channels.Add(index, channel);
+        return index;
     }
 
-    private async Task BadPacket(string message, CancellationToken cancellationToken) {
-
-        var disconnect = new Disconnect(DisconnectCode.ProtocolError, message);
-        await End(disconnect, cancellationToken);
-    }
-    private Task Unparsable(string packetName, CancellationToken cancellationToken) => BadPacket($"Unable to parse {packetName}", cancellationToken);
 
     protected override Task ReturnPacket(IServerPayload packet, CancellationToken cancellationToken) {
         return _transport.SendPacket(packet, cancellationToken);
@@ -205,7 +214,7 @@ internal class SshChannelFactory : ISshChannelFactory {
             windowSizeStC,
             128 * 1024,
             packetSizeStC,
-            false);
+            ClosedStatus.Open);
         return new SshSessionChannel(channelData, _logger, client, _sftpFactory, requestHandler);
     }
 }

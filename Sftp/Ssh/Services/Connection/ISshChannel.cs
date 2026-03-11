@@ -22,7 +22,7 @@ using ZipZap.Sftp.Ssh.Services.Connection.Packets;
 namespace ZipZap.Sftp.Ssh.Services.Connection;
 
 internal interface ISshChannel {
-    public bool IsClosed { get; }
+    public ClosedStatus Status { get; }
     public uint PeerId { get; }
     public uint WindowSizeCtS { get; }
     public uint WindowSizeStC { get; }
