@@ -466,7 +466,22 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         ThrowIfNotAdmin(user);
         var keys = await _userKeysRepo.GetForUserId(id);
         return keys.ToSshKeyList();
+    }
 
+    public override async Task<HostKeys> AdminGetSshHostKeys(EmptyMessage request, ServerCallContext context) {
+        await EnsureAdminOrThrow(context);
+        var keys = await _trustedKeysRepo.GetAllWithUser();
+        return keys.ToGrpcHostKeys();
+    }
+    public override async Task<EmptyMessage> AdminRemoveSshHostKey(Grpc.Guid request, ServerCallContext context) {
+        await EnsureAdminOrThrow(context);
+        var id = new TrustedAuthorityKeyId(ParseGuidOrThrow(request));
+        return await _trustedKeysRepo.DeleteAsync(id)
+        .SelectAsync(_ => new EmptyMessage())
+        .UnwrapOrElseAsync(err => err switch {
+            DbError.NothingChanged => throw new RpcException(new(StatusCode.NotFound, "This key was not found")),
+            DbError.Unknown or _ => throw new RpcException(new(StatusCode.Internal, "failed to delete key"))
+        });
     }
 }
 

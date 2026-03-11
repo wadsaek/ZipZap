@@ -107,6 +107,9 @@ service FilesStoringService {
   rpc AdminGetUserList(EmptyMessage) returns (UserList);
   rpc AdminGetUser(UserSpecification) returns (User);
   rpc AdminRemoveUser(Guid) returns (EmptyMessage);
-  rpc AdminAddSshHostKey(AdminAddSshHostKeyRequest) returns (EmptyMessage);
   rpc AdminGetSshKeysForUser(Guid) returns (UserSshKeyList);
+
+  rpc AdminAddSshHostKey(AdminAddSshHostKeyRequest) returns (EmptyMessage);
+  rpc AdminGetSshHostKeys(EmptyMessage) returns (HostKeys);
+  rpc AdminRemoveSshHostKey(Guid) returns (EmptyMessage);
 }

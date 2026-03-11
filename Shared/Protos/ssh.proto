@@ -1,6 +1,7 @@
 syntax = "proto3";
 import "google/protobuf/timestamp.proto";
 import "guid.proto";
+import "user.proto";
 
 option csharp_namespace = "ZipZap.Grpc";
 
@@ -11,6 +12,16 @@ message SshKey{
 message AdminAddSshHostKeyRequest{
   SshKey key = 1;
   string serverName = 2;
+}
+message SshHostKeyServer{
+  Guid id = 1;
+  SshKey key = 2;
+  string serverName = 3;
+  User AdminWhoAddedId = 4;
+  google.protobuf.Timestamp AddedAt = 5;
+}
+message HostKeys{
+  repeated SshHostKeyServer keys = 1;
 }
 
 // Auth without a password with a channel this simple requires trust.

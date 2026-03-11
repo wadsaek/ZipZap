@@ -30,7 +30,6 @@ using ZipZap.Classes.Extensions;
 using ZipZap.Classes.Helpers;
 using ZipZap.Grpc;
 using ZipZap.LangExt.Helpers;
-using ZipZap.Sftp.Ssh.Algorithms;
 
 using static ZipZap.LangExt.Helpers.ResultConstructor;
 
@@ -270,9 +269,9 @@ public class Backend : IBackend {
         ));
         return result.Select(u => u.ToUser());
     }
-    public async Task<Result<Unit, ServiceError>> AdminAddSshHostKey(IPublicKey key, string serverName, CancellationToken cancellationToken = default) {
+    public async Task<Result<Unit, ServiceError>> AdminAddSshHostKey(SshPublicKey key, string serverName, CancellationToken cancellationToken = default) {
         var result = await Wrap(async () => await _filesStoringService.AdminAddSshHostKeyAsync(
-            new() { ServerName = serverName, Key = new() { Key = key.ToAsciiString() } },
+            new() { ServerName = serverName, Key = key.ToGrpcSshKey() },
             _configuration.ToMetadata(),
             cancellationToken: cancellationToken
         ));
@@ -309,6 +308,26 @@ public class Backend : IBackend {
                 cancellationToken: cancellationToken
         ));
         return result.Select(list => list.ToSshKeys());
+    }
+
+    public async Task<Result<IEnumerable<TrustedAuthorityKeyWithUser>, ServiceError>> AdminGetSshHostKeys(CancellationToken cancellationToken = default) {
+        var result = await Wrap(
+            async () => await _filesStoringService.AdminGetSshHostKeysAsync(
+                new(),
+                _configuration.ToMetadata(),
+                cancellationToken: cancellationToken
+        ));
+        return result.Select(keys => keys.ToKeys());
+    }
+
+    public async Task<Result<Unit, ServiceError>> AdminRemoveTrustedKey(TrustedAuthorityKeyId id, CancellationToken cancellationToken = default) {
+        var result = await Wrap(
+            async () => await _filesStoringService.AdminRemoveSshHostKeyAsync(
+                id.Id.ToGrpcGuid(),
+                _configuration.ToMetadata(),
+                cancellationToken: cancellationToken
+        ));
+        return result.Select(_ => new Unit());
     }
 }
 public record BackendConfiguration(string AuthToken);

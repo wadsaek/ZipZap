@@ -24,7 +24,6 @@ using Google.Protobuf;
 using ZipZap.Classes;
 using ZipZap.Classes.Helpers;
 using ZipZap.LangExt.Helpers;
-using ZipZap.Sftp.Ssh.Algorithms;
 
 namespace ZipZap.Front.Services;
 
@@ -56,8 +55,10 @@ public interface IBackend {
     public Task<Result<Unit, ServiceError>> AdminRemoveUser(UserId id, CancellationToken cancellationToken = default);
     public Task<Result<User, ServiceError>> AdminGetUserById(UserId id, CancellationToken cancellationToken = default);
     public Task<Result<User, ServiceError>> AdminGetUserByUsername(string username, CancellationToken cancellationToken = default);
-    public Task<Result<Unit, ServiceError>> AdminAddSshHostKey(IPublicKey key, string serverName, CancellationToken cancellationToken = default);
+    public Task<Result<Unit, ServiceError>> AdminAddSshHostKey(SshPublicKey key, string serverName, CancellationToken cancellationToken = default);
     public Task<Result<IEnumerable<UserSshKeyRaw>, ServiceError>> AdminGetSshKeysForUser(UserId key, CancellationToken cancellationToken = default);
+    public Task<Result<IEnumerable<TrustedAuthorityKeyWithUser>, ServiceError>> AdminGetSshHostKeys(CancellationToken cancellationToken = default);
+    public Task<Result<Unit, ServiceError>> AdminRemoveTrustedKey(TrustedAuthorityKeyId id, CancellationToken cancellationToken = default);
 }
 
 [Flags]

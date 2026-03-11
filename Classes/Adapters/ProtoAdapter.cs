@@ -21,6 +21,7 @@ using System.Linq;
 using System.Threading.Tasks;
 
 using Google.Protobuf;
+using Google.Protobuf.WellKnownTypes;
 
 using ZipZap.Classes.Extensions;
 using ZipZap.Grpc;
@@ -256,5 +257,37 @@ public static class ProtoAdapter {
     extension(UserSshKeyList keys) {
         public IEnumerable<UserSshKeyRaw> ToSshKeys()
             => keys.Keys.Select(k => new UserSshKeyRaw(new(k.Id.ToGuid()), k.Key.ToPublicKey()));
+    }
+    extension(IEnumerable<TrustedAuthorityKeyWithUser> keys) {
+        public HostKeys ToGrpcHostKeys() {
+            var list = new HostKeys();
+            list.Keys.Add(keys.Select(k => k.ToGrpcHostKey()));
+            return list;
+        }
+    }
+    extension(TrustedAuthorityKeyWithUser key) {
+        public SshHostKeyServer ToGrpcHostKey() {
+            var hostkey = new SshHostKeyServer {
+                Id = key.Id.Id.ToGrpcGuid(),
+                Key = key.Key.ToGrpcSshKey(),
+                ServerName = key.ServerName,
+                AddedAt = key.TimeAdded.ToTimestamp(),
+            };
+            if (key.Admin is not null)
+                hostkey.AdminWhoAddedId = key.Admin?.ToGrpcUser();
+            return hostkey;
+        }
+    }
+    extension(SshHostKeyServer key) {
+        public TrustedAuthorityKeyWithUser ToKey() => new(
+            new(key.Id.ToGuid()),
+            key.ServerName,
+            key.Key.ToPublicKey(),
+            key.AddedAt.ToDateTimeOffset(),
+            key.AdminWhoAddedId.ToUser()
+        );
+    }
+    extension(HostKeys keys) {
+        public IEnumerable<TrustedAuthorityKeyWithUser> ToKeys() => keys.Keys.Select(ToKey);
     }
 }
