@@ -40,10 +40,10 @@ public static class SshStreamReadSyncExt {
         }
         public bool SshTryReadUint32Sync(out uint value) {
             var bytes = new byte[sizeof(uint)];
+            value = default;
             var success = stream.SshTryReadArraySync(bytes);
 
-            value = BinaryPrimitives.ReverseEndianness(BitConverter.ToUInt32(bytes));
-            return success;
+            return success && uint.FromSsh(bytes, out value);
         }
         public bool SshTryReadInt32Sync(out int value) {
             var bytes = new byte[sizeof(int)];

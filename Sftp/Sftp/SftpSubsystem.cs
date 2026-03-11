@@ -14,51 +14,119 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+using System;
+using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.Extensions.Logging;
 
-using ZipZap.Sftp.Ssh;
-using ZipZap.Sftp.Ssh.Services;
-using ZipZap.Sftp.Ssh.Services.Connection;
+using ZipZap.LangExt.Helpers;
+using ZipZap.Sftp.Sftp.Numbers;
 
+using ZipZap.Sftp.Ssh;
+using ZipZap.Sftp.Ssh.Services.Connection;
 
 namespace ZipZap.Sftp.Sftp;
 
-internal class SftpSubsystem : SshBackgroundHandler<byte[], byte[]>, ISubsystem {
+internal class SftpSubsystem : ISubsystem {
     private readonly ISftpRequestHandler _handler;
     private readonly IChannelClient _client;
+    private readonly ILogger<SftpSubsystem> _logger;
+    private readonly SftpPacketReader _reader = new();
 
-    public SftpSubsystem(ISftpRequestHandler handler, ILogger<SftpSubsystem> logger, IChannelClient client) : base(logger) {
+    public SftpSubsystem(ISftpRequestHandler handler, ILogger<SftpSubsystem> logger, IChannelClient client) {
         _handler = handler;
         _client = client;
+        _logger = logger;
     }
 
-    public override string ServiceName => throw new System.NotImplementedException();
+    private bool _isInitialized = false;
+    public static string SubsystemName => "sftp";
+    private Task? _process = null;
 
-    public Task SendData(byte[] payload, CancellationToken cancellationToken) {
-        return Send(payload, cancellationToken);
+    public async Task SendData(byte[] payload, CancellationToken cancellationToken) {
+        await _reader.RegisterData(payload, cancellationToken);
+        lock (_lock) {
+            if (_process == null || _process.IsCompleted) {
+                _process = StartWorking(cancellationToken);
+            }
+        }
     }
 
-    protected override Task End(Disconnect disconnect, CancellationToken cancellationToken) {
-        return _client.End(disconnect, cancellationToken);
+    private async Task? StartWorking(CancellationToken cancellationToken) {
+        while (await _reader.ReadNextPacket(cancellationToken) is {
+
+        } packet)
+            try {
+                await HandlePacket(packet, cancellationToken);
+            } catch (OperationCanceledException) {
+                return;
+            } catch (Exception ex) {
+                if (_logger.IsEnabled(LogLevel.Critical))
+                    _logger.LogCritical("Received exception {Ex}", ex);
+
+                await End(1, cancellationToken);
+                return;
+            }
     }
 
-    protected override Task ReturnPacket(byte[] packet, CancellationToken cancellationToken) {
-        return _client.ReturnPacket(packet, cancellationToken);
+    private Task End(uint statusCode, CancellationToken cancellationToken) {
+        return _client.Exit(statusCode, cancellationToken);
     }
 
-    protected override Task HandlePacket(byte[] payload, CancellationToken cancellationToken) {
-        throw new System.NotImplementedException();
+    private Task HandlePacket(Packet payload, CancellationToken cancellationToken) {
+        if (!_isInitialized) return Initialize(payload, cancellationToken);
+        return HandleGenericPacket(payload, cancellationToken);
+    }
+    private Task ReturnPacket(ISftpServerPayload packet, CancellationToken cancellationToken)
+        => _client.ReturnPacket(packet.ToPacket().ToByteString(), cancellationToken);
+
+    private async Task HandleGenericPacket(Packet payload, CancellationToken cancellationToken) {
+        var type = payload.PacketType;
+        switch (type) {
+            case var t when t.IsServerSideMessage() || t.IsInitMessage(): {
+                    await _client.Exit(1, cancellationToken);
+                    break;
+                }
+            default: {
+                    var idBytes = payload.Bytes.AsSpan(1, 4);
+                    if (!uint.FromSsh(idBytes, out var id))
+                        await End(2, cancellationToken);
+
+                    var response = new Status(id, SftpError.OpUnsupported, $"We don't support {type}");
+                    await _client.ReturnPacket(response.ToPacket().ToByteString(), cancellationToken);
+                    return;
+                }
+
+        }
     }
 
+    private async Task Unparsable(string v, CancellationToken cancellationToken) {
+        throw new NotImplementedException();
+    }
+
+    static readonly ImmutableList<SftpExtension> SupportedExtensions = [
+        new SftpExtension.LSetStat()
+    ];
+    private readonly Lock _lock = new();
+
+    private Task Initialize(Packet payload, CancellationToken cancellationToken) {
+        if (!Init.TryParse(payload.Bytes, out _)) {
+            return End(2, cancellationToken);
+        }
+        var versionPacket = new Version(3, SupportedExtensions);
+        _isInitialized = true;
+        return _client.ReturnPacket(versionPacket.ToPacket().ToByteString(), cancellationToken);
+    }
 }
 
 interface IChannelClient {
     Task End(Disconnect disconnect, CancellationToken cancellationToken);
     Task ReturnPacket(byte[] packet, CancellationToken cancellationToken);
+    Task Exit(uint StatusCode, CancellationToken cancellationToken);
 }
+
 class SftpFactory : ISftpFactory {
     private readonly ILogger<SftpSubsystem> _logger;
 

@@ -1,4 +1,4 @@
-// SshStreamExt.cs - Part of the ZipZap project for storing files online
+// SftpExtension.cs - Part of the ZipZap project for storing files online
 //     Copyright (C) 2026  Barenboim Esther wadsaek@gmail.com
 //
 //     This program is free software: you can redistribute it and/or modify
@@ -14,19 +14,23 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+using System;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
-namespace ZipZap.Sftp.Ssh;
+namespace ZipZap.Sftp.Sftp;
 
-public static class SshStreamExt {
-    extension(Stream stream) {
-        public bool ExpectMessage(Numbers.Message message) {
-            if (!stream.SshTryReadByteSync(out var msg)) return false;
-            return (Numbers.Message)msg == message;
-        }
-        public bool ExpectMessage(Sftp.Numbers.Message message) {
-            if (!stream.SshTryReadByteSync(out var msg)) return false;
-            return (Sftp.Numbers.Message)msg == message;
+public abstract record SftpExtension(string Name, string Version) {
+    internal static bool TryParse(string extname, MemoryStream stream, out SftpExtension ext) {
+        throw new NotImplementedException();
+    }
+    public abstract Task HandlePacket(byte[] payload, ISftpRequestHandler handler, CancellationToken cancellationToken);
+
+    public sealed record LSetStat() : SftpExtension("lsetstat@openssh.com", "1") {
+        public override Task HandlePacket(byte[] payload, ISftpRequestHandler handler, CancellationToken cancellationToken) {
+            throw new NotImplementedException();
         }
     }
 }
+

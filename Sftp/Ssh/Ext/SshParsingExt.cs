@@ -1,4 +1,4 @@
-// SshStreamExt.cs - Part of the ZipZap project for storing files online
+// SshParsingExt.cs - Part of the ZipZap project for storing files online
 //     Copyright (C) 2026  Barenboim Esther wadsaek@gmail.com
 //
 //     This program is free software: you can redistribute it and/or modify
@@ -14,19 +14,18 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-using System.IO;
+using System;
+using System.Buffers.Binary;
 
 namespace ZipZap.Sftp.Ssh;
 
-public static class SshStreamExt {
-    extension(Stream stream) {
-        public bool ExpectMessage(Numbers.Message message) {
-            if (!stream.SshTryReadByteSync(out var msg)) return false;
-            return (Numbers.Message)msg == message;
-        }
-        public bool ExpectMessage(Sftp.Numbers.Message message) {
-            if (!stream.SshTryReadByteSync(out var msg)) return false;
-            return (Sftp.Numbers.Message)msg == message;
+public static class SshParsingExt {
+    extension(uint) {
+        public static bool FromSsh(Span<byte> bytes, out uint value) {
+            value = default;
+            if (bytes.Length != 4) return false;
+            value = BinaryPrimitives.ReverseEndianness(BitConverter.ToUInt32(bytes));
+            return true;
         }
     }
 }

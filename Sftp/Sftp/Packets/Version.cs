@@ -1,4 +1,4 @@
-// SshStreamExt.cs - Part of the ZipZap project for storing files online
+// Version.cs - Part of the ZipZap project for storing files online
 //     Copyright (C) 2026  Barenboim Esther wadsaek@gmail.com
 //
 //     This program is free software: you can redistribute it and/or modify
@@ -14,19 +14,29 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-using System.IO;
+using System.Collections.Immutable;
 
-namespace ZipZap.Sftp.Ssh;
+using ZipZap.Sftp.Sftp.Numbers;
 
-public static class SshStreamExt {
-    extension(Stream stream) {
-        public bool ExpectMessage(Numbers.Message message) {
-            if (!stream.SshTryReadByteSync(out var msg)) return false;
-            return (Numbers.Message)msg == message;
+using ZipZap.Sftp.Ssh;
+
+namespace ZipZap.Sftp.Sftp;
+
+public record Version(uint V, ImmutableList<SftpExtension> SupportedExtensions) : ISftpServerPayload {
+    public Message PacketType => Message.Version;
+
+    public Packet ToPacket() {
+        var builder = new SshMessageBuilder();
+
+        builder.Write(PacketType);
+        builder.Write(V);
+
+        foreach (var ext in SupportedExtensions) {
+            builder
+                .Write(ext.Name)
+                .Write(ext.Version);
         }
-        public bool ExpectMessage(Sftp.Numbers.Message message) {
-            if (!stream.SshTryReadByteSync(out var msg)) return false;
-            return (Sftp.Numbers.Message)msg == message;
-        }
+
+        return builder.Build();
     }
 }
