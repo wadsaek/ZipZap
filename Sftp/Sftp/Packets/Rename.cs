@@ -1,4 +1,4 @@
-// ISftpPayload.cs - Part of the ZipZap project for storing files online
+// Rename.cs - Part of the ZipZap project for storing files online
 //     Copyright (C) 2026  Barenboim Esther wadsaek@gmail.com
 //
 //     This program is free software: you can redistribute it and/or modify
@@ -15,33 +15,15 @@
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System.Diagnostics.CodeAnalysis;
-using System.IO;
 
 using ZipZap.Sftp.Sftp.Numbers;
-using ZipZap.Sftp.Ssh;
 
 namespace ZipZap.Sftp.Sftp;
 
-public interface ISftpPayload {
-    public Message PacketType { get; }
-}
+ public record Rename(uint Id, string OldPath,string NewPath) : ISftpClientPayload<Rename> {
+    public static Message PacketType => Message.Rename;
 
-public interface ISftpServerPayload : ISftpPayload {
-    public Packet ToPacket();
-}
-
-public interface ISftpClientPayload<T> {
-    abstract static bool TryParse(byte[] bytes, [NotNullWhen(true)] out T? value);
-}
-
-public static class SftpPacketHelper {
-    public static bool TryParseIdString(byte[] bytes, Message PacketType, out uint id, [NotNullWhen(true)] out string? str) {
-        var stream = new MemoryStream(bytes);
-        id = default;
-        str = null;
-        if (!stream.ExpectMessage(PacketType)) return false;
-        if (!stream.SshTryReadUint32Sync(out id)) return false;
-        if (!stream.SshTryReadStringSync(out str)) return false;
-        return true;
+    public static bool TryParse(byte[] bytes, [NotNullWhen(true)] out Rename? value) {
+        throw new System.NotImplementedException();
     }
 }

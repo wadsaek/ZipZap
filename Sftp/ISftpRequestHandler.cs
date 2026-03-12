@@ -65,7 +65,7 @@ public interface ISftpRequestHandler {
 
     public Task<Result<Handle, Status>> OpenDir(string path, CancellationToken cancellationToken);
 
-    public Task<Result<FileName[], Status>> ReadDir(string path, CancellationToken cancellationToken);
+    public Task<Result<FileName[], Status>> ReadDir(Handle path, CancellationToken cancellationToken);
 
     public Task<Result<FileAttributes, Status>> Stat(string path, CancellationToken cancellationToken);
     public Task<Result<FileAttributes, Status>> LStat(string path, CancellationToken cancellationToken);

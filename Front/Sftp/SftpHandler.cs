@@ -116,7 +116,7 @@ internal class SftpHandler : ISftpLoginHandler, ISftpRequestHandler {
         return new Err<ZipZap.Sftp.Handle, Status>(new Status(SftpError.OpUnsupported, "This operation is not supported"));
     }
 
-    public async Task<Result<FileName[], Status>> ReadDir(string path, CancellationToken cancellationToken) {
+    public async Task<Result<FileName[], Status>> ReadDir(Handle handle, CancellationToken cancellationToken) {
         return new Err<FileName[], Status>(new Status(SftpError.OpUnsupported, "This operation is not supported"));
     }
 

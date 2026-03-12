@@ -1,4 +1,4 @@
-// ISftpPayload.cs - Part of the ZipZap project for storing files online
+// Symlink.cs - Part of the ZipZap project for storing files online
 //     Copyright (C) 2026  Barenboim Esther wadsaek@gmail.com
 //
 //     This program is free software: you can redistribute it and/or modify
@@ -22,26 +22,18 @@ using ZipZap.Sftp.Ssh;
 
 namespace ZipZap.Sftp.Sftp;
 
-public interface ISftpPayload {
-    public Message PacketType { get; }
-}
+public record Symlink(uint Id, string LinkPath, string Target) : ISftpClientPayload<Symlink> {
+   public static Message PacketType => Message.Symlink;
 
-public interface ISftpServerPayload : ISftpPayload {
-    public Packet ToPacket();
-}
+   public static bool TryParse(byte[] bytes, [NotNullWhen(true)] out Symlink? value) {
+      value = null;
+      var stream = new MemoryStream(bytes);
+      if (!stream.ExpectMessage(PacketType)) return false;
+      if (!stream.SshTryReadUint32Sync(out var id)) return false;
+      if (!stream.SshTryReadStringSync(out var linkpath)) return false;
+      if (!stream.SshTryReadStringSync(out var target)) return false;
+      value = new(id, linkpath, target);
+      return true;
 
-public interface ISftpClientPayload<T> {
-    abstract static bool TryParse(byte[] bytes, [NotNullWhen(true)] out T? value);
-}
-
-public static class SftpPacketHelper {
-    public static bool TryParseIdString(byte[] bytes, Message PacketType, out uint id, [NotNullWhen(true)] out string? str) {
-        var stream = new MemoryStream(bytes);
-        id = default;
-        str = null;
-        if (!stream.ExpectMessage(PacketType)) return false;
-        if (!stream.SshTryReadUint32Sync(out id)) return false;
-        if (!stream.SshTryReadStringSync(out str)) return false;
-        return true;
-    }
+   }
 }
