@@ -28,27 +28,27 @@ using M = UnixFileMode;
 
 public record struct Permissions(M Inner) {
     public readonly override string ToString() => new[] {
-        (Inner & M.UserRead) != M.None ? "r" : "-",
-        (Inner & M.UserWrite) != M.None ? "w" : "-",
-        (Inner & M.UserExecute) == M.None
-            ? (Inner & M.SetUser) != M.None
+        Inner.HasFlag(M.UserRead) ? "r" : "-",
+        Inner.HasFlag(M.UserWrite) ? "w" : "-",
+        !Inner.HasFlag(M.UserExecute)
+            ? Inner.HasFlag(M.SetUser)
                 ? "S"
                 : "-"
-            : (Inner & M.SetUser) != M.None
+            : Inner.HasFlag(M.SetUser)
                 ? "s"
                 : "x",
-        (Inner & M.GroupRead) != M.None ? "r" : "-",
-        (Inner & M.GroupWrite) != M.None ? "w" : "-",
-        (Inner & M.GroupExecute) == M.None
-            ? (Inner & M.SetGroup) != M.None
+        Inner.HasFlag(M.GroupRead) ? "r" : "-",
+        Inner.HasFlag(M.GroupWrite) ? "w" : "-",
+        !Inner.HasFlag(M.GroupExecute)
+            ? Inner.HasFlag(M.SetGroup)
                 ? "S"
                 : "-"
-            : (Inner & M.SetGroup) != M.None
+            : Inner.HasFlag(M.SetGroup)
                 ? "s"
                 : "x",
-        (Inner & M.OtherRead) != M.None ? "r" : "-",
-        (Inner & M.OtherWrite) != M.None ? "w" : "-",
-        (Inner & M.OtherExecute) != M.None ? "x" : "-"
+        Inner.HasFlag(M.OtherRead) ? "r" : "-",
+        Inner.HasFlag(M.OtherWrite) ? "w" : "-",
+        Inner.HasFlag(M.OtherExecute) ? "x" : "-"
     }.ConcatenateWith(string.Empty);
 
     public static bool TryParse(string input, out Permissions permissions) {
@@ -91,6 +91,9 @@ public static class UnixFileModeExt {
         public static M AllRead => M.UserRead | M.GroupRead | M.OtherRead;
         public static M AllWrite => M.UserWrite | M.GroupWrite | M.OtherWrite;
         public static M AllExecute => M.UserExecute | M.GroupExecute | M.OtherExecute;
+        public static M Directory => (M)0x4000;
+        public static M RegularFile => (M)0x8000;
+        public static M Symlink => (M)0xA000;
     }
 }
 
