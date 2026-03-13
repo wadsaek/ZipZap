@@ -160,6 +160,15 @@ internal class SshConnection : SshService, ISshConnection, IDisposable {
                     await channel.RegisterEof(cancellationToken);
                     return;
                 }
+            case Message.ChannelWindowAdjust: {
+                    if (!ChannelWindowAdjust.TryParse(packet, out var adjut)) {
+                        await Unparsable(nameof(ChannelWindowAdjust), cancellationToken);
+                        return;
+                    }
+                    if (await TryGetChannel(adjut.RecipientChannel, cancellationToken) is not { } channel) return;
+                    await channel.AdjustWindow(adjut.BytesToAdd, cancellationToken);
+                    return;
+                }
             default: {
                     if (_logger.IsEnabled(LogLevel.Critical))
                         _logger.LogCritical("Recieved unsupported message: {Message}", msg);

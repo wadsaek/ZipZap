@@ -14,13 +14,22 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+using System.Diagnostics.CodeAnalysis;
+using System.IO;
+
 using ZipZap.Sftp.Ssh.Numbers;
 namespace ZipZap.Sftp.Ssh.Services.Connection.Packets;
 
 public sealed record ChannelWindowAdjust(uint RecipientChannel, uint BytesToAdd) : IServerPayload, IClientPayload<ChannelWindowAdjust> {
     public static Message Message => Message.ChannelWindowAdjust;
-    public static bool TryParse(byte[] payload, out ChannelWindowAdjust value) {
-        throw new System.NotImplementedException();
+    public static bool TryParse(byte[] payload, [NotNullWhen(true)] out ChannelWindowAdjust? value) {
+        value = null;
+        var stream = new MemoryStream(payload);
+        if (!stream.ExpectMessage(Message)) return false;
+        if (!stream.SshTryReadUint32Sync(out var recipient)) return false;
+        if (!stream.SshTryReadUint32Sync(out var bytesToAdd)) return false;
+        value = new(recipient, bytesToAdd);
+        return true;
     }
 
     public byte[] ToPayload() {
