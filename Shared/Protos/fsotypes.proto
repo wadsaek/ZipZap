@@ -10,6 +10,11 @@ enum FileType {
   DIRECTORY = 1;
   SYMLINK = 2;
 }
+enum DeleteOptions {
+    ALL = 0;
+    ALL_EXCEPT_DIRECTORIES = 1;
+    ONLY_EMPTY_DIRECTORIES = 2;
+}
 
 message FileData {
   bytes content = 1;

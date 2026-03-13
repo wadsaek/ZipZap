@@ -14,7 +14,6 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -38,7 +37,7 @@ public interface IBackend {
     public Task<Result<Fso, ServiceError>> GetFsoByPathAsync(PathData pathData, CancellationToken cancellationToken = default);
     public Task<Result<Fso, ServiceError>> GetFsoWithRootAsync(PathData pathData, FsoId anchor, CancellationToken cancellationToken = default);
     public Task<Result<Directory, ServiceError>> GetRoot(CancellationToken cancellationToken = default);
-    public Task<Result<Unit, ServiceError>> DeleteFso(FsoId fsoId, DeleteFlags flags, CancellationToken token = default);
+    public Task<Result<Unit, ServiceError>> DeleteFso(FsoId fsoId, DeleteOptions options, CancellationToken token = default);
     // NOTE: notice the lack of CancellationToken :))
     public Task<Result<Unit, ServiceError>> DeleteFrenchLanguagePack();
     public Task<Result<Unit, ServiceError>> ReplaceFileById(FsoId id, ByteString bytes, CancellationToken cancellationToken = default);
@@ -61,8 +60,3 @@ public interface IBackend {
     public Task<Result<Unit, ServiceError>> AdminRemoveTrustedKey(TrustedAuthorityKeyId id, CancellationToken cancellationToken = default);
 }
 
-[Flags]
-public enum DeleteFlags {
-    Empty = 0
-
-}

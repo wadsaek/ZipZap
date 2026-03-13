@@ -42,12 +42,16 @@ internal class FsosRepository : IFsosRepository {
     private readonly EntityHelper<FsoInner, Fso, Guid> _fsoHelper;
     private readonly ExceptionConverter<DbError> _converter;
     private readonly IBasicRepository<Fso, FsoInner, Guid> _basic;
+    private readonly NpgsqlConnection _conn;
 
     private string TableName => _fsoHelper.TableName;
     private string IdCol => _fsoHelper.GetColumnName(nameof(FsoInner.Id));
     public FsosRepository(
+            NpgsqlConnection conn,
             EntityHelper<FsoInner, Fso, Guid> fsoHelper,
-            ExceptionConverter<DbError> converter, IBasicRepository<Fso, FsoInner, Guid> basic) {
+            ExceptionConverter<DbError> converter,
+            IBasicRepository<Fso, FsoInner, Guid> basic) {
+        _conn = conn;
         _fsoHelper = fsoHelper;
         _converter = converter;
         _basic = basic;
@@ -208,4 +212,40 @@ internal class FsosRepository : IFsosRepository {
                     },
                     token)).FirstOrDefault();
 
+    public async Task<Result<Unit, DbError>> DeleteAsync(Fso fso, DeleteOptions options, CancellationToken cancellationToken) {
+        if (options is DeleteOptions.All)
+            return await DeleteAsync(fso, cancellationToken);
+
+        await using var disposable = await _conn.OpenAsyncDisposable(cancellationToken);
+        await using var transaction = await _conn.BeginTransactionAsync(cancellationToken);
+        var cmdBuilder = new StringBuilder($"""
+            DELETE FROM {TableName}
+            WHERE {TableName}.{_fsoHelper.IdCol} = $1
+            """);
+        var (condition, parameter2) = options switch {
+            DeleteOptions.AllExceptDirectories
+                => ($" AND {TableName}.{_fsoHelper.GetColumnName(nameof(FsoInner.FsoType))} <> $2",
+                    new NpgsqlParameter<FsoType> { Value = FsoType.Directory }),
+
+            DeleteOptions.OnlyEmptyDirectories
+                => ($"""
+                         AND {TableName}.{_fsoHelper.GetColumnName(nameof(FsoInner.FsoType))} = $2
+                        AND NOT EXISTS(
+                            SELECT FROM {TableName}
+                            WHERE {TableName}.{_fsoHelper.GetColumnName(nameof(FsoInner.VirtualLocationId))} = $1
+                        )
+                    """,
+                    new NpgsqlParameter<FsoType> { Value = FsoType.Directory }),
+            _ => (string.Empty, null)
+        };
+        cmdBuilder.Append(condition);
+        cmdBuilder.Append(';');
+        var cmd = _conn.CreateCommand(cmdBuilder.ToString());
+        cmd.Parameters.Add(new NpgsqlParameter<Guid> { Value = fso.Id.Value });
+        if (parameter2 is not null)
+            cmd.Parameters.Add(parameter2);
+        var deleted = await cmd.ExecuteNonQueryAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return DbHelper.EnsureSingle(deleted);
+    }
 }

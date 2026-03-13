@@ -290,4 +290,20 @@ public static class ProtoAdapter {
     extension(HostKeys keys) {
         public IEnumerable<TrustedAuthorityKeyWithUser> ToKeys() => keys.Keys.Select(ToKey);
     }
+    extension(DeleteOptions opts) {
+        public Grpc.DeleteOptions ToGrpcOptions() => opts switch {
+            DeleteOptions.All => Grpc.DeleteOptions.All,
+            DeleteOptions.OnlyEmptyDirectories => Grpc.DeleteOptions.OnlyEmptyDirectories,
+            DeleteOptions.AllExceptDirectories => Grpc.DeleteOptions.AllExceptDirectories,
+            _ => (Grpc.DeleteOptions)opts
+        };
+    }
+    extension(Grpc.DeleteOptions opts) {
+        public DeleteOptions ToOptions() => opts switch {
+            Grpc.DeleteOptions.All => DeleteOptions.All,
+            Grpc.DeleteOptions.OnlyEmptyDirectories => DeleteOptions.OnlyEmptyDirectories,
+            Grpc.DeleteOptions.AllExceptDirectories => DeleteOptions.AllExceptDirectories,
+            _ => (DeleteOptions)opts
+        };
+    }
 }

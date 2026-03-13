@@ -50,6 +50,7 @@ message GetRootResponse {
 
 message DeleteFsoRequest{
   Guid fsoId = 1;
+  DeleteOptions options = 2;
 }
 
 message ReplaceFileRequest{

@@ -33,6 +33,7 @@ using ZipZap.LangExt.Helpers;
 
 using static ZipZap.LangExt.Helpers.ResultConstructor;
 
+using DeleteOptions = ZipZap.Classes.DeleteOptions;
 using PathData = ZipZap.Classes.PathData;
 using User = ZipZap.Classes.User;
 
@@ -58,9 +59,15 @@ public class Backend : IBackend {
         }
     }
 
-    public async Task<Result<Unit, ServiceError>> DeleteFso(FsoId fsoId, DeleteFlags flags, CancellationToken token = default) {
+    public async Task<Result<Unit, ServiceError>> DeleteFso(FsoId fsoId, DeleteOptions options, CancellationToken token = default) {
         try {
-            await _filesStoringService.DeleteFsoAsync(new() { FsoId = fsoId.Value.ToGrpcGuid() }, _configuration.ToMetadata(), cancellationToken: token);
+            await _filesStoringService.DeleteFsoAsync(
+                new() {
+                    FsoId = fsoId.Value.ToGrpcGuid(),
+                    Options = options.ToGrpcOptions()
+                },
+                _configuration.ToMetadata(),
+                cancellationToken: token);
             return Ok<Unit, ServiceError>(new());
         } catch (RpcException exception) {
             return Err<Unit, ServiceError>(_exceptionConverter.Convert(exception));

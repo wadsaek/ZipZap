@@ -44,7 +44,7 @@ public static class DeleteHandler {
             return Err<Unit, DeleteHandlerError>(new DeleteHandlerError.NotFound());
 
         var backend = backendFactory.Create(new(token));
-        var status = FsoStatus.FromServiceResult(await backend.DeleteFso(id, DeleteFlags.Empty));
+        var status = FsoStatus.FromServiceResult(await backend.DeleteFso(id, DeleteOptions.All));
 
         return status switch {
             FsoStatus.ParseError => Err<Unit, DeleteHandlerError>(new DeleteHandlerError.BadRequest()),

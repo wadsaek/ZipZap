@@ -40,6 +40,7 @@ using ZipZap.Persistence.Repositories;
 
 using static Grpc.Core.Metadata;
 
+using DeleteOptions = ZipZap.Classes.DeleteOptions;
 using Directory = ZipZap.Classes.Directory;
 using File = ZipZap.Classes.File;
 using Guid = System.Guid;
@@ -144,11 +145,17 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
     public override async Task<EmptyMessage> DeleteFso(DeleteFsoRequest request, ServerCallContext context) {
         var user = await GetUserOrThrowAsync(context);
         var fso = await GetFsoOrFailAsync(request.FsoId, user, context.CancellationToken);
-        if (fso is File file && await _io.PathExistsAsync(file.PhysicalPath)) {
-            await _io.RemoveAsync(file.PhysicalPath);
-        }
-        await _fsosRepo.DeleteAsync(fso);
-        return new();
+        var options = request.Options.ToOptions();
+        if (options is DeleteOptions.All or DeleteOptions.AllExceptDirectories)
+            if (fso is File file && await _io.PathExistsAsync(file.PhysicalPath)) {
+                await _io.RemoveAsync(file.PhysicalPath);
+            }
+        return await _fsosRepo.DeleteAsync(fso, options, context.CancellationToken)
+        .SelectAsync(_ => new EmptyMessage())
+        .UnwrapOrElseAsync(err => err switch {
+            DbError.NothingChanged => throw new RpcException(new(StatusCode.NotFound, "Resource not found")),
+            _ => throw new RpcException(new(StatusCode.Internal, "Internal error"))
+        });
     }
 
     public async Task<Directory> GetParentFromRequest(ServerCallContext context, SaveFsoRequest request, User user) => request.HasFilePath
