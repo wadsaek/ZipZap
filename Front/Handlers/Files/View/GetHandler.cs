@@ -15,6 +15,7 @@
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.ComponentModel;
 using System.Linq;
 using System.Text;
@@ -27,6 +28,7 @@ using Microsoft.Extensions.Logging;
 using ZipZap.Classes;
 using ZipZap.Classes.Extensions;
 using ZipZap.Classes.Helpers;
+using ZipZap.Front.Helpers;
 using ZipZap.Front.Services;
 using ZipZap.LangExt.Extensions;
 using ZipZap.LangExt.Helpers;
@@ -91,25 +93,18 @@ public class GetHandler : IGetHandler {
         // the browser can handle those just fine
         if (specification.Type == IdType.Path) return link.Target;
 
-        if (await _service.GetFullPath(link.Id, backendConfiguration, cancellationToken) is not Ok<IEnumerable<string>, ServiceError>(var path)) return "";
-        var parts = path.ToList();
+        ImmutableList<string> parts;
+        if (link.Target.StartsWith('/')) parts = [];
+        else
+            if (await _service.GetFullPath(
+                link.Id,
+                backendConfiguration,
+                cancellationToken) is Ok<IEnumerable<string>, ServiceError>(var path)) { parts = path.ToImmutableList(); } else return "";
         // We're interested in the directory, not the actual path
-        parts.RemoveAt(parts.Count - 1);
-        var targetParts = link.Target.SplitPath();
-        foreach (var part in targetParts) {
-            switch (part) {
-                case "." or "":
-                    break;
-                case "..":
-                    parts.RemoveAt(parts.Count - 1);
-                    break;
-                case var p:
-                    parts.Add(p);
-                    break;
-            }
-        }
+        parts = parts.RemoveAt(parts.Count - 1);
+        var newpath = PathHelper.NormalizePath(link.Target, parts).ConcatenateWith("/");
         var result = await _service.GetFsoWithRoot(
-            new PathDataWithPath(parts.ConcatenateWith("/")),
+            new PathDataWithPath(newpath),
             link.Id,
             backendConfiguration,
             cancellationToken);
