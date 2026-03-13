@@ -15,7 +15,9 @@
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 
 using ZipZap.Sftp.Ssh;
@@ -63,6 +65,47 @@ public record FileAttributes(
         return builder.Build();
     }
     public static FileAttributes Empty => new(null, null, null, null, []);
+    internal static bool TryParse(Stream stream, [NotNullWhen(true)] out FileAttributes? attrs) {
+        attrs = null;
+        if (!stream.SshTryReadUint32Sync(out var flagsRaw)) return false;
+        ulong? size = null;
+        Ownership? ownership = null;
+        UnixFileMode? perms = null;
+        AcModTimes? times = null;
+        List<AttrExtension> extensions = [];
+        var flags = (FileAttributesFlags)flagsRaw;
+        if (flags.HasFlag(FileAttributesFlags.Size)) {
+            if (!stream.SshTryReadUInt64Sync(out var sizeraw)) return false;
+            size = sizeraw;
+        }
+        if (flags.HasFlag(FileAttributesFlags.UidGid)) {
+            if (!stream.SshTryReadUint32Sync(out var uid)) return false;
+            if (!stream.SshTryReadUint32Sync(out var gid)) return false;
+            ownership = new(uid, gid);
+        }
+        if (flags.HasFlag(FileAttributesFlags.Permissions)) {
+            if (!stream.SshTryReadUint32Sync(out var permsRaw)) return false;
+            perms = (UnixFileMode)permsRaw;
+        }
+        if (flags.HasFlag(FileAttributesFlags.ACModtime)) {
+            if (!stream.SshTryReadUint32Sync(out var atime)) return false;
+            if (!stream.SshTryReadUint32Sync(out var mtime)) return false;
+            times = new(
+                DateTimeOffset.FromUnixTimeSeconds(atime),
+                DateTimeOffset.FromUnixTimeSeconds(mtime)
+            );
+        }
+        if (flags.HasFlag(FileAttributesFlags.Extended)) {
+            if (!stream.SshTryReadUint32Sync(out var count)) return false;
+            for (var i = 0; i < count; i++) {
+                if (!stream.SshTryReadStringSync(out var type)) return false;
+                if (!stream.SshTryReadByteStringSync(out var data)) return false;
+                extensions.Add(new(type, data));
+            }
+        }
+        attrs = new(size, ownership, perms, times, extensions.ToImmutableList());
+        return true;
+    }
 }
 
 [Flags]

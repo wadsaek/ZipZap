@@ -281,6 +281,7 @@ internal class SftpSubsystem : ISubsystem {
                     await ReturnPacket(result.ToStatusPacket(symlink.Id), cancellationToken);
                     return;
                 }
+            // TODO: add extensions
             default: {
                     var idBytes = payload.Bytes.AsSpan(1, 4);
                     if (!uint.FromSsh(idBytes, out var id))
@@ -294,12 +295,14 @@ internal class SftpSubsystem : ISubsystem {
         }
     }
 
-    private async Task Unparsable(string v, CancellationToken cancellationToken) {
-        throw new NotImplementedException();
+    private Task Unparsable(string packetType, CancellationToken cancellationToken) {
+        if (_logger.IsEnabled(LogLevel.Debug))
+            _logger.LogDebug("failed to parse packet {PacketType}", packetType);
+        return _client.Exit(2, cancellationToken);
     }
 
-    static readonly ImmutableList<SftpExtension> SupportedExtensions = [
-        new SftpExtension.LSetStat()
+    static readonly ImmutableList<SftpExtensionDeclaration> SupportedExtensions = [
+        new SftpExtensionDeclaration.LSetStat()
     ];
     private readonly Lock _lock = new();
 

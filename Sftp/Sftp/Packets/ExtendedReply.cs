@@ -15,9 +15,18 @@
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using ZipZap.Sftp.Sftp.Numbers;
+using ZipZap.Sftp.Ssh;
 
 namespace ZipZap.Sftp.Sftp;
 
-public record ExtendedReply() : ISftpPayload {
-    public Message PacketType => throw new System.NotImplementedException();
+public record ExtendedReply(uint Id, byte[] Data) : ISftpServerPayload {
+    public Message PacketType => Message.ExtendedReply;
+
+    public Packet ToPacket() {
+        return new SshMessageBuilder()
+            .Write(PacketType)
+            .Write(Id)
+            .WriteArray(Data)
+            .Build();
+    }
 }

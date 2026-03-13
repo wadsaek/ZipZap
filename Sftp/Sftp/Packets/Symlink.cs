@@ -22,7 +22,7 @@ using ZipZap.Sftp.Ssh;
 
 namespace ZipZap.Sftp.Sftp;
 
-public record Symlink(uint Id, string LinkPath, string Target) : ISftpClientPayload<Symlink> {
+internal record Symlink(uint Id, string LinkPath, string Target) : ISftpClientPayload<Symlink> {
    public static Message PacketType => Message.Symlink;
 
    public static bool TryParse(byte[] bytes, [NotNullWhen(true)] out Symlink? value) {

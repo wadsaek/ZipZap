@@ -22,7 +22,7 @@ using ZipZap.Sftp.Ssh;
 
 namespace ZipZap.Sftp.Sftp;
 
-public record Version(uint V, ImmutableList<SftpExtension> SupportedExtensions) : ISftpServerPayload {
+public record Version(uint V, ImmutableList<SftpExtensionDeclaration> SupportedExtensions) : ISftpServerPayload {
     public Message PacketType => Message.Version;
 
     public Packet ToPacket() {

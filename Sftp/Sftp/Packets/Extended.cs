@@ -15,15 +15,24 @@
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 
 using ZipZap.Sftp.Sftp.Numbers;
+using ZipZap.Sftp.Ssh;
 
 namespace ZipZap.Sftp.Sftp;
 
-public record Extended(uint Id, string Name, byte[] Data) : ISftpClientPayload<Extended> {
-    public Message PacketType => throw new System.NotImplementedException();
+public record Extended(uint Id, string Name, SftpExtension Extension) : ISftpClientPayload<Extended> {
+    public static Message PacketType => Message.Extended;
 
     public static bool TryParse(byte[] bytes, [NotNullWhen(true)] out Extended? value) {
-        throw new System.NotImplementedException();
+        value = null;
+        var stream = new MemoryStream(bytes);
+        if (!stream.ExpectMessage(PacketType)) return false;
+        if (!stream.SshTryReadUint32Sync(out var id)) return false;
+        if (!stream.SshTryReadStringSync(out var name)) return false;
+        if (!SftpExtension.TryParse(name, stream, out var extension)) return false;
+        value = new(id, name, extension);
+        return true;
     }
 }

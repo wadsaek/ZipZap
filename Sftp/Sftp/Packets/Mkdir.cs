@@ -15,8 +15,10 @@
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 
 using ZipZap.Sftp.Sftp.Numbers;
+using ZipZap.Sftp.Ssh;
 
 namespace ZipZap.Sftp.Sftp;
 
@@ -24,6 +26,13 @@ public record Mkdir(uint Id, string Path, FileAttributes Attrs) : ISftpClientPay
    public static Message PacketType => Message.Mkdir;
 
    public static bool TryParse(byte[] bytes, [NotNullWhen(true)] out Mkdir? value) {
-      throw new System.NotImplementedException();
+      value = null;
+      var stream = new MemoryStream(bytes);
+      if (!stream.ExpectMessage(PacketType)) return false;
+      if (!stream.SshTryReadUint32Sync(out var id)) return false;
+      if (!stream.SshTryReadStringSync(out var path)) return false;
+      if (!FileAttributes.TryParse(stream, out var attrs)) return false;
+      value = new(id,path,attrs);
+      return true;
    }
 }
