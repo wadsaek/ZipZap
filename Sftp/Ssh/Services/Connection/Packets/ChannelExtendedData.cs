@@ -37,6 +37,11 @@ sealed record ChannelExtendedData(uint Recipient, ChannelExtendedDataType DataTy
     }
 
     public byte[] ToPayload() {
-        throw new System.NotImplementedException();
+        return new SshMessageBuilder()
+            .Write(Message)
+            .Write(Recipient)
+            .Write((uint)DataType)
+            .WriteByteString(Bytes)
+            .Build();
     }
 }
