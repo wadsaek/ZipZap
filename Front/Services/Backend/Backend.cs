@@ -108,7 +108,7 @@ public class Backend : IBackend {
             await _filesStoringService.UpdateFsoAsync(new() {
                 FsoId = fso.Id.Value.ToGrpcGuid(),
                 Data = fso.ToRpcSharedData()
-            }, _configuration.ToMetadata());
+            }, _configuration.ToMetadata(), cancellationToken: cancellationToken);
             return new Unit();
         });
     }
@@ -123,11 +123,29 @@ public class Backend : IBackend {
     }
 
     public Task<Result<Unit, ServiceError>> ReplaceFileById(FsoId id, ByteString bytes, CancellationToken cancellationToken = default) {
-        throw new NotImplementedException();
+        return Wrap(async () => {
+            await _filesStoringService.ReplaceFileAsync(
+                new() {
+                    FsoId = id.Value.ToGrpcGuid(),
+                    Content = bytes
+                },
+                _configuration.ToMetadata(),
+                cancellationToken: cancellationToken);
+            return new Unit();
+        });
     }
 
     public Task<Result<Unit, ServiceError>> ReplaceFileByPath(PathData pathData, ByteString bytes, CancellationToken cancellationToken = default) {
-        throw new NotImplementedException();
+        return Wrap(async () => {
+            await _filesStoringService.ReplaceFileAsync(
+                new() {
+                    Path = pathData.ToRpcPathData(),
+                    Content = bytes
+                },
+                _configuration.ToMetadata(),
+                cancellationToken: cancellationToken);
+            return new Unit();
+        });
     }
 
     private async Task<Grpc.Guid> SaveFileRaw(ByteString bytes, File file, string? path, CancellationToken cancellationToken) {
