@@ -27,6 +27,7 @@ public static class ServiceExceptionHandler {
         RpcException { StatusCode: StatusCode.NotFound } => new ServiceError.NotFound(),
         RpcException { StatusCode: StatusCode.FailedPrecondition, Status.Detail: var detail } => new ServiceError.FailedPrecondition(detail),
         RpcException { StatusCode: StatusCode.AlreadyExists } => new ServiceError.AlreadyExists(),
+        RpcException { StatusCode: StatusCode.InvalidArgument, Status.Detail: var detail } => new ServiceError.BadRequest(detail),
         _ => new ServiceError.Unknown(ex)
 
     });

@@ -29,15 +29,21 @@ using static ZipZap.LangExt.Helpers.ResultConstructor;
 namespace ZipZap.Front.Handlers.Files.Create;
 
 public class GetHandler {
-    public static async Task<Result<GetHandler, GetHandlerError>> OnGetAsync(FsoId id, HttpRequest request, IBackendFactory backendFactory) {
+    public User User { get; }
+
+    public GetHandler(User user) {
+        User = user;
+    }
+
+    public static Task<Result<GetHandler, GetHandlerError>> OnGetAsync(FsoId id, HttpRequest request, IBackendFactory backendFactory, System.Threading.CancellationToken cancellationToken) {
         var token = request.Cookies[Constants.AUTHORIZATION];
         if (token is null)
-            return Err<GetHandler, GetHandlerError>(new GetHandlerError.Unauthorized());
+            return Task.FromResult(Err<GetHandler, GetHandlerError>(new GetHandlerError.Unauthorized()));
         var backend = backendFactory.Create(new(token));
-        var fsoResult = await backend.GetFsoByIdAsync(id);
-        return fsoResult
-        .Select(_ => new GetHandler())
-        .SelectErr(err => err switch {
+        return backend.GetFsoByIdAsync(id, cancellationToken)
+        .SelectManyAsync(_ => backend.GetSelf(cancellationToken))
+        .SelectAsync(user => new GetHandler(user))
+        .SelectErrAsync(err => err switch {
             ServiceError.NotFound => new GetHandlerError.NotFound() as GetHandlerError,
             ServiceError.Unauthorized => new GetHandlerError.Unauthorized(),
             _ => new GetHandlerError.HandlerServiceError(err)

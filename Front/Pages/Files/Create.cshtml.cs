@@ -17,6 +17,7 @@
 using System;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Google.Protobuf;
@@ -47,10 +48,13 @@ public class CreateModel : PageModel {
         _backendFactory = backendFactory;
     }
 
-    public async Task<IActionResult> OnGetAsync([FromQuery] Guid id) {
-        return await GetHandler.OnGetAsync(id.ToFsoId(), Request, _backendFactory)
+    public Task<IActionResult> OnGetAsync([FromQuery] Guid id, CancellationToken cancellationToken)
+        => OnGetAsyncRaw(id.ToFsoId(), cancellationToken);
+    public async Task<IActionResult> OnGetAsyncRaw(FsoId id, CancellationToken cancellationToken) {
+        return await GetHandler.OnGetAsync(id, Request, _backendFactory, cancellationToken)
         .SelectAsync(handler => {
             GetHandler = handler;
+            (UId, GId) = handler.User.DefaultOwnership;
             return Page() as IActionResult;
         })
         .UnwrapOrElseAsync(err => err switch {
@@ -59,18 +63,30 @@ public class CreateModel : PageModel {
             Error.NotFound => NotFound(),
             _ => throw new InvalidEnumArgumentException()
         });
+
     }
     public GetHandler? GetHandler { get; private set; }
 
-    public async Task<IActionResult> OnPostAsync([FromQuery] Guid id) {
-        if (!Permissions.TryParse(Perms, out var permissions)) {
+    public async Task<IActionResult> OnPostAsync([FromQuery] Guid id, CancellationToken cancellationToken) {
+        Permissions permissions;
+        bool success;
+        if (Perms is not null) {
+            success = Permissions.TryParse(Perms, out permissions);
+        } else (success, permissions) = FsoType switch {
+            FsoType.RegularFile => (true, Permissions.FileDefault),
+            FsoType.Symlink => (true, Permissions.SymlinkDefault),
+            FsoType.Directory => (true, Permissions.DirectoryDefault),
+            _ => (false, default)
+        };
+        if (!success) {
             FormError = "Wrong permissions";
             return Page();
         }
+        var fsoId = id.ToFsoId();
         var data = new FsData(
-            id.ToFsoId().AsIdOf<Directory>(),
+            fsoId.AsIdOf<Directory>(),
             permissions,
-            Name,
+            Name ?? string.Empty,
             new(UId, GId)
         );
 
@@ -83,55 +99,53 @@ public class CreateModel : PageModel {
             FsoType.Directory => await UploadDirectory(backend, data),
             _ => throw new InvalidEnumArgumentException()
         };
-        return request
+        return await request
         .Select(fso => Redirect($"/Files/View/{fso.Id}?type=id") as IActionResult)
-        .UnwrapOrElse(err => err switch {
-            ServiceError.BadRequest when FsoType == FsoType.RegularFile && File is null => HandleEmptyFile(),
-            ServiceError.BadRequest => HandleBadRequest(),
+        .UnwrapOrElseAsync(async err => err switch {
+            ServiceError.BadRequest(var detail) => await HandleBadRequest(detail, fsoId, cancellationToken),
             ServiceError.BadResult or ServiceError.Unknown => throw new("bad result encountered"),
-            ServiceError.NotFound => HandleNotFound(),
+            ServiceError.NotFound => await HandleNotFound(fsoId, cancellationToken),
             ServiceError.Unauthorized => Redirect("/"),
-            ServiceError.AlreadyExists => HandleExists(),
-            ServiceError.FailedPrecondition(var message) => HandleFailedPrecondition(message),
+            ServiceError.AlreadyExists => await HandleExists(fsoId, cancellationToken),
+            ServiceError.FailedPrecondition(var message) => await HandleFailedPrecondition(message, fsoId, cancellationToken),
             _ => throw new InvalidEnumArgumentException()
         });
     }
 
-    private PageResult HandleExists() {
+    private Task<IActionResult> HandleExists(FsoId id, CancellationToken cancellationToken) {
         FormError = "This fso already exists. Try editing or using a different name!";
-        return Page();
+        return OnGetAsync(id.Value, cancellationToken);
     }
 
-    private PageResult HandleFailedPrecondition(string message) {
+    private Task<IActionResult> HandleFailedPrecondition(string message, FsoId id, CancellationToken cancellationToken) {
         FormError = message;
-        return Page();
+        return OnGetAsyncRaw(id, cancellationToken);
     }
 
-    private PageResult HandleNotFound() {
+    private Task<IActionResult> HandleNotFound(FsoId id, CancellationToken cancellationToken) {
         FormError = "Not Found";
-        return Page();
+        return OnGetAsyncRaw(id, cancellationToken);
     }
 
-    private PageResult HandleBadRequest() {
-        FormError = "Bad request";
-        return Page();
-    }
-
-    private PageResult HandleEmptyFile() {
-        FileError = "File not uploaded";
-        return Page();
+    private Task<IActionResult> HandleBadRequest(string detail, FsoId id, CancellationToken cancellationToken) {
+        FormError = detail;
+        return OnGetAsyncRaw(id, cancellationToken);
     }
 
     private static async Task<Result<Fso, ServiceError>> UploadDirectory(IBackend backend, FsData data)
         => (await backend.MakeDirectory(new(default, data))).Select(dir => dir as Fso);
 
     private async Task<Result<Fso, ServiceError>> UploadFile(IBackend backend, FsData data) {
-        if (File is null) return Err<Fso, ServiceError>(new ServiceError.BadRequest());
+        if (File is null) return Err<Fso, ServiceError>(new ServiceError.BadRequest("File is empty"));
         return (await backend.SaveFile(await ByteString.FromStreamAsync(File.OpenReadStream()), new(default, data))).Select(dir => dir as Fso);
     }
 
-    private async Task<Result<Fso, ServiceError>> UploadSymlink(IBackend backend, FsData data)
-        => (await backend.MakeLink(new(default, data, Target))).Select(dir => dir as Fso);
+    private async Task<Result<Fso, ServiceError>> UploadSymlink(IBackend backend, FsData data) {
+        if (string.IsNullOrWhiteSpace(Target))
+            return Err<Fso, ServiceError>(new ServiceError.BadRequest("Symlink target cannot be empty"));
+        var result = await backend.MakeLink(new(default, data, Target));
+        return result.Select(dir => dir as Fso);
+    }
 
     [BindProperty]
     [Display(Name = "Fso Type")]
@@ -139,9 +153,8 @@ public class CreateModel : PageModel {
     public FsoType FsoType { get; set; } = FsoType.RegularFile;
     [BindProperty]
     [Required]
-    public string Name { get; set; } = string.Empty;
+    public string? Name { get; set; }
     [BindProperty]
-    [Required]
     [Display(Name = "User Id")]
     public int UId { get; set; } = 1000;
     [BindProperty]
@@ -151,14 +164,13 @@ public class CreateModel : PageModel {
     [BindProperty]
     [Required]
     [Display(Name = "UNIX Permissions")]
-    public string Perms { get; set; } = Permissions.FileDefault.ToString();
+    public string? Perms { get; set; } = null;
     [BindProperty]
     [Display(Name = "Symlink Target")]
-    public string Target { get; set; } = "";
+    public string? Target { get; set; }
     [BindProperty]
     [Display(Name = "File")]
     public new IFormFile? File { get; set; }
 
-    public string FileError { get; set; } = string.Empty;
     public string FormError { get; set; } = string.Empty;
 }
