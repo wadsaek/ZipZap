@@ -20,140 +20,119 @@ using System.Threading.Tasks;
 using ZipZap.Sftp.Sftp.Numbers;
 
 using ZipZap.Classes;
-using ZipZap.Front.Factories;
 using ZipZap.Front.Services;
 using ZipZap.LangExt.Helpers;
 using ZipZap.Sftp;
 using ZipZap.Sftp.Sftp;
-using ZipZap.Sftp.Ssh.Algorithms;
 
-using LoginError = ZipZap.Sftp.LoginError;
+using Microsoft.Extensions.Logging;
 
-namespace ZipZap.Front;
+namespace ZipZap.Front.Sftp;
 
-internal class SftpHandler : ISftpLoginHandler, ISftpRequestHandler {
-    private readonly IBackendFactory _backendFactory;
-    private readonly ILoginService _login;
+class SftpHandler : ISftpRequestHandler {
+    public const string HandleDoesntExistMessage = "This handle doesn't exist. Maybe it was already deleted?";
+    public static Status HandleDoesntExist => new(SftpError.NoSuchFile, HandleDoesntExistMessage);
 
-    private IBackend? _backend = null;
+    private readonly ILogger<SftpHandler> _logger;
+    private readonly SftpPathsHandler _pathHandler;
+    private readonly SftpFileHandler _fileHandler;
+    private readonly SftpStatHandler _statHandler;
+    private readonly SftpDirHandler _dirHandler;
+    private readonly IBackend _backend;
+    private readonly HandleStore _handleStore;
 
-    public SftpHandler(IBackendFactory backendFactory, ILoginService login) {
-        _backendFactory = backendFactory;
-        _login = login;
+    public SftpHandler(IBackend backend, ILogger<SftpHandler> logger) {
+        _backend = backend;
+        _logger = logger;
+        _handleStore = new();
+        _statHandler = new(_backend, _handleStore);
+        _pathHandler = new(_backend);
+        _fileHandler = new(_backend, _handleStore);
+        _dirHandler = new(_backend, _handleStore);
     }
 
-    public Task<Result<ISftpRequestHandler, LoginError>> TryLoginPublicKey(string username, IPublicKey userPublicKey, IHostKeyPair serverHostKey, CancellationToken cancellationToken) {
-        return TryLoginPublicKeyRaw(3, username, userPublicKey, serverHostKey, cancellationToken);
-    }
-    private async Task<Result<ISftpRequestHandler, LoginError>> TryLoginPublicKeyRaw(uint triesLeft, string username, IPublicKey userPublicKey, IHostKeyPair serverHostKey, CancellationToken cancellationToken) {
-        if (triesLeft == 0) return new Err<ISftpRequestHandler, LoginError>(new LoginError.Other());
-        var result = await _login.LoginSsh(username, userPublicKey, serverHostKey, cancellationToken);
-        return await result
-        .Select(token => {
-            _backend = _backendFactory.Create(new(token));
-            return this as ISftpRequestHandler;
-        })
-        .ErrSelectManyAsync(async error => {
-            if (error is SshLoginError.TimestampTooEarly or SshLoginError.TimestampWasUsed)
-                return await TryLoginPublicKeyRaw(triesLeft - 1, username, userPublicKey, serverHostKey, cancellationToken);
-            LoginError returned = error switch {
-                SshLoginError.EmptyUsername => new LoginError.EmptyCredentials(),
-                SshLoginError.UserPublicKeyDoesntMatch => new LoginError.WrongCredentials(),
-                SshLoginError.HostPublicKeyNotAuthorized => new LoginError.HostPublicKeyNotAuthorized(),
-                _ or SshLoginError.Other => new LoginError.Other()
-            };
-            return new Err<ISftpRequestHandler, LoginError>(returned);
-        });
+
+    public Task<Status> Close(Handle handle, CancellationToken cancellationToken) {
+        return Task.FromResult(_handleStore.Remove(handle)
+            ? new Status(SftpError.Ok, "Done!")
+            : HandleDoesntExist);
     }
 
-    public async Task<Result<ISftpRequestHandler, LoginError>> TryLoginPassword(string username, string password, CancellationToken cancellationToken) {
-        var result = await _login.Login(username, password, cancellationToken);
-        return result
-        .Select(token => {
-            _backend = _backendFactory.Create(new(token));
-            return this as ISftpRequestHandler;
-        })
-        .SelectErr(error => error switch {
-            Services.LoginError.EmptyCredentials => new LoginError.EmptyCredentials() as LoginError,
-            Services.LoginError.WrongCredentials => new LoginError.WrongCredentials(),
-            _ => new LoginError.Other()
-        });
+
+    public Task<Status> Rename(string oldpath, string newpath, CancellationToken cancellationToken) {
+        return _statHandler.Rename(oldpath, newpath, cancellationToken);
     }
 
-    public async Task<Result<ZipZap.Sftp.Handle, Status>> Open(string pathName, OpenFlags flags, FileAttributes attributes, CancellationToken cancellationToken) {
-        return new Err<ZipZap.Sftp.Handle, Status>(new Status(SftpError.OpUnsupported, "This operation is not supported"));
+    public Task<Result<FileAttributes, Status>> Stat(string path, CancellationToken cancellationToken) {
+        return _statHandler.Stat(path, cancellationToken);
     }
 
-    public async Task<Status> Close(ZipZap.Sftp.Handle handle, CancellationToken cancellationToken) {
-        return new Status(SftpError.OpUnsupported, "This operation is not supported");
+    public Task<Result<FileAttributes, Status>> LStat(string path, CancellationToken cancellationToken) {
+        return _statHandler.LStat(path, cancellationToken);
     }
 
-    public async Task<Result<byte[], Status>> Read(ZipZap.Sftp.Handle handle, ulong offset, uint length, CancellationToken cancellationToken) {
-        return new Err<byte[], Status>(new Status(SftpError.OpUnsupported, "This operation is not supported"));
+    public Task<Result<FileAttributes, Status>> FStat(Handle handle, CancellationToken cancellationToken) {
+        return _statHandler.FStat(handle, cancellationToken);
     }
 
-    public async Task<Status> Write(ZipZap.Sftp.Handle handle, ulong offset, byte[] data, CancellationToken cancellationToken) {
-        return new Status(SftpError.OpUnsupported, "This operation is not supported");
+    public Task<Status> SetStat(string path, FileAttributes fileAttributes, CancellationToken cancellationToken) {
+        return _statHandler.SetStat(path, fileAttributes, cancellationToken);
     }
 
-    public async Task<Status> Remove(string path, CancellationToken cancellationToken) {
-        return new Status(SftpError.OpUnsupported, "This operation is not supported");
+    public Task<Status> LSetStat(string path, FileAttributes fileAttributes, CancellationToken cancellationToken) {
+        return _statHandler.LSetStat(path, fileAttributes, cancellationToken);
     }
 
-    public async Task<Status> Rename(string oldpath, string newpath, CancellationToken cancellationToken) {
-        return new Status(SftpError.OpUnsupported, "This operation is not supported");
+    public Task<Status> FSetStat(Handle handle, FileAttributes fileAttributes, CancellationToken cancellationToken) {
+        return _statHandler.FSetStat(handle, fileAttributes, cancellationToken);
     }
 
-    public async Task<Status> MkDir(string path, FileAttributes fileAttributes, CancellationToken cancellationToken) {
-        return new Status(SftpError.OpUnsupported, "This operation is not supported");
+    public Task<Result<FileName, Status>> Readlink(string path, CancellationToken cancellationToken) {
+        return _pathHandler.Readlink(path, cancellationToken);
     }
 
-    public async Task<Status> RmDir(string path, CancellationToken cancellationToken) {
-        return new Status(SftpError.OpUnsupported, "This operation is not supported");
+    public Task<Status> Symlink(string linkpath, string targetpath, CancellationToken cancellationToken) {
+        return _pathHandler.Symlink(linkpath, targetpath, cancellationToken);
     }
 
-    public async Task<Result<ZipZap.Sftp.Handle, Status>> OpenDir(string path, CancellationToken cancellationToken) {
-        return new Err<ZipZap.Sftp.Handle, Status>(new Status(SftpError.OpUnsupported, "This operation is not supported"));
+    public Task<Result<FileName, Status>> RealPath(string path, CancellationToken cancellationToken) {
+        return _pathHandler.RealPath(path, cancellationToken);
     }
 
-    public async Task<Result<FileName[], Status>> ReadDir(Handle handle, CancellationToken cancellationToken) {
-        return new Err<FileName[], Status>(new Status(SftpError.OpUnsupported, "This operation is not supported"));
+    public Task<Result<byte[], Status>> Read(Handle handle, ulong offset, uint length, CancellationToken cancellationToken) {
+        return _fileHandler.Read(handle, offset, length, cancellationToken);
     }
 
-    public async Task<Result<FileAttributes, Status>> Stat(string path, CancellationToken cancellationToken) {
-        return new Err<FileAttributes, Status>(new Status(SftpError.OpUnsupported, "This operation is not supported"));
+    public Task<Status> Write(Handle handle, ulong offset, byte[] data, CancellationToken cancellationToken) {
+        return _fileHandler.Write(handle, offset, data, cancellationToken);
     }
 
-    public async Task<Result<FileAttributes, Status>> LStat(string path, CancellationToken cancellationToken) {
-        return new Err<FileAttributes, Status>(new Status(SftpError.OpUnsupported, "This operation is not supported"));
+    public Task<Result<Handle, Status>> Open(string filename, OpenFlags flags, FileAttributes attributes, CancellationToken cancellationToken) {
+        return _fileHandler.Open(filename, flags, attributes, cancellationToken);
+    }
+    public Task<Status> Remove(string path, CancellationToken cancellationToken) {
+        return _fileHandler.Remove(path, cancellationToken);
     }
 
-    public async Task<Result<FileAttributes, Status>> FStat(ZipZap.Sftp.Handle handle, CancellationToken cancellationToken) {
-        return new Err<FileAttributes, Status>(new Status(SftpError.OpUnsupported, "This operation is not supported"));
+    public Task<Status> MkDir(string path, FileAttributes fileAttributes, CancellationToken cancellationToken) {
+        return _dirHandler.MkDir(path, fileAttributes, cancellationToken);
     }
 
-    public async Task<Status> SetStat(string path, FileAttributes fileAttributes, CancellationToken cancellationToken) {
-        return new Status(SftpError.OpUnsupported, "This operation is not supported");
+    public Task<Status> RmDir(string path, CancellationToken cancellationToken) {
+        return _dirHandler.RmDir(path, cancellationToken);
     }
 
-    public async Task<Status> LSetStat(string path, FileAttributes fileAttributes, CancellationToken cancellationToken) {
-        return new Status(SftpError.OpUnsupported, "This operation is not supported");
+    public Task<Result<Handle, Status>> OpenDir(string path, CancellationToken cancellationToken) {
+        return _dirHandler.OpenDir(path, cancellationToken);
     }
 
-    public async Task<Status> FSetStat(ZipZap.Sftp.Handle hanle, FileAttributes fileAttributes, CancellationToken cancellationToken) {
-        return new Status(SftpError.OpUnsupported, "This operation is not supported");
+    public Task<Result<FileName[], Status>> ReadDir(Handle handle, CancellationToken cancellationToken) {
+        return _dirHandler.ReadDir(handle, cancellationToken);
     }
 
-    public async Task<Result<FileName, Status>> Readlink(string path, CancellationToken cancellationToken) {
-        return new Err<FileName, Status>(new Status(SftpError.OpUnsupported, "This operation is not supported"));
-    }
-
-    public async Task<Status> Symlink(string linkpath, string targetpath, CancellationToken cancellationToken) {
-        return new Status(SftpError.OpUnsupported, "This operation is not supported");
-    }
-
-    public async Task<Result<FileName, Status>> RealPath(string path, CancellationToken cancellationToken) {
-        return new Err<FileName, Status>(new Status(SftpError.OpUnsupported, "This operation is not supported"));
-    }
 }
 
+abstract record OpenFileData(FsoId Id) {
+    public sealed record FileData(FsoId Id, bool IsReadable, bool IsWriteable) : OpenFileData(Id);
+    public sealed record DirectoryData(FsoId Id, bool HasBeenRead) : OpenFileData(Id);
+}

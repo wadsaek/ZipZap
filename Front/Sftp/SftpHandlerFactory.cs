@@ -14,6 +14,8 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+using Microsoft.Extensions.Logging;
+
 using ZipZap.Front.Factories;
 using ZipZap.Front.Services;
 using ZipZap.Sftp;
@@ -23,14 +25,16 @@ namespace ZipZap.Front.Sftp;
 internal class SftpHandlerFactory : ISftpRequestHandlerFactory {
     private readonly IBackendFactory _factory;
     private readonly ILoginService _login;
+    private readonly ILogger<SftpHandler> _logger;
 
-    public SftpHandlerFactory(IBackendFactory factory, ILoginService login) {
+    public SftpHandlerFactory(IBackendFactory factory, ILoginService login, ILogger<SftpHandler> logger) {
         _factory = factory;
         _login = login;
+        _logger = logger;
     }
 
     public ISftpLoginHandler CreateLogin() {
-        return new SftpHandler(_factory, _login);
+        return new SftpLoginHandler(_factory, _login,_logger);
     }
 }
 
