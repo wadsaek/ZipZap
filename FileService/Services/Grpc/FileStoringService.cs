@@ -242,7 +242,15 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
 
     public override async Task<EmptyMessage> ReplaceFile(ReplaceFileRequest request, ServerCallContext context) {
         var user = await GetUserOrThrowAsync(context);
-        var file = (File)await GetFsoOrFailAsync(request.Path.ToPathData(user.Root.Id), user, fso => fso is File, context.CancellationToken);
+        var fso = request.IdentifierCase switch {
+            ReplaceFileRequest.IdentifierOneofCase.FsoId
+                => await GetFsoOrFailAsync(request.FsoId, user, fso => fso is File, context.CancellationToken),
+            ReplaceFileRequest.IdentifierOneofCase.Path
+                => await GetFsoOrFailAsync(request.Path.ToPathData(user.Root.Id), user, fso => fso is File, context.CancellationToken),
+            _ or ReplaceFileRequest.IdentifierOneofCase.None
+                => throw new RpcException(new(StatusCode.InvalidArgument, nameof(request.IdentifierCase)))
+        };
+        var file = (File)fso;
         using var content = new MemoryStream();
         request.Content.WriteTo(content);
         content.Position = 0;
