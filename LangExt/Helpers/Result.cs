@@ -110,7 +110,6 @@ public static class ResultExt {
             _ => throw new InvalidEnumArgumentException(nameof(Result<,>))
         };
         public Result<T, U> ErrSelectMany<U>(Func<E, Result<T, U>> selector) => result switch {
-
             Ok<T, E>(T data) => new Ok<T, U>(data),
             Err<T, E>(E error) => selector(error),
             _ => throw new InvalidEnumArgumentException(nameof(Result<,>))
@@ -130,12 +129,20 @@ public static class ResultExt {
 
         public async Task<Result<U, E>> SelectManyAsync<U>(Func<T, Task<Result<U, E>>> selector)
             => await (await result).SelectManyAsync(selector);
+        public async Task<Result<U, E>> SelectManyAsync<U>(Func<T, Result<U, E>> selector)
+            => await result.SelectManyAsync(selector);
 
         public async Task<Result<T, U>> SelectErrAsync<U>(Func<E, U> selector)
             => (await result).SelectErr(selector);
 
         public async Task<Result<T, U>> SelectErrAsync<U>(Func<E, Task<U>> selector)
             => await (await result).SelectErrAsync(selector);
+
+        public async Task<Result<T, U>> ErrSelectManyAsync<U>(Func<E, Task<Result<T, U>>> selector) => await result switch {
+            Ok<T, E>(T data) => new Ok<T, U>(data),
+            Err<T, E>(E error) => await selector(error),
+            _ => throw new InvalidEnumArgumentException(nameof(Result<,>))
+        };
 
         // sometimes you want to just throw exceptions,
         // this requires one less await to do so,
