@@ -15,6 +15,7 @@
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Sockets;
@@ -39,19 +40,19 @@ internal class Transport {
     private readonly ISshConnectionFactory _connectionFactory;
     private readonly KeyExchangeProcess _kexProcess;
     private readonly IAuthServiceFactory _loginFactory;
-    private readonly IProvider<IPublicKeyAlgorithm> _publicKeyAlgs;
+    private readonly IPublicKeyAlgorithm[] _publicKeyAlgs;
 
     public Transport(
         ILogger<Transport> logger,
         ISshConnectionFactory handler,
         IAuthServiceFactory loginFactory,
         KeyExchangeProcess kexProcess,
-        IProvider<IPublicKeyAlgorithm> publicKeyAlgs) {
+        IEnumerable<IPublicKeyAlgorithm> publicKeyAlgs) {
         _logger = logger;
         _connectionFactory = handler;
         _kexProcess = kexProcess;
         _loginFactory = loginFactory;
-        _publicKeyAlgs = publicKeyAlgs;
+        _publicKeyAlgs = publicKeyAlgs.ToArray();
     }
 
     private class TransportClient : ITransportClient {
@@ -170,7 +171,7 @@ internal class Transport {
 
     private async Task SendExtensions(SshState state, CancellationToken cancellationToken) {
         Extension[] extensions = [
-            new Extension.ServerSigAlgs(new(_publicKeyAlgs.Items.SelectMany(i=>i.SupportedSignatureAlgs).ToArray())),
+            new Extension.ServerSigAlgs(new(_publicKeyAlgs.SelectMany(i=>i.SupportedSignatureAlgs).ToArray())),
                 new Extension.NoFlowControl(true)
         ];
         await state.Encryptor.SendPacket(new ExtInfo(extensions), cancellationToken);

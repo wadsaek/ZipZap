@@ -14,6 +14,8 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+using System.Collections.Generic;
+
 using Microsoft.Extensions.Logging;
 
 using ZipZap.Sftp.Ssh.Algorithms;
@@ -23,15 +25,15 @@ namespace ZipZap.Sftp.Ssh.Services;
 
 internal class AuthServiceFactory : IAuthServiceFactory {
     private readonly ISftpRequestHandlerFactory _factory;
-    private readonly IProvider<IPublicKeyAlgorithm> _publicKeys;
-    private readonly IProvider<IServerHostKeyAlgorithm> _hostKeys;
+    private readonly IEnumerable<IPublicKeyAlgorithm> _publicKeys;
+    private readonly IEnumerable<IServerHostKeyAlgorithm> _hostKeys;
     private readonly ISshConnectionFactory _connectionFactory;
     private readonly ILogger<AuthService> _logger;
 
     public AuthServiceFactory(
         ISftpRequestHandlerFactory factory,
-        IProvider<IPublicKeyAlgorithm> publicKeys,
-        IProvider<IServerHostKeyAlgorithm> hostKeys,
+        IEnumerable<IPublicKeyAlgorithm> publicKeys,
+        IEnumerable<IServerHostKeyAlgorithm> hostKeys,
         ISshConnectionFactory connectionFactory,
         ILogger<AuthService> logger
     ) {

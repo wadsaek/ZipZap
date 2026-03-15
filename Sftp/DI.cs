@@ -14,8 +14,6 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-using System.Collections.Immutable;
-
 using Microsoft.Extensions.DependencyInjection;
 
 using ZipZap.Sftp.Sftp;
@@ -36,19 +34,19 @@ public static class DI {
             services.AddScoped<IAuthServiceFactory, AuthServiceFactory>();
             services.AddScoped<ISftpFactory, SftpFactory>();
 
-            services.AddScoped<IProvider<IEncryptionAlgorithm>, EncryptionAlgorithmProvider>();
+            services.AddScoped<IEncryptionAlgorithm, Aes128GcmEncryptionAlgorithm >();
             services.AddScoped<Aes128GcmEncryptionAlgorithm>();
 
-            services.AddScoped<IProvider<IMacAlgorithm>, MacAlgorithmProvider>();
+            services.AddScoped<IMacAlgorithm, HMacSha2256EtmOpenSsh>();
             services.AddScoped<HMacSha2256EtmOpenSsh>();
 
-            services.AddScoped<IProvider<IPublicKeyAlgorithm>, PublicKeyProvider>();
+            services.AddScoped<IPublicKeyAlgorithm, RsaPublicKeyAlgorithm>();
             services.AddScoped<RsaPublicKeyAlgorithm>();
             services.AddScoped<RsaServerKeyAlgorithm>();
 
-            services.AddScoped<IProvider<IKeyExchangeAlgorithm>, KeyExchangeAlgorithmProvider>();
-            services.AddScoped<IProvider<IServerHostKeyAlgorithm>, ServerHostKeyProvider>();
-            services.AddScoped<IProvider<ICompressionAlgorithm>, CompressionProvider>();
+            services.AddScoped<IKeyExchangeAlgorithm, DiffieHelmanGroup14Sha256>();
+            services.AddScoped<IServerHostKeyAlgorithm, RsaServerKeyAlgorithm>();
+            services.AddScoped<ICompressionAlgorithm, NoneCompression>();
 
             services.AddScoped<ISftpRequestHandlerFactory, T>();
 
@@ -58,51 +56,3 @@ public static class DI {
         }
     }
 }
-
-internal class ServerHostKeyProvider : IProvider<IServerHostKeyAlgorithm> {
-    private readonly RsaServerKeyAlgorithm _rsaServerKeyAlgorithm;
-
-    public ServerHostKeyProvider(RsaServerKeyAlgorithm rsaServerKeyAlgorithm) {
-        _rsaServerKeyAlgorithm = rsaServerKeyAlgorithm;
-    }
-
-    public IImmutableList<IServerHostKeyAlgorithm> Items => [_rsaServerKeyAlgorithm];
-}
-
-internal class PublicKeyProvider : IProvider<IPublicKeyAlgorithm> {
-    private readonly RsaPublicKeyAlgorithm _rsaPublicKeyAlgorithm;
-
-    public PublicKeyProvider(RsaPublicKeyAlgorithm rsaPublicKeyAlgorithm) {
-        _rsaPublicKeyAlgorithm = rsaPublicKeyAlgorithm;
-    }
-
-    public IImmutableList<IPublicKeyAlgorithm> Items => [_rsaPublicKeyAlgorithm];
-}
-internal class CompressionProvider : IProvider<ICompressionAlgorithm> {
-    public IImmutableList<ICompressionAlgorithm> Items => [new NoneCompression()];
-}
-
-internal class KeyExchangeAlgorithmProvider : IProvider<IKeyExchangeAlgorithm> {
-    public IImmutableList<IKeyExchangeAlgorithm> Items => [new DiffieHelmanGroup14Sha256()];
-}
-
-internal class MacAlgorithmProvider : IProvider<IMacAlgorithm> {
-    private readonly HMacSha2256EtmOpenSsh _hMacSha2256EtmOpenSsh;
-
-    public MacAlgorithmProvider(HMacSha2256EtmOpenSsh hMacSha2256EtmOpenSsh) {
-        _hMacSha2256EtmOpenSsh = hMacSha2256EtmOpenSsh;
-    }
-
-    public IImmutableList<IMacAlgorithm> Items => [_hMacSha2256EtmOpenSsh];
-}
-
-internal class EncryptionAlgorithmProvider : IProvider<IEncryptionAlgorithm> {
-    private readonly Aes128GcmEncryptionAlgorithm _aesGcm;
-
-    public EncryptionAlgorithmProvider(Aes128GcmEncryptionAlgorithm aesGcm) {
-        _aesGcm = aesGcm;
-    }
-
-    public IImmutableList<IEncryptionAlgorithm> Items => [_aesGcm];
-}
-

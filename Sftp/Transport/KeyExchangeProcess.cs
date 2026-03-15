@@ -30,18 +30,18 @@ using ZipZap.Sftp.Ssh.Algorithms;
 namespace ZipZap.Sftp;
 
 public class KeyExchangeProcess {
-    private readonly IProvider<IKeyExchangeAlgorithm> _kexProvider;
-    private readonly IProvider<IEncryptionAlgorithm> _encryptionProvider;
-    private readonly IProvider<IServerHostKeyAlgorithm> _serverHostKeyProvider;
-    private readonly IProvider<ICompressionAlgorithm> _compressionProvider;
-    private readonly IProvider<IMacAlgorithm> _macProvider;
+    private readonly IEnumerable<IKeyExchangeAlgorithm> _kexProvider;
+    private readonly IEnumerable<IEncryptionAlgorithm> _encryptionProvider;
+    private readonly IEnumerable<IServerHostKeyAlgorithm> _serverHostKeyProvider;
+    private readonly IEnumerable<ICompressionAlgorithm> _compressionProvider;
+    private readonly IEnumerable<IMacAlgorithm> _macProvider;
     private readonly ILogger<KeyExchangeProcess> _logger;
     public KeyExchangeProcess(
-        IProvider<IKeyExchangeAlgorithm> KexProvider,
-        IProvider<IEncryptionAlgorithm> EncryptionProvider,
-        IProvider<IServerHostKeyAlgorithm> ServerHostKeyProvider,
-        IProvider<ICompressionAlgorithm> CompressionProvider,
-        IProvider<IMacAlgorithm> MacProvider,
+        IEnumerable<IKeyExchangeAlgorithm> KexProvider,
+        IEnumerable<IEncryptionAlgorithm> EncryptionProvider,
+        IEnumerable<IServerHostKeyAlgorithm> ServerHostKeyProvider,
+        IEnumerable<ICompressionAlgorithm> CompressionProvider,
+        IEnumerable<IMacAlgorithm> MacProvider,
         ILogger<KeyExchangeProcess> Logger
     ) {
         _kexProvider = KexProvider;
@@ -53,15 +53,9 @@ public class KeyExchangeProcess {
     }
 
     public async Task<SshState?> MakeKeyExchange(KeyExchangeInput input, Payload? kexInit, CancellationToken cancellationToken) {
-        var keyExchangeAlgorithms = _kexProvider.Items;
-        var publicKeyAlgorithms = _serverHostKeyProvider.Items;
-        var encryptionAlgorithms = _encryptionProvider.Items;
-        var macAlgorithms = _macProvider.Items;
-        var compressionAlgorithms = _compressionProvider.Items;
-
         var reader = input.Reader;
 
-        var keyExchangePacket = GenerateKeyExchangePacket(keyExchangeAlgorithms, publicKeyAlgorithms, encryptionAlgorithms, macAlgorithms, compressionAlgorithms, false);
+        var keyExchangePacket = GenerateKeyExchangePacket(_kexProvider, _serverHostKeyProvider, _encryptionProvider, _macProvider, _compressionProvider, false);
         await reader.SendPacket(keyExchangePacket, cancellationToken);
 
         Payload clientKexPayloadRaw; KeyExchange? clientKexPayload;
@@ -150,7 +144,7 @@ public class KeyExchangeProcess {
             return null;
         }
 
-        var keyExchangeAlgorithm = _kexProvider.Items.FirstOrDefault(a => a.Name == keyExchangeAlgorithmName)!;
+        var keyExchangeAlgorithm = _kexProvider.FirstOrDefault(a => a.Name == keyExchangeAlgorithmName)!;
         if (_logger.IsEnabled(LogLevel.Debug))
             _logger.LogDebug("using keyExchangeAlgorithm {KeyExchangeAlgorithm}", keyExchangeAlgorithm);
 
@@ -173,7 +167,7 @@ public class KeyExchangeProcess {
         var publicKeyAlgorithmName = clientKexPayload.ServerHostKeyAlgorithms.Names.FirstOrDefault(a => Enumerable.Contains(serverKexPayload.ServerHostKeyAlgorithms.Names, a));
         if (publicKeyAlgorithmName is null) return null;
 
-        var publicKeyAlgorithm = _serverHostKeyProvider.Items.FirstOrDefault(a => a.Name == publicKeyAlgorithmName)!;
+        var publicKeyAlgorithm = _serverHostKeyProvider.FirstOrDefault(a => a.Name == publicKeyAlgorithmName)!;
 
         if (_logger.IsEnabled(LogLevel.Debug)) {
             _logger.LogDebug("Using PublicKeyAlgorithm {PublicKeyAlgorithm}", publicKeyAlgorithm);
@@ -206,7 +200,7 @@ public class KeyExchangeProcess {
             }
             return null;
         }
-        var encAlgorithm = _encryptionProvider.Items.FirstOrDefault(a => a.Name == encCtSName)!;
+        var encAlgorithm = _encryptionProvider.FirstOrDefault(a => a.Name == encCtSName)!;
 
         IMacAlgorithm macAlgorithm = new NoMacAlgorithm();
         if (encAlgorithm.OverridesMac) {
@@ -224,7 +218,7 @@ public class KeyExchangeProcess {
                 return null;
             }
 
-            macAlgorithm = _macProvider.Items.FirstOrDefault(a => a.Name == macAlgorithmCtSName)!;
+            macAlgorithm = _macProvider.FirstOrDefault(a => a.Name == macAlgorithmCtSName)!;
             if (_logger.IsEnabled(LogLevel.Debug))
                 _logger.LogDebug("using macAlgorithm {MacAlgorithm}", macAlgorithm);
         }

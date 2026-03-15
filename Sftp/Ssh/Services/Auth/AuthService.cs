@@ -15,7 +15,7 @@
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System;
-using System.ComponentModel;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
@@ -36,8 +36,8 @@ namespace ZipZap.Sftp.Ssh.Services;
 internal class AuthService : SshService, IAuthService {
     private readonly ITransportClient _transport;
     private readonly ISftpLoginHandler _handler;
-    private readonly IProvider<IPublicKeyAlgorithm> _publicKeys;
-    private readonly IProvider<IServerHostKeyAlgorithm> _hostKeys;
+    private readonly IEnumerable<IPublicKeyAlgorithm> _publicKeys;
+    private readonly IEnumerable<IServerHostKeyAlgorithm> _hostKeys;
     private readonly ISshConnectionFactory _connectionFactory;
     private readonly ILogger<AuthService> _logger;
     private ISshService? _aggregate = null;
@@ -45,8 +45,8 @@ internal class AuthService : SshService, IAuthService {
     public AuthService(
         ITransportClient transport,
         ISftpLoginHandler handler,
-        IProvider<IPublicKeyAlgorithm> publicKeys,
-        IProvider<IServerHostKeyAlgorithm> hostKeys,
+        IEnumerable<IPublicKeyAlgorithm> publicKeys,
+        IEnumerable<IServerHostKeyAlgorithm> hostKeys,
         ISshConnectionFactory connectionFactory,
         ILogger<AuthService> logger
     ) : base(logger) {
@@ -137,12 +137,12 @@ internal class AuthService : SshService, IAuthService {
     }
 
     private async Task<Result<ISftpRequestHandler, LoginError>> HandlePublicKey(UserauthRequest.PublicKey publickeyRequest, CancellationToken cancellationToken) {
-        var publicKeyAlg = _publicKeys.Items.FirstOrDefault(i => i.SupportedSignatureAlgs.Select(n => n.ToString()).Contains(publickeyRequest.AlgName));
+        var publicKeyAlg = _publicKeys.FirstOrDefault(i => i.SupportedSignatureAlgs.Select(n => n.ToString()).Contains(publickeyRequest.AlgName));
         if (publicKeyAlg is null
             || !publicKeyAlg.TryParse(publickeyRequest.PublicKeyBytes, out var key))
             return Err<ISftpRequestHandler, LoginError>(new LoginError.WrongCredentials());
 
-        foreach (var hostKeyAlg in _hostKeys.Items) {
+        foreach (var hostKeyAlg in _hostKeys) {
             var pair = hostKeyAlg.GetHostKeyPair();
             var result = await _handler.TryLoginPublicKey(
                 publickeyRequest.Username, key, pair, cancellationToken
