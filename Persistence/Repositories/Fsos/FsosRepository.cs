@@ -16,6 +16,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -35,6 +36,7 @@ using ZipZap.Persistence.Models;
 using static ZipZap.LangExt.Helpers.Assertions;
 
 using Directory = ZipZap.Classes.Directory;
+using File = ZipZap.Classes.File;
 
 namespace ZipZap.Persistence.Repositories;
 
@@ -247,5 +249,34 @@ internal class FsosRepository : IFsosRepository {
         var deleted = await cmd.ExecuteNonQueryAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         return DbHelper.EnsureSingle(deleted);
+    }
+
+    public async Task<IEnumerable<File>> GetAllChildFilesAsync(FsoId parent, CancellationToken cancellationToken) {
+        var fsos = await _basic.Get(conn => {
+            var command = conn.CreateCommand($"""
+                        WITH RECURSIVE ctename AS (
+                            SELECT {_fsoHelper.SqlFieldsInOrder}
+                            FROM   {TableName}
+                            WHERE  {TableName}.{IdCol} = $1
+                            UNION ALL
+                            SELECT
+                            {_fsoHelper.SqlFieldsInOrder}
+                            FROM {TableName}
+                            JOIN ctename ON {TableName}_{IdCol} =
+                            {TableName}.{_fsoHelper.GetColumnName(nameof(FsoInner.VirtualLocationId))}
+                            )
+                        SELECT
+                        {_fsoHelper.SqlFields.Select(f => $"{TableName}_{f}").ConcatenateWith(", ")}
+                        FROM ctename
+                        WHERE {TableName}_{_fsoHelper.GetColumnName(nameof(FsoInner.FsoType))} = $2
+                        """);
+            command.Parameters.Add(new NpgsqlParameter<Guid> { Value = parent.Value });
+            command.Parameters.Add(new NpgsqlParameter<FsoType> { Value = FsoType.RegularFile });
+            return command;
+        }, cancellationToken);
+        return fsos.SelectMany<Fso, File>(fso => fso is File file
+                ? [file]
+                : throw new InvalidDataException($"Querying for files in {nameof(GetAllChildFilesAsync)} returned an fso of different format")
+        );
     }
 }

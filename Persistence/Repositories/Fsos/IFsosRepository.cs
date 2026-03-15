@@ -37,4 +37,5 @@ public interface IFsosRepository : IRepository<Fso, FsoId> {
     ///<returns>The most deeply nested fso that is a parent of <paramref name="fsoId"/> that is shared with the <paramref name="userId"/> user</returns>
     public Task<Fso?> GetDeepestSharedFso(FsoId fsoId, UserId userId, CancellationToken cancellationToken);
     public Task<Result<Unit,DbError>> DeleteAsync(Fso fso, DeleteOptions options, CancellationToken cancellationToken);
+    public Task<IEnumerable<File>> GetAllChildFilesAsync(FsoId parent, CancellationToken cancellationToken);
 }

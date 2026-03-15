@@ -101,9 +101,7 @@ public class IO : IIO {
     }
 
     public async Task RemoveRangeAsync(IEnumerable<string> filenames)
-    => await Task.WhenAll(
-            filenames.Select(
-                f => Task.Run(async () => await RemoveAsync(f))));
+    => await Task.WhenAll(filenames.Select(RemoveAsync));
 
     public Task CopyAsync(string oldPath, string newPath) {
         AssertPath(oldPath); AssertPath(newPath);

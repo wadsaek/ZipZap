@@ -146,10 +146,11 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         var user = await GetUserOrThrowAsync(context);
         var fso = await GetFsoOrFailAsync(request.FsoId, user, context.CancellationToken);
         var options = request.Options.ToOptions();
-        if (options is DeleteOptions.All or DeleteOptions.AllExceptDirectories)
-            if (fso is File file && await _io.PathExistsAsync(file.PhysicalPath)) {
-                await _io.RemoveAsync(file.PhysicalPath);
-            }
+        if (options is DeleteOptions.All or DeleteOptions.AllExceptDirectories) {
+            var willBeDeleted = await _fsosRepo.GetAllChildFilesAsync(fso.Id, context.CancellationToken);
+            var paths = willBeDeleted.Select(f => f.PhysicalPath);
+            await _io.RemoveRangeAsync(paths);
+        }
         return await _fsosRepo.DeleteAsync(fso, options, context.CancellationToken)
         .SelectAsync(_ => new EmptyMessage())
         .UnwrapOrElseAsync(err => err switch {
