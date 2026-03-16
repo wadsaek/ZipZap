@@ -14,6 +14,9 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+using System.Linq;
+using System.Security.Cryptography;
+
 using Microsoft.Extensions.DependencyInjection;
 
 using ZipZap.Sftp.Sftp;
@@ -25,7 +28,9 @@ namespace ZipZap.Sftp;
 
 public static class DI {
     extension(IServiceCollection services) {
-        public IServiceCollection AddSftp<T>(ISftpConfiguration configuration) where T : class, ISftpRequestHandlerFactory {
+        public IServiceCollection AddSftp<THandler, TConfig>()
+            where THandler : class, ISftpRequestHandlerFactory
+            where TConfig : class, ISftpConfiguration {
             services.AddScoped<SftpService>();
             services.AddScoped<Transport>();
             services.AddScoped<KeyExchangeProcess>();
@@ -34,25 +39,31 @@ public static class DI {
             services.AddScoped<IAuthServiceFactory, AuthServiceFactory>();
             services.AddScoped<ISftpFactory, SftpFactory>();
 
-            services.AddScoped<IEncryptionAlgorithm, Aes128GcmEncryptionAlgorithm >();
+            services.AddScoped<IEncryptionAlgorithm, Aes128GcmEncryptionAlgorithm>();
             services.AddScoped<Aes128GcmEncryptionAlgorithm>();
 
             services.AddScoped<IMacAlgorithm, HMacSha2256EtmOpenSsh>();
             services.AddScoped<HMacSha2256EtmOpenSsh>();
 
-            services.AddScoped<IPublicKeyAlgorithm, RsaPublicKeyAlgorithm>();
-            services.AddScoped<RsaPublicKeyAlgorithm>();
-            services.AddScoped<RsaServerKeyAlgorithm>();
+            if (services.Any(d => d.ServiceType == typeof(RSA))) {
+                services.AddScoped<IPublicKeyAlgorithm, RsaPublicKeyAlgorithm>();
+                services.AddScoped<RsaPublicKeyAlgorithm>();
+                services.AddScoped<RsaServerKeyAlgorithm>();
+                services.AddScoped<IServerHostKeyAlgorithm, RsaServerKeyAlgorithm>();
+            }
 
             services.AddScoped<IKeyExchangeAlgorithm, DiffieHelmanGroup14Sha256>();
-            services.AddScoped<IServerHostKeyAlgorithm, RsaServerKeyAlgorithm>();
             services.AddScoped<ICompressionAlgorithm, NoneCompression>();
 
-            services.AddScoped<ISftpRequestHandlerFactory, T>();
+            services.AddScoped<ISftpRequestHandlerFactory, THandler>();
 
-            services.AddSingleton(configuration);
+            services.AddSingleton<ISftpConfiguration, TConfig>();
             services.AddHostedService<SftpBackgroundService>();
             return services;
         }
     }
+}
+
+public class SftpOptions {
+    public int Port = 9999;
 }

@@ -14,9 +14,6 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-using System.IO;
-using System.Security.Cryptography;
-
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -26,10 +23,7 @@ using ZipZap.Sftp;
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.AddConsole();
 builder.Services.AddSingleton<ISftpRequestHandlerFactory, SftpHandlerFactory>();
-builder.Services.AddSftp<SftpHandlerFactory>(new SftpConfiguration(
-    builder.Configuration["RSA:PrivateKey"]
-    ?? throw new System.Exception("No Private key"))
-);
+builder.Services.AddSftp<SftpHandlerFactory, SftpConfiguration>();
 var app = builder.Build();
 app.Run();
 
@@ -43,12 +37,7 @@ internal class SftpConfiguration : ISftpConfiguration {
     public int Port => 9999;
     public string ServerName => "ZipZapTestSftp";
     public string Version => "0.1.0";
-    public RSA RsaKey { get; }
-    public SftpConfiguration(string rsaPath) {
-        var pem = File.ReadAllText(rsaPath);
-        var rsa = RSA.Create();
-        rsa.ImportFromPem(pem);
-        RsaKey = rsa;
+    public SftpConfiguration() {
     }
 }
 

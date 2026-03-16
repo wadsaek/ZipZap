@@ -24,12 +24,12 @@ namespace ZipZap.Sftp.Ssh.Algorithms;
 
 public class RsaServerKeyAlgorithm : IServerHostKeyAlgorithm {
     private readonly RsaPublicKeyAlgorithm _inner;
-    private readonly ISftpConfiguration _sftpConfiguration;
+    private readonly RSA _rsaKey;
 
 
-    public RsaServerKeyAlgorithm(RsaPublicKeyAlgorithm inner, ISftpConfiguration sftpConfiguration) {
+    public RsaServerKeyAlgorithm(RsaPublicKeyAlgorithm inner, RSA rsaKey) {
         _inner = inner;
-        _sftpConfiguration = sftpConfiguration;
+        _rsaKey = rsaKey;
     }
 
     public NameList.Item Name => new NameList.GlobalName("rsa-sha2-256");
@@ -68,6 +68,6 @@ public class RsaServerKeyAlgorithm : IServerHostKeyAlgorithm {
     }
 
 
-    public IHostKeyPair GetHostKeyPair() => new RsaPublicKeyPair(_sftpConfiguration.RsaKey ?? throw new System.Exception("no rsa key"), _inner.HashAlgorithm);
+    public IHostKeyPair GetHostKeyPair() => new RsaPublicKeyPair(_rsaKey, _inner.HashAlgorithm);
 }
 

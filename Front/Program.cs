@@ -15,6 +15,7 @@
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System;
+using System.Security.Cryptography;
 
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
@@ -56,7 +57,15 @@ public class Program {
                 options.ExpireTimeSpan = TimeSpan.FromMinutes(40);
                 options.AccessDeniedPath = "/Forbidden";
             });
-        builder.Services.AddSftp<SftpHandlerFactory>(new SftpConfiguration());
+        builder.Services.AddScoped(_ => {
+            var path = builder.Configuration["Rsa:PrivateKey"];
+            path = path ?? throw new Exception("No Rsa path provided");
+            var pem = System.IO.File.ReadAllText(path);
+            var rsa = RSA.Create();
+            rsa.ImportFromPem(pem);
+            return rsa;
+        });
+        builder.Services.AddSftp<SftpHandlerFactory, SftpConfiguration>();
 
         var app = builder.Build();
 

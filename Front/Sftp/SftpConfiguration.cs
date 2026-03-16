@@ -14,8 +14,6 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-using System.Security.Cryptography;
-
 using ZipZap.Sftp;
 
 namespace ZipZap.Front.Sftp;
@@ -24,11 +22,4 @@ internal class SftpConfiguration : ISftpConfiguration {
     public int Port => 9999;
     public string ServerName => "ZipZapTestSftp";
     public string Version => "0.1.0";
-    public RSA RsaKey { get; }
-    public SftpConfiguration() {
-        var pem = System.IO.File.ReadAllText("/home/wadsaek/Developing/ZipZap/Front/rsa/host");
-        var rsa = RSA.Create();
-        rsa.ImportFromPem(pem);
-        RsaKey = rsa;
-    }
 }

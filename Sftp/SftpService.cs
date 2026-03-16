@@ -22,6 +22,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace ZipZap.Sftp;
@@ -40,9 +41,10 @@ internal class SftpService {
         _handler = handler;
     }
 
-    internal async Task HandleSocket(Socket socket, CancellationToken cancellationToken) {
+    internal async Task HandleSocket(Socket socket,AsyncServiceScope scope, CancellationToken cancellationToken) {
         try {
-            using var _ = socket;
+            using var _socket = socket;
+            using var _scope = scope;
             await using var stream = new NetworkStream(socket);
 
             var idStrings = await ExchangeIdentificationStrings(stream, cancellationToken);

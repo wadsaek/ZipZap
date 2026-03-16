@@ -54,9 +54,9 @@ public class SftpBackgroundService : BackgroundService {
         listener.Start();
         while (!cancellationToken.IsCancellationRequested) {
             var socket = await listener.AcceptSocketAsync(cancellationToken);
-            using var scope = _factory.CreateAsyncScope();
+            var scope = _factory.CreateAsyncScope();
             var service = scope.ServiceProvider.GetRequiredService<SftpService>();
-            tasks.Add(service.HandleSocket(socket, cancellationToken));
+            tasks.Add(service.HandleSocket(socket, scope, cancellationToken));
             var removed = await tasks.RemoveCompleted();
             if (_logger.IsEnabled(LogLevel.Information))
                 _logger.LogInformation("{Count} tasks in queue\n{Removed} tasks removed", tasks.Count, removed);
