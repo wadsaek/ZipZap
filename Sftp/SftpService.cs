@@ -29,16 +29,14 @@ namespace ZipZap.Sftp;
 
 internal class SftpService {
 
-    private readonly ISftpRequestHandlerFactory _handler;
     private readonly ISftpConfiguration _configuration;
     private readonly ILogger<SftpService> _logger;
     private readonly Transport _transport;
 
-    public SftpService(Transport transport, ILogger<SftpService> logger, ISftpConfiguration configuration, ISftpRequestHandlerFactory handler) {
+    public SftpService(Transport transport, ILogger<SftpService> logger, ISftpConfiguration configuration) {
         _transport = transport;
         _logger = logger;
         _configuration = configuration;
-        _handler = handler;
     }
 
     internal async Task HandleSocket(Socket socket,AsyncServiceScope scope, CancellationToken cancellationToken) {
