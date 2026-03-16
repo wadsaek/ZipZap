@@ -14,10 +14,10 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.ComponentModel;
-using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -61,7 +61,7 @@ public class GetHandler : IGetHandler {
 
     }
 
-    public record GetHandlerResult(Fso Item, string? Text, string ParentUrl, FileSpecification Specification);
+    public record GetHandlerResult(Fso Item, Content? Content, string ParentUrl, FileSpecification Specification);
 
     public async Task<Result<GetHandlerResult, GetHandlerError>> OnGetAsync(FileSpecification specification, HttpRequest request, CancellationToken cancellationToken = default) {
         if (_logger.IsEnabled(LogLevel.Information))
@@ -79,14 +79,24 @@ public class GetHandler : IGetHandler {
 
         var item = (status as FsoStatus.Success)!.Fso;
         var parentUrl = GetRedirectUrl(specification, item);
-        string? text = null;
+        Content? content = null;
 
         if (item is Symlink link)
             return Err<GetHandlerResult, GetHandlerError>(new GetHandlerError.ShouldRedirect(await GetSymlinkLink(specification, backendConfiguration, link, cancellationToken)));
         if (item is File file) {
-            text = Encoding.UTF8.GetString(file.Content ?? []);
+            try {
+                var text = file.Content switch {
+                    [0xFF, 0xFE, ..] utf16 => new UnicodeEncoding(false, true, true).GetString(utf16),
+                    [0xFE, 0xFF, ..] utf16be => new UnicodeEncoding(true, true, true).GetString(utf16be),
+                    [..] utf8 => new UTF8Encoding(true, true).GetString(utf8),
+                    null => ""
+                };
+                content = new Content.TextContent(text);
+            } catch (ArgumentException) {
+                content = new Content.UnparsableContent();
+            }
         }
-        return Ok<GetHandlerResult, GetHandlerError>(new(item, text, parentUrl, specification));
+        return Ok<GetHandlerResult, GetHandlerError>(new(item, content, parentUrl, specification));
     }
 
     private async Task<string> GetSymlinkLink(FileSpecification specification, BackendConfiguration backendConfiguration, Symlink link, CancellationToken cancellationToken) {
@@ -132,6 +142,10 @@ public class GetHandler : IGetHandler {
             { Type: _ } => throw new InvalidEnumArgumentException()
         };
 
+    public abstract record Content {
+        public sealed record TextContent(string Text) : Content;
+        public sealed record UnparsableContent : Content;
+    }
 }
 public static class GetHandlerResultExt {
     extension(GetHandler.GetHandlerResult result) {

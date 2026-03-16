@@ -10,39 +10,74 @@
     @if (Model.Result is not null)
     {
         <div class="d-flex justify-content-between">
-            @{var item = Model.Result!.Item;}
+            @{
+                var item = Model.Result!.Item;
+                ViewData["Title"] = item.ToString(Fso.ShortListingFormat);
+            }
             <div>
                 <h1> @item.ToString(Fso.ShortListingFormat) </h1>
-                <h4 class="text-secondary">@item.Data.Permissions @item.Data.Ownership </h4>
+                <div class="d-flex justify-content-between">
+                    <h4 class="text-secondary">@item.Data.Permissions @item.Data.Ownership </h4>
+                </div>
             </div>
-            <a class="text" href="@Model.Result!.ParentUrl">Up</a>
+            <div class="d-flex flex-column align-items-end justify-content-end">
+                <a class="btn btn-primary-mine btn-small mb-2 w-100" href="@Model.Result!.ParentUrl">Up</a>
+                <a class="btn btn-primary-mine btn-small mb-2 w-100" asp-page="/Files/Edit" asp-route-id="@Model.Result.Item.Id.Value">
+                    Edit this @FileViewModel.FsoTypeName(item)
+                </a>
+            </div>
         </div>
         @if (Model.Result.Item is Directory dir)
         {
 
-            <div class="d-flex justify-content-between">
+            <div class="d-flex flex-column justify-content-between">
                 <h2>Items</h2>
-                <a class="text fs-4" asp-page="/Files/Create" asp-route-id="@Model.Result.Item.Id.Value">Create a new
-                    file</a>
-            </div>
-            @foreach (var child in dir.MaybeChildren)
-            {
-                <div>
-                    <form method="post" onsubmit="return confirm('Are you sure you want to delete this file?')"
-                    asp-page-handler="Delete"
-                    asp-route-path="@child.Id" asp-route-type="id"
-                    >
-                        <button class="btn text-danger border border-1 p-1 m-1">X</button>
-                        <a href="@Model.Result.GetChildLink(child)">
-                            @child.ToString(Fso.ShortListingFormat)
-                        </a>
-                    </form>
+                <div class="d-flex flex-column col-2">
+                    <a class="btn btn-primary-mine btn-small mb-2 w-75" asp-page="/Files/Create" asp-route-id="@Model.Result.Item.Id.Value">
+                        Create a new item
+                    </a>
                 </div>
+            </div>
+            <style>
+                .child-fso {
+                    &:hover {
+                        background-color: #fafafa
+                    }
+                    transition: all 0.1s
+                }
+            </style>
+            <ul class="list-group">
+            @foreach (var child in dir.MaybeChildren
+                .OrderBy(f=> f is Directory ? 0 : 1)
+                .ThenBy(f=>f.Data.Name,StringComparer.Ordinal)
+            ){
+                <a href="@Model.Result.GetChildLink(child)" class="child-fso list-group-item d-flex justify-content-between child-fso">
+                    <form method="post" onsubmit="return confirm('Are you sure you want to delete this file?')"
+                          asp-page-handler="Delete" asp-route-path="@child.Id" asp-route-type="id">
+                        <button class="btn text-danger border border-1 p-1 m-1 monospace">X</button>
+                        <span >
+                            @child.Data.Name
+                        </span>
+                    </form>
+                    @if(@child is Symlink {Target: var target}){
+                        <span class="txt text-secondary">&rarr; @target</span>
+                    }
+                    <span class="text text-secondary">@FileViewModel.FsoTypeName(child)</span>
+                </a>
             }
+            </ul>
         }
         else if (Model.Result.Item is File)
         {
-            <p style="white-space: pre-wrap;" class="border border-1 rounded p-3">@Model.Result.Text</p>
+            @if(Model.Result.Content is GetHandler.Content.TextContent(var text)){
+                <details class="border border-1 rounded p-2 bg-white mb-3 unsized">
+                    <summary class="lead">
+                        The file content could be parsed as text. Do you want to see it?
+                    </summary>
+                    <hr>
+                    <p style="white-space: pre-wrap;">@text</p>
+                </details>
+            }
         }
     }
 </div>

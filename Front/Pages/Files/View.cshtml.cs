@@ -23,6 +23,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
 
+using ZipZap.Classes;
 using ZipZap.Classes.Extensions;
 using ZipZap.Front.Factories;
 using ZipZap.Front.Handlers;
@@ -46,6 +47,12 @@ public class FileViewModel : PageModel {
     }
 
     private readonly IGetHandler _getHandler;
+    public static string FsoTypeName(Fso fso) => fso switch {
+        Classes.File => "regular file",
+        Directory => "directory",
+        Symlink => "symbolic link",
+        _ => throw new InvalidEnumArgumentException()
+    };
 
     public async Task<IActionResult> OnGetAsync(string path, [FromQuery] IdType type, CancellationToken cancellationToken)
         => await _getHandler.OnGetAsync(
