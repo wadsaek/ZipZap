@@ -354,6 +354,92 @@ public class Backend : IBackend {
         ));
         return result.Select(_ => new Unit());
     }
+
+    public Task<Result<Unit, ServiceError>> ShareFsoById(FsoId fsoId, UserId userId, CancellationToken cancellationToken = default) {
+        var result = Wrap(
+            async () => await _filesStoringService.ShareFsoAsync(
+                new() {
+                    FsoId = fsoId.Value.ToGrpcGuid(),
+                    User = new() {
+                        Id = userId.Value.ToGrpcGuid()
+                    }
+                },
+                _configuration.ToMetadata(),
+                cancellationToken: cancellationToken
+        ));
+
+        return result.SelectAsync(_ => new Unit());
+    }
+    public Task<Result<Unit, ServiceError>> ShareFsoByUsername(FsoId fsoId, string username, CancellationToken cancellationToken = default) {
+        var result = Wrap(
+            async () => await _filesStoringService.ShareFsoAsync(
+                new() {
+                    FsoId = fsoId.Value.ToGrpcGuid(),
+                    User = new() {
+                        Username = username
+                    }
+                },
+                _configuration.ToMetadata(),
+                cancellationToken: cancellationToken
+        ));
+
+        return result.SelectAsync(_ => new Unit());
+    }
+
+    public Task<Result<IEnumerable<FsoAccess>, ServiceError>> GetAccessesForFso(FsoId id, CancellationToken cancellationToken = default) {
+        var result = Wrap(
+            async () => await _filesStoringService.GetAccessesForFsoAsync(
+                id.Value.ToGrpcGuid(),
+                _configuration.ToMetadata(),
+                cancellationToken: cancellationToken
+        ));
+
+        return result.SelectAsync(accesses => accesses.ToFsoAccesses());
+    }
+
+    public Task<Result<IEnumerable<FsoAccess>, ServiceError>> GetAccessesForUserById(UserId id, CancellationToken cancellationToken = default) {
+        var result = Wrap(
+            async () => await _filesStoringService.GetAccessesForUserAsync(
+                new() { Id = id.Value.ToGrpcGuid() },
+                _configuration.ToMetadata(),
+                cancellationToken: cancellationToken
+        ));
+
+        return result.SelectAsync(accesses => accesses.ToFsoAccesses());
+    }
+    public Task<Result<IEnumerable<FsoAccess>, ServiceError>> GetAccessesForUserByUsername(string username, CancellationToken cancellationToken = default) {
+        var result = Wrap(
+            async () => await _filesStoringService.GetAccessesForUserAsync(
+                new() { Username = username },
+                _configuration.ToMetadata(),
+                cancellationToken: cancellationToken
+        ));
+
+        return result.SelectAsync(accesses => accesses.ToFsoAccesses());
+    }
+
+    public Task<Result<IEnumerable<FsoAccess>, ServiceError>> GetSharedBySelf(CancellationToken cancellationToken = default) {
+        var result = Wrap(
+            async () => await _filesStoringService.GetSharedBySelfAsync(
+                new(),
+                _configuration.ToMetadata(),
+                cancellationToken: cancellationToken
+        ));
+
+        return result.SelectAsync(accesses => accesses.ToFsoAccesses());
+    }
+
+    public Task<Result<IEnumerable<FsoAccess>, ServiceError>> GetAccessible(CancellationToken cancellationToken = default) {
+        var result = Wrap(
+            async () => await _filesStoringService.GetAccessibleAsync(
+                new(),
+                _configuration.ToMetadata(),
+                cancellationToken: cancellationToken
+        ));
+
+        return result.SelectAsync(accesses => accesses.ToFsoAccesses());
+    }
+
 }
 public record BackendConfiguration(string AuthToken);
 

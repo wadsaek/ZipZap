@@ -45,6 +45,14 @@ public interface IBackend {
     public Task<Result<Unit, ServiceError>> UpdateFso(Fso fso, CancellationToken cancellationToken = default);
     public Task<Result<IEnumerable<string>, ServiceError>> GetFullPath(FsoId id, CancellationToken cancellationToken = default);
 
+    public Task<Result<Unit, ServiceError>> ShareFsoById(FsoId FsoId, UserId userId, CancellationToken cancellationToken = default);
+    public Task<Result<Unit, ServiceError>> ShareFsoByUsername(FsoId fsoId, string username, CancellationToken cancellationToken = default);
+    public Task<Result<IEnumerable<FsoAccess>, ServiceError>> GetAccessesForFso(FsoId id, CancellationToken cancellationToken = default);
+    public Task<Result<IEnumerable<FsoAccess>, ServiceError>> GetAccessesForUserById(UserId id, CancellationToken cancellationToken = default);
+    public Task<Result<IEnumerable<FsoAccess>, ServiceError>> GetAccessesForUserByUsername(string id, CancellationToken cancellationToken = default);
+    public Task<Result<IEnumerable<FsoAccess>, ServiceError>> GetSharedBySelf(CancellationToken cancellationToken = default);
+    public Task<Result<IEnumerable<FsoAccess>, ServiceError>> GetAccessible(CancellationToken cancellationToken = default);
+
     public Task<Result<User, ServiceError>> GetSelf(CancellationToken cancellationToken = default);
     public Task<Result<User, ServiceError>> RemoveSelf(CancellationToken cancellationToken = default);
     public Task<Result<UserSshKeyRaw, ServiceError>> AddSshKey(SshPublicKey key, CancellationToken cancellationToken = default);
