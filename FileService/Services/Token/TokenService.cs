@@ -57,7 +57,9 @@ public class TokenService : ITokenService {
 
         var split = token.Split(' ');
         if (split.Length != 2 || split[0] != "Bearer") return false;
-        var jwt = new JwtSecurityToken(split[1]);
+        var handler = new JwtSecurityTokenHandler();
+        if (!handler.CanReadToken(split[1])) return false;
+        var jwt = handler.ReadJwtToken(split[1]);
 
         if (!Guid.TryParse(jwt.Subject, out var guid)) return false;
         userId = guid.ToUserId();
