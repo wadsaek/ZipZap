@@ -48,7 +48,7 @@ public class UserService : IUserService {
 
     public async Task<string?> Login(string username, string password, CancellationToken cancellationToken) {
         var user = await _repo.GetUserByUsername(username, cancellationToken);
-        user = user.Where(u => UserHasPassword(u, password));
+        user = user.Filter(u => UserHasPassword(u, password));
         if (user is null)
             return null;
 

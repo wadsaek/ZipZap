@@ -76,7 +76,6 @@ public static class ResultExt {
             _ => default
         };
 
-
         public Result<U, E> Select<U>(Func<T, U> selector) => result switch {
             Ok<T, E>(T data) => new Ok<U, E>(selector(data)),
             Err<T, E>(E error) => new Err<U, E>(error),

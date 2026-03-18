@@ -1,4 +1,4 @@
-// NullableExt.cs - Part of the ZipZap project for storing files online
+// OwnershipStatus.cs - Part of the ZipZap project for storing files online
 //     Copyright (C) 2026  Barenboim Esther wadsaek@gmail.com
 //
 //     This program is free software: you can redistribute it and/or modify
@@ -13,21 +13,10 @@
 //
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
+namespace ZipZap.Classes;
 
-using System;
-using System.Threading.Tasks;
-
-namespace ZipZap.LangExt.Extensions;
-
-public static class NullableExt {
-    extension<T>(T? t) where T : class {
-        public T? Filter(Func<T, bool> func) => t switch {
-            null => null,
-            var t1 => func(t1) ? t1 : null
-        };
-        public async Task<T?> MapAsync(Func<T, Task<bool>> func) => t switch {
-            null => null,
-            var t1 => await func(t1) ? t1 : null
-        };
-    }
+public enum OwnershipStatus {
+    Owned,
+    AdminAccessible,
+    Shared
 }

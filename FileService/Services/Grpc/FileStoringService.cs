@@ -50,6 +50,7 @@ using SshKey = ZipZap.Grpc.SshKey;
 using User = ZipZap.Classes.User;
 using UserRole = ZipZap.Classes.UserRole;
 using UserSshKey = ZipZap.Classes.UserSshKey;
+using OwnershipStatus = ZipZap.Classes.OwnershipStatus;
 
 namespace ZipZap.FileService.Services;
 
@@ -103,37 +104,42 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
     private static T ThrowNotFoundIfNull<T>(T? obj, string message = "Resource not found")
         => obj ?? throw new RpcException(new(StatusCode.NotFound, message));
 
-    private Func<Fso, Task<bool>> OwnedBy(User owner) =>
-            async fso => Predicates.IsAdmin(owner) || (await _fsosRepo.GetRootDirectory(fso.Id))?.Id == owner.Root.Id;
-
-
-    private Task<Fso> GetFsoOrFailAsync(Grpc.Guid key, User owner, CancellationToken cancellationToken = default)
+    private Task<FsoWithOwnership> GetFsoOrFailAsync(Grpc.Guid key, User owner, CancellationToken cancellationToken = default)
         => GetFsoOrFailAsync(key, owner, null, cancellationToken);
 
-    private Task<Fso> GetFsoOrFailAsync(PathData pathData, User owner, CancellationToken cancellationToken = default)
+    private Task<FsoWithOwnership> GetFsoOrFailAsync(PathData pathData, User owner, CancellationToken cancellationToken = default)
         => GetFsoOrFailAsync(pathData, owner, null, cancellationToken);
 
-    private async Task<Fso> GetFsoOrFailAsync(Grpc.Guid key, User owner, Func<Fso, bool>? predicate = null, CancellationToken cancellationToken = default) {
+    private async Task<FsoWithOwnership> GetFsoOrFailAsync(Grpc.Guid key, User owner, Func<Fso, bool>? predicate = null, CancellationToken cancellationToken = default) {
         var guid = ParseGuidOrThrow(key);
         var file = await _fsosRepo.GetByIdAsync(
                 guid.ToFsoId(),
                 cancellationToken
                 );
-        file = file.Where(predicate ?? Predicates.AlwaysTrue);
-        file = await file.WhereAsync(OwnedBy(owner));
+        file = file.Filter(predicate ?? Predicates.AlwaysTrue);
+        var withStatus = (file, owner) switch {
+            (null, _) => null,
+            (_, { Role: UserRole.Admin }) => file.AdminAccessible(),
+            var (f, u)
+                when await FindDeepestSharedFso(f.Id, u, cancellationToken) is (not null, var s)
+                => new FsoWithOwnership(file, s),
+            _ => null
+        };
         // .WhereAsync((predicate ?? (_ => true)).WhereAsync(OwnedBy(owner));
-        var fileInner = ThrowNotFoundIfNull(file, "Fso not found for this owner id");
+        var fileInner = ThrowNotFoundIfNull(withStatus, "Fso not found for this owner id");
         return fileInner;
     }
-    private async Task<Fso> GetFsoOrFailAsync(PathData pathData, User owner, Func<Fso, bool>? predicate = null, CancellationToken cancellationToken = default) =>
-        ThrowNotFoundIfNull((pathData switch {
+    private async Task<FsoWithOwnership> GetFsoOrFailAsync(PathData pathData, User owner, Func<Fso, bool>? predicate = null, CancellationToken cancellationToken = default) {
+        var fso = ThrowNotFoundIfNull((pathData switch {
             PathDataWithId { ParentId: var parentId, Name: var name }
                 => await _fsosRepo.GetByDirectoryAndName(parentId, name, cancellationToken),
             PathDataWithPath { Path: var path }
                 => await _fsosRepo.GetByPath(owner.Root, path, cancellationToken),
             _
                 => throw new InvalidEnumArgumentException(nameof(pathData))
-        }).Where(predicate ?? (_ => true)));
+        }).Filter(predicate ?? (_ => true)));
+        return new(fso, OwnershipStatus.Owned);
+    }
 
     private async Task<User> GetUserOrThrowAsync(ServerCallContext context) {
         var entry = context.RequestHeaders.Get(Constants.AUTHORIZATION) ?? ThrowUnauthenticated<Entry>($"No {Constants.AUTHORIZATION} header");
@@ -148,7 +154,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
 
     public override async Task<EmptyMessage> DeleteFso(DeleteFsoRequest request, ServerCallContext context) {
         var user = await GetUserOrThrowAsync(context);
-        var fso = await GetFsoOrFailAsync(request.FsoId, user, context.CancellationToken);
+        var (fso, _) = await GetFsoOrFailAsync(request.FsoId, user, context.CancellationToken);
         var options = request.Options.ToOptions();
         if (options is DeleteOptions.All or DeleteOptions.AllExceptDirectories) {
             var willBeDeleted = await _fsosRepo.GetAllChildFilesAsync(fso.Id, context.CancellationToken);
@@ -164,8 +170,17 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
     }
 
     public async Task<Directory> GetParentFromRequest(ServerCallContext context, SaveFsoRequest request, User user) => request.HasFilePath
-                ? (await GetFsoOrFailAsync(new PathDataWithPath(request.FilePath), user, fso => fso is Directory, context.CancellationToken) as Directory)!
-                : (await GetFsoOrFailAsync(request.Data.RootId, user, fso => fso is Directory, context.CancellationToken) as Directory)!;
+                ? ((await GetFsoOrFailAsync(
+                    new PathDataWithPath(request.FilePath),
+                    user,
+                    fso => fso is Directory,
+                    context.CancellationToken)).Fso as Directory)!
+
+                : ((await GetFsoOrFailAsync(
+                    request.Data.RootId,
+                    user,
+                    fso => fso is Directory,
+                    context.CancellationToken)).Fso as Directory)!;
 
 
     public override async Task<SaveFsoResponse> SaveFso(SaveFsoRequest request, ServerCallContext context) {
@@ -219,20 +234,20 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         };
     }
 
-    private async Task<GetFsoResponse> ToGetFsoResponse(Fso fso)
+    private async Task<GetFsoResponse> ToGetFsoResponse(Fso fso, OwnershipStatus status)
     => fso switch {
-        File file => await GetFsoResponse.FromFileAsync(file, await _io.ReadAsync(file.PhysicalPath)),
+        File file => await GetFsoResponse.FromFileAsync(file, await _io.ReadAsync(file.PhysicalPath), status),
         Directory dir => GetFsoResponse.FromDirectory(dir with {
             MaybeChildren = await _fsosRepo.GetAllByDirectory(dir)
-        }),
-        Symlink link => GetFsoResponse.FromSymlink(link),
+        }, status),
+        Symlink link => GetFsoResponse.FromSymlink(link, status),
         _ => throw new InvalidEnumArgumentException(nameof(fso))
     };
 
 
     public override async Task<GetFsoResponse> GetFso(GetFsoRequest request, ServerCallContext context) {
         var user = await GetUserOrThrowAsync(context);
-        var fso = request.IdentifierCase switch {
+        var (fso, status) = request.IdentifierCase switch {
             GetFsoRequest.IdentifierOneofCase.FsoId
                 => await GetFsoOrFailAsync(request.FsoId, user, context.CancellationToken),
             GetFsoRequest.IdentifierOneofCase.Path
@@ -240,7 +255,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
             _ or GetFsoRequest.IdentifierOneofCase.None
                 => throw new RpcException(new(StatusCode.InvalidArgument, nameof(request.IdentifierCase)))
         };
-        return await ToGetFsoResponse(fso);
+        return await ToGetFsoResponse(fso, status);
     }
 
     public override async Task<EmptyMessage> RemoveFrenchLanguagePack(EmptyMessage message, ServerCallContext context) {
@@ -254,7 +269,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
 
     public override async Task<EmptyMessage> ReplaceFile(ReplaceFileRequest request, ServerCallContext context) {
         var user = await GetUserOrThrowAsync(context);
-        var fso = request.IdentifierCase switch {
+        var (fso, _) = request.IdentifierCase switch {
             ReplaceFileRequest.IdentifierOneofCase.FsoId
                 => await GetFsoOrFailAsync(request.FsoId, user, fso => fso is File, context.CancellationToken),
             ReplaceFileRequest.IdentifierOneofCase.Path
@@ -282,7 +297,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
     public override async Task<EmptyMessage> UpdateFso(UpdateFsoRequest request, ServerCallContext context) {
         var fsData = request.Data.ToFsData();
         var user = await GetUserOrThrowAsync(context);
-        var fso = request.IdentifierCase switch {
+        var (fso, _) = request.IdentifierCase switch {
             UpdateFsoRequest.IdentifierOneofCase.FsoId
                 => await GetFsoOrFailAsync(request.FsoId, user, context.CancellationToken),
             UpdateFsoRequest.IdentifierOneofCase.Path
@@ -404,7 +419,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
 
     public override async Task<FullPathMessage> GetFullPath(Grpc.Guid request, ServerCallContext context) {
         var user = await GetUserOrThrowAsync(context);
-        var fso = await GetFsoOrFailAsync(request, user, context.CancellationToken);
+        var (fso, status) = await GetFsoOrFailAsync(request, user, context.CancellationToken);
         var result = await _fsosRepo.GetFullPathTree(fso.Id);
 
         var response = new FullPathMessage();
@@ -417,34 +432,34 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         var user = await GetUserOrThrowAsync(context);
         var id = ParseGuidOrThrow(request.AnchorId).ToFsoId();
         var root = user.Role switch {
-            UserRole.Admin => await _fsosRepo.GetRootDirectory(id, context.CancellationToken),
+            UserRole.Admin => (await _fsosRepo.GetRootDirectory(id, context.CancellationToken))?.AdminAccessible(),
             UserRole.User => await FindDeepestSharedFso(id, user, context.CancellationToken),
             _ => throw new InvalidEnumArgumentException()
         };
-        root = ThrowNotFoundIfNull(root);
-        var pathData = request.Path.ToPathData(root.Id);
+        var dir = ThrowNotFoundIfNull(root?.Fso as Directory);
+        var pathData = request.Path.ToPathData(dir.Id);
         var fso = ThrowNotFoundIfNull(pathData switch {
             PathDataWithId { ParentId: var parentId, Name: var name }
                 => await _fsosRepo.GetByDirectoryAndName(parentId, name, context.CancellationToken),
             PathDataWithPath { Path: var path }
-                => await _fsosRepo.GetByPath(root, path, context.CancellationToken),
+                => await _fsosRepo.GetByPath(dir, path, context.CancellationToken),
             _
                 => throw new InvalidEnumArgumentException(nameof(pathData))
         });
-        return await ToGetFsoResponse(fso);
+        // this is in fact not null because `root.Fso` as `Directory` is not null
+        return await ToGetFsoResponse(fso, root!.OwnershipStatus);
     }
 
     /// <summary>
     /// finds the deepest `fso` that is a parent of <paramref name="id"/>,
     /// such that the <paramref name="user"/> has access to it through `fsoAccess`
     /// </summary>
-    private async Task<Directory?> FindDeepestSharedFso(FsoId id, User user, CancellationToken cancellationToken) {
+    private async Task<FsoWithOwnership?> FindDeepestSharedFso(FsoId id, User user, CancellationToken cancellationToken) {
         if (await _fsosRepo.GetRootDirectory(id, cancellationToken)
             is Directory root && root.Id == user.Root.Id)
-            return root;
-        if (await _fsosRepo.GetDeepestSharedFso(id, user.Id, cancellationToken) is not Directory dir)
-            return null;
-        return dir;
+            return root.Owned();
+        var fso = await _fsosRepo.GetDeepestSharedFso(id, user.Id, cancellationToken);
+        return fso?.Shared();
     }
 
     public override async Task<EmptyMessage> AdminAddSshHostKey(AdminAddSshHostKeyRequest request, ServerCallContext context) {
@@ -519,7 +534,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
     public override async Task<Accesses> GetAccessesForFso(Grpc.Guid request, ServerCallContext context) {
         var user = await GetUserOrThrowAsync(context);
         var fso = await GetFsoOrFailAsync(request, user, context.CancellationToken);
-        var accesses = await _fsoAccessesRepo.GetForFsoId(fso.Id);
+        var accesses = await _fsoAccessesRepo.GetForFsoId(fso.Fso.Id);
 
         return accesses.ToGrpc();
     }

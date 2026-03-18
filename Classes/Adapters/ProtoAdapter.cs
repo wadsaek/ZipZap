@@ -87,29 +87,48 @@ public static class ProtoAdapter {
             _ => throw new InvalidEnumArgumentException(nameof(fso))
         };
     }
+    extension(Grpc.OwnershipStatus ownershipStatus) {
+        public OwnershipStatus ToStatus() => ownershipStatus switch {
+            Grpc.OwnershipStatus.AdminAccessible => OwnershipStatus.AdminAccessible,
+            Grpc.OwnershipStatus.Owned => OwnershipStatus.Owned,
+            Grpc.OwnershipStatus.Shared => OwnershipStatus.Shared,
+            _ => (OwnershipStatus)ownershipStatus
+        };
+    }
+    extension(OwnershipStatus ownershipStatus) {
+        public Grpc.OwnershipStatus ToGrpcStatus() => ownershipStatus switch {
+            OwnershipStatus.AdminAccessible => Grpc.OwnershipStatus.AdminAccessible,
+            OwnershipStatus.Owned => Grpc.OwnershipStatus.Owned,
+            OwnershipStatus.Shared => Grpc.OwnershipStatus.Shared,
+            _ => (Grpc.OwnershipStatus)ownershipStatus
+        };
+    }
     extension(GetFsoResponse response) {
-        public static async Task<GetFsoResponse> FromFileAsync(File file, Stream stream) {
+        public static async Task<GetFsoResponse> FromFileAsync(File file, Stream stream, OwnershipStatus ownershipStatus) {
             var (shared, fileData) = await file.ToRpcResponse(stream);
             return new() {
                 FsoId = file.Id.Value.ToGrpcGuid(),
                 Data = shared,
-                FileData = fileData
+                FileData = fileData,
+                Status = ownershipStatus.ToGrpcStatus()
             };
         }
-        public static GetFsoResponse FromDirectory(Directory dir) {
+        public static GetFsoResponse FromDirectory(Directory dir, OwnershipStatus ownershipStatus) {
             var (shared, dirData) = dir.ToRpcResponse();
             return new() {
                 FsoId = dir.Id.Value.ToGrpcGuid(),
                 Data = shared,
-                DirectoryData = dirData
+                DirectoryData = dirData,
+                Status = ownershipStatus.ToGrpcStatus()
             };
         }
-        public static GetFsoResponse FromSymlink(Symlink symlink) {
+        public static GetFsoResponse FromSymlink(Symlink symlink, OwnershipStatus ownershipStatus) {
             var (shared, linkData) = symlink.ToRpcResponse();
             return new() {
                 FsoId = symlink.Id.Value.ToGrpcGuid(),
                 Data = shared,
-                SymlinkData = linkData
+                SymlinkData = linkData,
+                Status = ownershipStatus.ToGrpcStatus()
             };
         }
         public Fso ToFso() {

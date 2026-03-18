@@ -39,6 +39,12 @@ message GetFsoResponse{
     DirectoryData directoryData = 3;
     SymlinkData symlinkData = 4;
   }
+  OwnershipStatus status = 6;
+}
+enum OwnershipStatus{
+  OWNED = 0;
+  ADMIN_ACCESSIBLE = 1;
+  SHARED = 2;
 }
 
 message GetRootRequest {

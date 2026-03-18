@@ -67,3 +67,7 @@ public sealed record Directory(FsoId Id, FsData Data) : Fso(Id, Data) {
 public record struct FsoId(Guid Value) : IStrongId {
     public readonly override string ToString() => Value.ToString();
 }
+public record FsoWithOwnership<T>(T Fso, OwnershipStatus OwnershipStatus) where T : Fso {
+    public static implicit operator T(FsoWithOwnership<T> obj) => obj.Fso;
+}
+public record FsoWithOwnership(Fso Fso, OwnershipStatus OwnershipStatus) : FsoWithOwnership<Fso>(Fso, OwnershipStatus);
