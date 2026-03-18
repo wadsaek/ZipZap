@@ -15,6 +15,7 @@
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
@@ -61,6 +62,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
     private readonly ISshService _sshService;
     private readonly IUserRepository _usersRepo;
     private readonly ITrustedAuthorityKeysRepository _trustedKeysRepo;
+    private readonly IFsoAccessesRepository _fsoAccessesRepo;
 
     public FilesStoringServiceImpl(
         ILogger<FilesStoringServiceImpl> logger,
@@ -70,7 +72,8 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         ISshService sshService,
         IUserSshKeysRepository userKeysRepo,
         ITrustedAuthorityKeysRepository trustedKeysRepo,
-        IUserRepository usersRepo
+        IUserRepository usersRepo,
+        IFsoAccessesRepository fsoAccessesRepo
     ) {
         _logger = logger;
         _io = io;
@@ -80,6 +83,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         _sshService = sshService;
         _trustedKeysRepo = trustedKeysRepo;
         _usersRepo = usersRepo;
+        _fsoAccessesRepo = fsoAccessesRepo;
     }
 
     /// <summary>throws `Unauthenticated` RpcException</summary>
@@ -477,13 +481,18 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
     }
     public override async Task<Grpc.User> AdminGetUser(UserSpecification request, ServerCallContext context) {
         await EnsureAdminOrThrow(context);
-        var requestedUser = request.IdentifierCase switch {
-            UserSpecification.IdentifierOneofCase.Id => await _usersRepo.GetByIdAsync(ParseGuidOrThrow(request.Id).ToUserId(), context.CancellationToken),
-            UserSpecification.IdentifierOneofCase.Username => await _usersRepo.GetUserByUsername(request.Username, context.CancellationToken),
-            UserSpecification.IdentifierOneofCase.None or _ => throw new InvalidEnumArgumentException()
-        };
+        User? requestedUser = await TryGetUserFromSpecification(request, context.CancellationToken);
         return ThrowNotFoundIfNull(requestedUser).ToGrpcUser();
     }
+
+    private async Task<User?> TryGetUserFromSpecification(UserSpecification request, CancellationToken cancellationToken) {
+        return request.IdentifierCase switch {
+            UserSpecification.IdentifierOneofCase.Id => await _usersRepo.GetByIdAsync(ParseGuidOrThrow(request.Id).ToUserId(), cancellationToken),
+            UserSpecification.IdentifierOneofCase.Username => await _usersRepo.GetUserByUsername(request.Username, cancellationToken),
+            UserSpecification.IdentifierOneofCase.None or _ => throw new InvalidEnumArgumentException()
+        };
+    }
+
     public override async Task<UserSshKeyList> AdminGetSshKeysForUser(Grpc.Guid request, ServerCallContext context) {
         var id = ParseGuidOrThrow(request).ToUserId();
         var user = await GetUserOrThrowAsync(context);
@@ -506,6 +515,61 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
             DbError.NothingChanged => throw new RpcException(new(StatusCode.NotFound, "This key was not found")),
             DbError.Unknown or _ => throw new RpcException(new(StatusCode.Internal, "failed to delete key"))
         });
+    }
+    public override async Task<Accesses> GetAccessesForFso(Grpc.Guid request, ServerCallContext context) {
+        var user = await GetUserOrThrowAsync(context);
+        var fso = await GetFsoOrFailAsync(request, user, context.CancellationToken);
+        var accesses = await _fsoAccessesRepo.GetForFsoId(fso.Id);
+
+        return accesses.ToGrpc();
+    }
+    public override async Task<Accesses> GetAccessible(EmptyMessage request, ServerCallContext context) {
+        var user = await GetUserOrThrowAsync(context);
+        var accesses = await _fsoAccessesRepo.GetForUserId(user.Id);
+
+        return accesses.ToGrpc();
+    }
+    public override async Task<Accesses> GetAccessesForUser(UserSpecification request, ServerCallContext context) {
+        var user = await GetUserOrThrowAsync(context);
+        var targetUser = await TryGetUserFromSpecification(request, context.CancellationToken);
+        targetUser = ThrowNotFoundIfNull(targetUser);
+        var accesses = await _fsoAccessesRepo.GetForUserId(targetUser.Id);
+        List<FsoAccess> belongingToCurrentUser = [];
+        foreach (var acc in accesses) {
+            var root = await _fsosRepo.GetRootDirectory(acc.Fso.Id);
+            if (root?.Id == user.Root.Id)
+                belongingToCurrentUser.Add(acc);
+        }
+
+        return accesses.ToGrpc();
+
+    }
+    public override async Task<Accesses> GetSharedBySelf(EmptyMessage request, ServerCallContext context) {
+        var user = await GetUserOrThrowAsync(context);
+        var accesses = await _fsoAccessesRepo.GetAllFull(context.CancellationToken);
+        List<FsoAccess> belongingToCurrentUser = [];
+        foreach (var acc in accesses) {
+            var root = await _fsosRepo.GetRootDirectory(acc.Fso.Id);
+            if (root?.Id == user.Root.Id)
+                belongingToCurrentUser.Add(acc);
+        }
+
+        return accesses.ToGrpc();
+    }
+
+    public override async Task<EmptyMessage> ShareFso(ShareFsoRequest request, ServerCallContext context) {
+        var user = await GetUserOrThrowAsync(context);
+        var targetUser = await TryGetUserFromSpecification(request.User, context.CancellationToken);
+        targetUser = ThrowNotFoundIfNull(targetUser);
+        var fso = await GetFsoOrFailAsync(request.FsoId, user, context.CancellationToken);
+        fso = ThrowNotFoundIfNull(fso);
+        var access = new FsoAccess(default, fso, targetUser);
+        _ = await _fsoAccessesRepo.CreateAsync(new(access), context.CancellationToken)
+        .UnwrapOrElseAsync(err => throw new RpcException(err switch {
+            DbError.UniqueViolation => new(StatusCode.AlreadyExists, "You have already shared this fso with this user"),
+            _ => new(StatusCode.Internal, "Something went wrong when creating an FsoAcess")
+        }));
+        return new();
     }
 }
 

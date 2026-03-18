@@ -26,14 +26,14 @@ using ZipZap.Persistence.Data;
 
 namespace ZipZap.Persistence.Repositories;
 
-internal class FsoAccessHelper : EntityHelper<FsoAccessInner, FsoAccess, Guid> {
+internal class FsoAccessHelper : EntityHelper<FsoAccessInner, FsoAccessRaw, Guid> {
     public override string IdCol => GetColumnName(nameof(FsoAccessInner.Id));
 
     public override FsoAccessInner CloneWithId(FsoAccessInner entity, Guid id) {
         return new(entity) { Id = id };
     }
 
-    public override async Task<FsoAccess> Parse(NpgsqlDataReader reader, CancellationToken token = default) {
+    public override async Task<FsoAccessRaw> Parse(NpgsqlDataReader reader, CancellationToken token = default) {
         var inner = new FsoAccessInner(
              await reader.GetFieldValueAsync<Guid>($"{TableName}_{GetColumnName(nameof(FsoAccessInner.Id))}", token),
              await reader.GetFieldValueAsync<Guid>($"{TableName}_{GetColumnName(nameof(FsoAccessInner.FsoId))}", token),

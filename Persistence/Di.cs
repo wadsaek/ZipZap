@@ -36,11 +36,13 @@ public static class Di {
             builder.Services.AddScoped<IUserRepository, UserReposirory>();
             builder.Services.AddScoped<IUserSshKeysRepository, UserSshKeysRepository>();
             builder.Services.AddScoped<ITrustedAuthorityKeysRepository, TrustedAuthorityKeysRepository>();
+            builder.Services.AddScoped<IFsoAccessesRepository, FsoAccessesRepository>();
 
             builder.Services.AddScoped<EntityHelper<FsoInner, Fso, Guid>, FsoHelper>();
             builder.Services.AddScoped<EntityHelper<UserInner, User, Guid>, UserHelper>();
             builder.Services.AddScoped<EntityHelper<UserSshKeyInner, UserSshKey, Guid>, UserSshKeysHelper>();
             builder.Services.AddScoped<EntityHelper<TrustedAuthorityKeyInner, TrustedAuthorityKey, Guid>, TrustedAuthorityKeysHelper>();
+            builder.Services.AddScoped<EntityHelper<FsoAccessInner, FsoAccessRaw, Guid>, FsoAccessHelper>();
             builder.Services.AddNpgsqlDataSource(connectionString, builder => {
                 builder.MapEnum<FsoType>();
                 builder.MapEnum<UserRole>();

@@ -16,15 +16,18 @@
 
 using System;
 
-using ZipZap.Classes.Helpers;
-
 namespace ZipZap.Classes;
 
 public sealed record FsoAccess(
     FsoAccessId Id,
-    MaybeEntity<Fso, FsoId> Fso,
-    MaybeEntity<User, UserId> User
+    Fso Fso,
+    User User
 ) : IEntity<FsoAccessId>;
 
 public record struct FsoAccessId(Guid Value) {
+}
+
+public record FsoAccessRaw(FsoAccessId Id, FsoId FsoId, UserId UserId) :IEntity<FsoAccessId>{
+    public FsoAccessRaw (FsoAccess full) :this(full.Id, full.Fso.Id, full.User.Id){}
+    public static FsoAccessRaw From(FsoAccess full) => new(full);
 }

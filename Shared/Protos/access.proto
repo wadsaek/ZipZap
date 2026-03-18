@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+option csharp_namespace = "ZipZap.Grpc";
+import "user.proto";
+import "guid.proto";
+import "fsotypes.proto";
+
+message ShareFsoRequest{
+  Guid fsoId = 1;
+  UserSpecification User = 2;
+}
+
+message Accesses {
+  repeated Access items = 1;
+}
+message Access{
+  Guid id = 1;
+  User user = 2;
+  FsoWithType fso = 3;
+}

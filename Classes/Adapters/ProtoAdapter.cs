@@ -306,4 +306,29 @@ public static class ProtoAdapter {
             _ => (DeleteOptions)opts
         };
     }
+    extension(IEnumerable<FsoAccess> accesses) {
+        public Accesses ToGrpc() {
+            var shares = new Accesses();
+            shares.Items.AddRange(accesses.Select(access => access.ToGrpc()));
+            return shares;
+        }
+    }
+    extension(FsoAccess access) {
+        public Access ToGrpc() {
+            return new() {
+                Id = access.Id.Value.ToGrpcGuid(),
+                User = access.User.ToGrpcUser(),
+                Fso = access.Fso.ToFsoWithType()
+            };
+        }
+    }
+    extension(Accesses accesses) {
+        public IEnumerable<FsoAccess> ToFsoAccesses() {
+            return accesses.Items.Select(a => new FsoAccess(
+                        new(a.Id.ToGuid()),
+                        a.Fso.ToFso(),
+                        a.User.ToUser()
+            ));
+        }
+    }
 }

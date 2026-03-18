@@ -22,8 +22,9 @@ using ZipZap.Persistence.Attributes;
 
 namespace ZipZap.Persistence.Data;
 
+
 [SqlTable("fso_access")]
-public class FsoAccessInner : ITranslatable<FsoAccess>, ISqlRetrievable, IInner<Guid> {
+internal class FsoAccessInner : ITranslatable<FsoAccessRaw>, ISqlRetrievable, IInner<Guid> {
     public FsoAccessInner(Guid id, Guid fsoId, Guid userId) {
         Id = id;
         FsoId = fsoId;
@@ -42,15 +43,18 @@ public class FsoAccessInner : ITranslatable<FsoAccess>, ISqlRetrievable, IInner<
     [SqlColumn("fso_id")]
     public Guid FsoId { get; init; }
 
-    public FsoAccess Into() => new(Id.ToFsoAccessId(), FsoId.ToFsoId(), UserId.ToUserId());
 
-    public static FsoAccessInner From(FsoAccess fso) => new(
+    public static FsoAccessInner From(FsoAccessRaw fso) => new(
         fso.Id.Value,
-        fso.User.Id.Value,
-        fso.Fso.Id.Value
+        fso.FsoId.Value,
+        fso.UserId.Value
     );
 
-    static ITranslatable<FsoAccess> ITranslatable<FsoAccess>.From(FsoAccess entity) {
+    static ITranslatable<FsoAccessRaw> ITranslatable<FsoAccessRaw>.From(FsoAccessRaw entity) {
         return From(entity);
+    }
+
+    public FsoAccessRaw Into() {
+        return new(Id.ToFsoAccessId(), FsoId.ToFsoId(), UserId.ToUserId());
     }
 }

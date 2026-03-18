@@ -22,7 +22,9 @@ using ZipZap.Classes;
 
 namespace ZipZap.Persistence.Repositories;
 
-public interface IFsoAccessesRepository : IRepository<FsoAccess, FsoAccessId> {
+public interface IFsoAccessesRepository : IRepository<FsoAccessRaw, FsoAccessId> {
+    public Task<FsoAccess?> GetByIdAsyncFull(FsoAccessId id, CancellationToken cancellationToken = default);
+    public Task<IEnumerable<FsoAccess>> GetAllFull(CancellationToken cancellationToken = default);
     public Task<IEnumerable<FsoAccess>> GetForFsoId(FsoId fsoId, CancellationToken cancellationToken = default);
     public Task<IEnumerable<FsoAccess>> GetForUserId(UserId userId, CancellationToken cancellationToken = default);
 }

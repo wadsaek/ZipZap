@@ -9,6 +9,7 @@ import "pathdata.proto";
 import "user.proto";
 import "ssh.proto";
 import "login.proto";
+import "access.proto";
 
 message SaveFsoRequest {
   FsoSharedData data = 1;
@@ -105,12 +106,18 @@ service FilesStoringService {
   rpc AddSshKey(SshKey) returns (Guid);
   rpc GetSshKeys(EmptyMessage) returns (UserSshKeyList);
 
+  rpc ShareFso(ShareFsoRequest) returns (EmptyMessage);
+  rpc GetAccessesForFso(Guid) returns (Accesses);
+  rpc GetAccessesForUser(UserSpecification) returns (Accesses);
+  rpc GetSharedBySelf(EmptyMessage) returns (Accesses);
+  rpc GetAccessible(EmptyMessage) returns (Accesses);
+
   rpc AdminGetUserList(EmptyMessage) returns (UserList);
   rpc AdminGetUser(UserSpecification) returns (User);
   rpc AdminRemoveUser(Guid) returns (EmptyMessage);
   rpc AdminGetSshKeysForUser(Guid) returns (UserSshKeyList);
 
-  rpc AdminAddSshHostKey(AdminAddSshHostKeyRequest) returns (EmptyMessage);
   rpc AdminGetSshHostKeys(EmptyMessage) returns (HostKeys);
+  rpc AdminAddSshHostKey(AdminAddSshHostKeyRequest) returns (EmptyMessage);
   rpc AdminRemoveSshHostKey(Guid) returns (EmptyMessage);
 }
