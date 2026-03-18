@@ -55,9 +55,7 @@ internal class SftpSubsystem : ISubsystem {
     }
 
     private async Task? StartWorking(CancellationToken cancellationToken) {
-        while (await _reader.ReadNextPacket(cancellationToken) is {
-
-        } packet)
+        while (await _reader.ReadNextPacket(cancellationToken) is var packet and not null)
             try {
                 await HandlePacket(packet, cancellationToken);
             } catch (OperationCanceledException) {

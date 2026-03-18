@@ -4,7 +4,7 @@
 @{
     ViewData["Title"] = "User Data";
 }
-@if (Model.HandlerResult is { } data)
+@if (Model.HandlerResult is var data and not null)
 {
     <h1>@data.User.Username</h1>
     <details class="border border-1 rounded p-2 bg-white col-5 height-8">

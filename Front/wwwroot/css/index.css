@@ -1,16 +1,17 @@
 :root {
-	--eminence: #55286fff;
-	--poppy: #da2c38ff;
-	--dark-spring-green: #226f54ff;
-	--blue-munsell: #62929eff;
-	--baby-powder: #fffcf9ff;
+	--eminence: #55286f;
+	--poppy: #da2c38;
+	--dark-spring-green: #226f54;
+	--blue-munsell: #62929e;
+	--baby-powder: #fffcf9;
 }
 
 
 body {
 	background-color: var(--baby-powder);
 }
-html{
+
+html {
 	position: relative;
 	min-height: 100%;
 }
@@ -18,4 +19,53 @@ html{
 .navbar {
 	background-color: var(--eminence);
 	height: 5.5em;
+}
+
+.text-primary {
+	color: var(--eminence)
+}
+
+.btn-primary-mine {
+	background-color: var(--eminence);
+	border-color: var(--eminence);
+	color: #fff;
+
+	&:hover {
+		color: #fff;
+		--darkened: rgb(from var(--eminence) calc(r * 0.8) calc(g * 0.8) calc(b * 0.8));
+		background-color: var(--darkened);
+		border-color: var(--darkened);
+	}
+
+	&:active {
+		background-color: var(--eminence) !important;
+		border-color: var(--eminence) !important;
+		color: #fff !important;
+	}
+}
+
+:root {
+	interpolate-size: allow-keywords;
+}
+
+details {
+	summary {
+		display: block;
+	}
+
+	&::details-content {
+		height: 0;
+		overflow: hidden;
+		@supports(interpolate-size: allow-keywords) {
+			transition: all 0.5s;
+			transition-behavior: allow-discrete;
+			interpolate-size: allow-keywords;
+		}
+	}
+	&:open{
+		&::details-content{
+			height: auto;
+		}
+	}
+
 }
