@@ -243,4 +243,15 @@ BEGIN
     END IF;
 END $MIGRATION$;
 
+DO
+$MIGRATION$
+BEGIN
+    IF NOT EXISTS (SELECT * FROM migrations WHERE migration_name = 'make_username_unique') THEN
+
+        INSERT INTO migrations VALUES ('make_username_unique');
+
+        ALTER TABLE users
+            ADD CONSTRAINT username_is_unique UNIQUE (username);
+    END IF;
+END $MIGRATION$;
 COMMIT;
