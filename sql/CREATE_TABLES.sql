@@ -3,6 +3,8 @@ CREATE TABLE IF NOT EXISTS migrations (
     migration_name character varying(64) NOT NULL PRIMARY KEY
 );
 
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 START TRANSACTION;
 
 DO $MIGRATION$
