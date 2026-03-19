@@ -575,6 +575,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
     public override async Task<EmptyMessage> ShareFso(ShareFsoRequest request, ServerCallContext context) {
         var user = await GetUserOrThrowAsync(context);
         var targetUser = await TryGetUserFromSpecification(request.User, context.CancellationToken);
+        if (user == targetUser) throw new RpcException(new(StatusCode.InvalidArgument, "Can't share fsos with yourself"));
         targetUser = ThrowNotFoundIfNull(targetUser);
         var fso = await GetFsoOrFailAsync(request.FsoId, user, context.CancellationToken);
         fso = ThrowNotFoundIfNull(fso);
@@ -595,9 +596,27 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         if (fso.OwnershipStatus is OwnershipStatus.Owned) return user.ToGrpcUser();
         var root = await _fsosRepo.GetRootDirectory(fso.Fso.Id, context.CancellationToken);
         root = ThrowNotFoundIfNull(root);
-        var owner = await _usersRepo.GetUserByRootId(root.Id);
+        var owner = await _usersRepo.GetUserByRootId(root.Id, context.CancellationToken);
         owner = ThrowNotFoundIfNull(owner);
         return owner.ToGrpcUser();
+    }
+    public override async Task<EmptyMessage> Unshare(Grpc.Guid request, ServerCallContext context) {
+        var accessId = ParseGuidOrThrow(request).ToFsoAccessId();
+        var user = await GetUserOrThrowAsync(context);
+        var access = await _fsoAccessesRepo.GetByIdAsyncFull(accessId, context.CancellationToken);
+        access = ThrowNotFoundIfNull(access);
+        async Task<bool> IsAuthorOfSharedFso() {
+            var maybeFso = await FindDeepestSharedFso(access.Fso.Id, user, context.CancellationToken);
+            return maybeFso is not null;
+        }
+        var canDelete = access.User.Id == user.Id
+                          || Predicates.IsAdmin(user)
+                          || await IsAuthorOfSharedFso();
+        if (!canDelete)
+            ThrowNotFoundIfNull(null as object);
+
+        await _fsoAccessesRepo.DeleteAsync(access.Id);
+        return new();
     }
 }
 

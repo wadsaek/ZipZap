@@ -118,6 +118,7 @@ service FilesStoringService {
   rpc GetSharedBySelf(EmptyMessage) returns (Accesses);
   rpc GetAccessible(EmptyMessage) returns (Accesses);
   rpc GetFsoOwner(Guid) returns (User);
+  rpc Unshare(Guid) returns (EmptyMessage);
 
   rpc AdminGetUserList(EmptyMessage) returns (UserList);
   rpc AdminGetUser(UserSpecification) returns (User);
