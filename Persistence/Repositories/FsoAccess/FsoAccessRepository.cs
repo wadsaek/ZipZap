@@ -105,7 +105,7 @@ internal class FsoAccessesRepository : IFsoAccessesRepository {
 
     public async Task<FsoAccess?> GetByIdAsyncFull(FsoAccessId id, CancellationToken token = default) {
         var accesses = await GetByParameter(
-            $"{_userHelper.TableName}.{_userHelper.IdCol}",
+            $"{_fsoAccessHelper.TableName}.{_fsoAccessHelper.IdCol}",
             new NpgsqlParameter<Guid> { Value = id.Value },
             token
         );
