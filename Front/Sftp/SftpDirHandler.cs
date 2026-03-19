@@ -45,6 +45,7 @@ class SftpDirHandler {
         var parentDirname = pathsplit[..^1].ConcatenateWith("/");
         var filename = pathsplit[^1];
         return _backend.GetFsoByPathAsync(new PathDataWithPath(parentDirname), cancellationToken)
+        .SelectAsync(f => f.Fso)
         .WithUser(_backend, cancellationToken)
         .SelectAsync(param => {
             var (parent, user) = param;
@@ -63,6 +64,7 @@ class SftpDirHandler {
 
     public Task<Status> RmDir(string path, CancellationToken cancellationToken) {
         return _backend.GetFsoByPathAsync(new PathDataWithPath(path), cancellationToken)
+        .SelectAsync(f => f.Fso)
         .SelectManyAsync(fso => _backend.DeleteFso(fso.Id, DeleteOptions.OnlyEmptyDirectories))
         .SelectAsync(_ => new Status(SftpError.Ok, "Done!"))
         .UnwrapOrElseAsync(err => err.ToStatus());
@@ -70,6 +72,7 @@ class SftpDirHandler {
 
     public async Task<Result<Handle, Status>> OpenDir(string path, CancellationToken cancellationToken) {
         var fsoResult = await _backend.GetFsoByPathAsync(new PathDataWithPath(path), cancellationToken)
+            .SelectAsync(f => f.Fso)
             .FollowSymlinks(_backend, path, cancellationToken)
             .SelectErrAsync(err => err.ToStatus());
         return fsoResult
@@ -85,6 +88,7 @@ class SftpDirHandler {
         var fsoResult = await _backend.GetFsoByIdAsync(dirData.Id, cancellationToken)
         .SelectErrAsync(err => err.ToStatus());
         return fsoResult
+        .Select(f => f.Fso)
         .FilterFileType<Directory>()
         .Select(dir => dir.MaybeChildren.Select(d => d.ToName(true)).ToArray())
         .Select(dir => {

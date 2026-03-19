@@ -33,9 +33,9 @@ public interface IBackend {
     public Task<Result<Directory, ServiceError>> MakeDirectory(Directory dir, string path, CancellationToken cancellationToken = default);
     public Task<Result<Symlink, ServiceError>> MakeLink(Symlink link, CancellationToken cancellationToken = default);
     public Task<Result<Symlink, ServiceError>> MakeLink(Symlink link, string path, CancellationToken cancellationToken = default);
-    public Task<Result<Fso, ServiceError>> GetFsoByIdAsync(FsoId fsoId, CancellationToken cancellationToken = default);
-    public Task<Result<Fso, ServiceError>> GetFsoByPathAsync(PathData pathData, CancellationToken cancellationToken = default);
-    public Task<Result<Fso, ServiceError>> GetFsoWithRootAsync(PathData pathData, FsoId anchor, CancellationToken cancellationToken = default);
+    public Task<Result<FsoWithOwnership, ServiceError>> GetFsoByIdAsync(FsoId fsoId, CancellationToken cancellationToken = default);
+    public Task<Result<FsoWithOwnership, ServiceError>> GetFsoByPathAsync(PathData pathData, CancellationToken cancellationToken = default);
+    public Task<Result<FsoWithOwnership, ServiceError>> GetFsoWithRootAsync(PathData pathData, FsoId anchor, CancellationToken cancellationToken = default);
     public Task<Result<Directory, ServiceError>> GetRoot(CancellationToken cancellationToken = default);
     public Task<Result<Unit, ServiceError>> DeleteFso(FsoId fsoId, DeleteOptions options, CancellationToken token = default);
     // NOTE: notice the lack of CancellationToken :))

@@ -21,8 +21,6 @@ using System.Threading.Tasks;
 
 using Google.Protobuf;
 
-using Microsoft.Extensions.Logging;
-
 using ZipZap.Classes;
 using ZipZap.Front.Services;
 using ZipZap.LangExt.Helpers;
@@ -46,6 +44,7 @@ class SftpFileHandler {
     // well this is a clusterdump ain't it now
     public Task<Result<Handle, Status>> Open(string pathName, OpenFlags flags, FileAttributes attributes, CancellationToken cancellationToken) {
         return _backend.GetFsoByPathAsync(new PathDataWithPath(pathName), cancellationToken)
+        .SelectAsync(f => f.Fso)
         .CheckFlags(_backend , pathName, flags, attributes, cancellationToken)
         .FollowSymlinks(_backend, pathName, cancellationToken)
         .SelectAsync(fso => _handleStore.CreateHandle(new OpenFileData.FileData(
@@ -67,7 +66,7 @@ class SftpFileHandler {
         var result1 = await _backend.GetFsoByIdAsync(fileData.Id, cancellationToken);
         var resutl2 = result1
             .Select(fso =>
-                    fso is File file
+                    fso.Fso is File file
                     ? file.Content?.Skip((int)offset).Take((int)length).ToArray() ?? []
                     : []);
         var bytes = resutl2
@@ -88,6 +87,7 @@ class SftpFileHandler {
         if ((long)offset + data.LongLength > FileSize.FromMegaBytes(16).Bytes)
             return new(SftpError.Failure, "File too long");
         return await _backend.GetFsoByIdAsync(fileData.Id, cancellationToken)
+            .SelectAsync(f => f.Fso)
             .SelectErrAsync(err => err.ToStatus())
             .FilterFileTypeAsync<File>()
             .SelectAsync(file => file.Content)
@@ -111,6 +111,7 @@ class SftpFileHandler {
 
     public Task<Status> Remove(string path, CancellationToken cancellationToken) {
         return _backend.GetFsoByPathAsync(new PathDataWithPath(path), cancellationToken)
+            .SelectAsync(f => f.Fso)
             .SelectManyAsync(fso => _backend.DeleteFso(fso.Id, DeleteOptions.AllExceptDirectories, cancellationToken))
             .SelectAsync(_ => new Status(SftpError.Ok, "Done!"))
             .UnwrapOrElseAsync(err => err.ToStatus());

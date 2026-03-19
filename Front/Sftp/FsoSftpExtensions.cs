@@ -32,7 +32,6 @@ using static ZipZap.LangExt.Helpers.ResultConstructor;
 using System.ComponentModel;
 
 using Google.Protobuf;
-using Microsoft.Extensions.Logging;
 
 
 namespace ZipZap.Front;
@@ -104,7 +103,7 @@ static class FsoSftpExtensions {
                 result = await result.SelectManyAsync(fso => {
                     var parts = pathName.SplitPath().SkipLast(1);
                     var targetPath = PathHelper.NormalizePath(target, parts).ConcatenateWith("/");
-                    return backend.GetFsoByPathAsync(new PathDataWithPath(targetPath), cancellationToken);
+                    return backend.GetFsoByPathAsync(new PathDataWithPath(targetPath), cancellationToken).SelectAsync(f => f.Fso);
                 });
             }
             return result;
@@ -127,7 +126,7 @@ static class FsoSftpExtensions {
                 return backend.GetSelf(cancellationToken)
                 .SelectManyAsync(user =>
                         backend.GetFsoByPathAsync(new PathDataWithPath(dirname), cancellationToken)
-                        .SelectAsync(fso => (fso.Id, user))
+                        .SelectAsync(fso => (fso.Fso.Id, user))
                 )
                 .SelectManyAsync(param => {
                     var (parentId, user) = param;

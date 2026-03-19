@@ -131,18 +131,18 @@ public static class ProtoAdapter {
                 Status = ownershipStatus.ToGrpcStatus()
             };
         }
-        public Fso ToFso() {
+        public FsoWithOwnership ToFso() {
             var id = new FsoId(response.FsoId.ToGuid());
             var data = response.Data.ToFsData();
-            return response.SpecificDataCase switch {
-                DataCase.FileData => new File(id, data) { Content = response.FileData.Content.ToByteArray() },
+            var fso = response.SpecificDataCase switch {
+                DataCase.FileData => new File(id, data) { Content = response.FileData.Content.ToByteArray() } as Fso,
                 DataCase.SymlinkData => new Symlink(id, data, response.SymlinkData.Target),
                 DataCase.DirectoryData => new Directory(id, data) {
                     MaybeChildren = response.DirectoryData.ToFsos()
                 },
                 DataCase.None or _ => throw new InvalidEnumArgumentException(nameof(response.SpecificDataCase))
-
             };
+            return new(fso, response.Status.ToStatus());
         }
     }
     extension(GetRootResponse response) {

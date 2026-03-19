@@ -11,14 +11,15 @@
     {
         <div class="d-flex justify-content-between">
             @{
-                var item = Model.Result!.Item;
-                ViewData["Title"] = item.ToString(Fso.ShortListingFormat);
+                var item = Model.Result.Item;
+                var fso = item.Fso;
                 var accesses = Model.Result.Accesses;
+                ViewData["Title"] = fso.ToString(Fso.ShortListingFormat);
             }
             <div>
-                <h1> @item.ToString(Fso.ShortListingFormat) </h1>
+                <h1> @fso.ToString(Fso.ShortListingFormat) </h1>
                 <div class="d-flex justify-content-between">
-                    <h4 class="text-secondary">@item.Data.Permissions @item.Data.Ownership </h4>
+                    <h4 class="text-secondary">@fso.Data.Permissions @fso.Data.Ownership </h4>
                 </div>
                     <details class="border border-1 rounded p-2 bg-white mb-3 unsized">
                         <summary class="lead">See access info</summary>
@@ -34,18 +35,23 @@
             </div>
             <div class="d-flex flex-column align-items-end justify-content-start">
                 <a class="btn btn-primary-mine btn-small mb-2 w-100" href="@Model.Result!.ParentUrl">Up</a>
-                <a class="btn btn-primary-mine btn-small mb-2 w-100" asp-page="/Files/Edit" asp-route-id="@Model.Result.Item.Id.Value">
-                    Edit this @FileViewModel.FsoTypeName(item)
-                </a>
+                @if(item.OwnershipStatus is not OwnershipStatus.Shared){
+                    <a class="btn btn-primary-mine btn-small mb-2 w-100" asp-page="/Files/Edit" asp-route-id="@fso.Id.Value">
+                        Edit this @FileViewModel.FsoTypeName(fso)
+                    </a>
+                    <a class="btn btn-primary-mine btn-small mb-2 w-100" asp-page="/Files/Move" asp-route-id="@fso.Id.Value">
+                        Move this @FileViewModel.FsoTypeName(fso)
+                    </a>
+                }
             </div>
         </div>
-        @if (Model.Result.Item is Directory dir)
+        @if (fso is Directory dir)
         {
 
             <div class="d-flex flex-column justify-content-between">
                 <h2>Items</h2>
                 <div class="d-flex flex-column col-2">
-                    <a class="btn btn-primary-mine btn-small mb-2 w-75" asp-page="/Files/Create" asp-route-id="@Model.Result.Item.Id.Value">
+                    <a class="btn btn-primary-mine btn-small mb-2 w-75" asp-page="/Files/Create" asp-route-id="@fso.Id.Value">
                         Create a new item
                     </a>
                 </div>
@@ -79,7 +85,7 @@
             }
             </ul>
         }
-        else if (Model.Result.Item is File)
+        else if (fso is File)
         {
             @if(Model.Result.Content is GetHandler.Content.TextContent(var text)){
                 <details class="border border-1 rounded p-2 bg-white mb-3 unsized">

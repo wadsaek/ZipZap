@@ -60,6 +60,7 @@ public class FsoService : IFsoService {
         var newDirname = pathsplit[..^1].ConcatenateWith("/");
         var newFileName = pathsplit[^1];
         return backend.GetFsoByPathAsync(new PathDataWithPath(newDirname), cancellationToken)
+        .SelectAsync(f => f.Fso)
         .SelectAsync(param => {
             var data = id.Data;
             data = data with {

@@ -42,6 +42,7 @@ class SftpStatHandler {
 
     public Task<Result<FileAttributes, Status>> Stat(string path, CancellationToken cancellationToken) {
         return _backend.GetFsoByPathAsync(new PathDataWithPath(path), cancellationToken)
+        .SelectAsync(f => f.Fso)
         .FollowSymlinks(_backend, path, cancellationToken)
         .SelectAsync(fso => fso.ToAttrs(false))
         .SelectErrAsync(err => err.ToStatus());
@@ -49,7 +50,7 @@ class SftpStatHandler {
 
     public Task<Result<FileAttributes, Status>> LStat(string path, CancellationToken cancellationToken) {
         return _backend.GetFsoByPathAsync(new PathDataWithPath(path), cancellationToken)
-        .SelectAsync(fso => fso.ToAttrs(false))
+        .SelectAsync(fso => fso.Fso.ToAttrs(false))
         .SelectErrAsync(err => err.ToStatus());
     }
 
@@ -57,16 +58,20 @@ class SftpStatHandler {
         if (!_handleStore.TryGetFileData(handle, out var data))
             return Task.FromResult(Err<FileAttributes, Status>(SftpHandler.HandleDoesntExist));
         return _backend.GetFsoByIdAsync(data.Id, cancellationToken)
-            .SelectAsync(data => data.ToAttrs(false))
+            .SelectAsync(data => data.Fso.ToAttrs(false))
             .SelectErrAsync(err => err.ToStatus());
     }
 
     public async Task<Status> SetStat(string path, FileAttributes fileAttributes, CancellationToken cancellationToken) {
         var fso = await _backend.GetFsoByPathAsync(new PathDataWithPath(path), cancellationToken)
+            .SelectAsync(f => f.Fso)
             .FollowSymlinks(_backend, path, cancellationToken);
 
         return await ChangePermissions(fso, fileAttributes, cancellationToken);
 
+    }
+    private Task<Status> ChangePermissions(Result<FsoWithOwnership, ServiceError> result, FileAttributes fileAttributes, CancellationToken cancellationToken) {
+        return ChangePermissions(result.Select(f => f.Fso), fileAttributes, cancellationToken);
     }
     private Task<Status> ChangePermissions(Result<Fso, ServiceError> result, FileAttributes fileAttributes, CancellationToken cancellationToken) {
         return result

@@ -65,7 +65,7 @@ public class GetHandler : IGetHandler {
 
     }
 
-    public record GetHandlerResult(Fso Item, Content? Content, string ParentUrl, FileSpecification Specification, string FullPath, List<FsoAccess> Accesses);
+    public record GetHandlerResult(FsoWithOwnership Item, Content? Content, string ParentUrl, FileSpecification Specification, string FullPath, List<FsoAccess> Accesses);
 
     public async Task<Result<GetHandlerResult, GetHandlerError>> OnGetAsync(FileSpecification specification, HttpRequest request, CancellationToken cancellationToken = default) {
         if (_logger.IsEnabled(LogLevel.Information))
@@ -82,14 +82,14 @@ public class GetHandler : IGetHandler {
         var item = (status as FsoStatus.Success)!.Fso;
         var parentUrl = GetRedirectUrl(specification, item);
         var fullPathResult = await _service.GetFullPath(
-                item.Id,
+                item.Fso.Id,
                 backend,
                 cancellationToken);
         var fullPath = fullPathResult.UnwrapOr([]).ConcatenateWith("/");
 
         var contentResult = await TryGetContentAsync(item, specification, backend, cancellationToken);
         return await contentResult.SelectManyAsync(content =>
-            backend.GetAccessesForFso(item.Id, cancellationToken)
+            backend.GetAccessesForFso(item.Fso.Id, cancellationToken)
             .SelectAsync(accesses => (accesses, content))
             .SelectErrAsync(err => new GetHandlerError.ShouldRedirect(GetRedirectUrl(specification, null)) as GetHandlerError)
         )
@@ -139,7 +139,7 @@ public class GetHandler : IGetHandler {
             backend,
             cancellationToken);
         return result switch {
-            FsoStatus.Success(var fso) => $"/Files/View/{fso.Id}?type=id",
+            FsoStatus.Success(var fso) => $"/Files/View/{fso.Fso.Id}?type=id",
             _ => "."
         };
     }

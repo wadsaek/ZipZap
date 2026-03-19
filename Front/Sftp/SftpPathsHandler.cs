@@ -39,6 +39,7 @@ class SftpPathsHandler {
 
     public async Task<Result<FileName, Status>> Readlink(string path, CancellationToken cancellationToken) {
         return await _backend.GetFsoByPathAsync(new PathDataWithPath(path), cancellationToken)
+        .SelectAsync(f => f.Fso)
         .SelectErrAsync(err => err.ToStatus())
         .FilterFileTypeAsync<Symlink>()
         .SelectAsync(link => link.Target)
@@ -51,7 +52,7 @@ class SftpPathsHandler {
         var linkname = linkparts[^1];
 
         return _backend.GetFsoByPathAsync(new PathDataWithPath(linkdir), cancellationToken)
-        .SelectAsync(fso => fso.Id)
+        .SelectAsync(fso => fso.Fso.Id)
         .WithUser(_backend, cancellationToken)
         .SelectAsync(param => {
             var (parentId, User) = param;

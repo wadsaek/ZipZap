@@ -22,14 +22,14 @@ using ZipZap.LangExt.Helpers;
 namespace ZipZap.Front.Services;
 
 public abstract record FsoStatus {
-    public sealed record Success(Fso Fso) : FsoStatus;
+    public sealed record Success(FsoWithOwnership Fso) : FsoStatus;
     public sealed record ParseError : FsoStatus;
     public sealed record StatusServiceError(ServiceError Error) : FsoStatus;
 
-    public static FsoStatus FromServiceResult(Result<Fso, ServiceError> result)
+    public static FsoStatus FromServiceResult(Result<FsoWithOwnership, ServiceError> result)
         => result switch {
-            Err<Fso, ServiceError>(var err) => new StatusServiceError(err),
-            Ok<Fso, ServiceError>(var fso) => new Success(fso),
+            Err<FsoWithOwnership, ServiceError>(var err) => new StatusServiceError(err),
+            Ok<FsoWithOwnership, ServiceError>(var fso) => new Success(fso),
             _ => throw new InvalidEnumArgumentException()
 
         };

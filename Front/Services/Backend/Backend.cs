@@ -74,14 +74,14 @@ public class Backend : IBackend {
         }
     }
 
-    public Task<Result<Fso, ServiceError>> GetFsoByIdAsync(FsoId fsoId, CancellationToken cancellationToken = default)
+    public Task<Result<FsoWithOwnership, ServiceError>> GetFsoByIdAsync(FsoId fsoId, CancellationToken cancellationToken = default)
         => Wrap(async () => (await _filesStoringService.GetFsoAsync(
                         new() { FsoId = fsoId.Value.ToGrpcGuid() },
                         _configuration.ToMetadata(),
                         cancellationToken: cancellationToken)
                     ).ToFso());
 
-    public Task<Result<Fso, ServiceError>> GetFsoByPathAsync(PathData pathData, CancellationToken cancellationToken = default)
+    public Task<Result<FsoWithOwnership, ServiceError>> GetFsoByPathAsync(PathData pathData, CancellationToken cancellationToken = default)
         => Wrap(async () => (await _filesStoringService.GetFsoAsync(
                         new() { Path = pathData.ToRpcPathData() },
                         _configuration.ToMetadata(),
@@ -265,7 +265,7 @@ public class Backend : IBackend {
         return result.Select(res => res.Path.AsEnumerable());
     }
 
-    public async Task<Result<Fso, ServiceError>> GetFsoWithRootAsync(PathData pathData, FsoId anchor, CancellationToken cancellationToken = default) {
+    public async Task<Result<FsoWithOwnership, ServiceError>> GetFsoWithRootAsync(PathData pathData, FsoId anchor, CancellationToken cancellationToken = default) {
         var result = await Wrap(async () =>
             await _filesStoringService.GetFsoWithRootAsync(new() {
                 Path = pathData.ToRpcPathData(),
