@@ -1,0 +1,35 @@
+@page "/Files/Edit/{*path}"
+@using ZipZap.Classes
+@model ZipZap.Front.Pages.Files.Edit
+
+@{
+    ViewData["Title"] = "Edit an Fso";
+}
+@if (Model.Result?.Item.Fso is Fso fso){
+<form method="post">
+        <h1>
+            @fso.ToString(Fso.ShortListingFormat)
+        </h1>
+        <div class="mb-1">
+            <label asp-for="Name" class="form-label"></label>
+            <input class="form-control" value="@fso.Data.Name" asp-for="Name" >
+        </div>
+        <div class="d-flex flex-row justify-content-between">
+            <div class="mb-1 w-100 pe-2">
+                <label asp-for="UId" class="form-label"></label>
+                <input class="form-control" value="@fso.Data.Ownership.FsoOwner" asp-for="UId" >
+            </div>
+            <div class="mb-1 w-100 pe-2">
+                <label asp-for="GId" class="form-label"></label>
+                <input class="form-control" value="@fso.Data.Ownership.FsoGroup" asp-for="GId" />
+            </div>
+        </div>
+        <div class="mb-1">
+            <label asp-for="Perms" class="form-label"></label>
+            <input class="form-control" value="@fso.Data.Permissions" asp-for="Perms" />
+        </div>
+        @if(!string.IsNullOrWhiteSpace(Model.Error)){
+            <div class=" mb-2 text-danger" style="width: fit-content;">@Model.Error</div>
+        }
+        <input type="submit" class="btn btn-primary-mine" value="Submit changes">
+</form>}
