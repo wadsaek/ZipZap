@@ -55,5 +55,22 @@ public class FsoService : IFsoService {
     public async Task<FsoStatus> GetFsoWithRoot(PathData path, FsoId anchor, IBackend backend, CancellationToken cancellationToken) {
         return FsoStatus.FromServiceResult(await backend.GetFsoWithRootAsync(path, anchor, cancellationToken));
     }
+    public Task<Result<Unit, ServiceError>> Move(Fso id, string newPath, IBackend backend, CancellationToken cancellationToken) {
+        var pathsplit = newPath.SplitPath().ToArray();
+        var newDirname = pathsplit[..^1].ConcatenateWith("/");
+        var newFileName = pathsplit[^1];
+        return backend.GetFsoByPathAsync(new PathDataWithPath(newDirname), cancellationToken)
+        .SelectAsync(param => {
+            var data = id.Data;
+            data = data with {
+                Name = newFileName,
+                VirtualLocation = param.Id
+            };
+            id = id with { Data = data };
+            return id;
+        })
+        .SelectManyAsync(updated => backend.UpdateFso(updated, cancellationToken));
+
+    }
 }
 

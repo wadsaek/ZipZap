@@ -34,11 +34,13 @@ internal class SftpLoginHandler : ISftpLoginHandler {
     private readonly IBackendFactory _backendFactory;
     private readonly ILoginService _login;
     private readonly ILogger<SftpHandler> _logger;
+    private readonly IFsoService _fsoService;
 
-    public SftpLoginHandler(IBackendFactory backendFactory, ILoginService login, ILogger<SftpHandler> logger) {
+    public SftpLoginHandler(IBackendFactory backendFactory, ILoginService login, ILogger<SftpHandler> logger, IFsoService fsoService) {
         _backendFactory = backendFactory;
         _login = login;
         _logger = logger;
+        _fsoService = fsoService;
     }
 
     public Task<Result<ISftpRequestHandler, LoginError>> TryLoginPublicKey(string username, IPublicKey userPublicKey, IHostKeyPair serverHostKey, CancellationToken cancellationToken) {
@@ -50,7 +52,7 @@ internal class SftpLoginHandler : ISftpLoginHandler {
         return await result
         .Select(token => {
             var backend = _backendFactory.Create(new(token));
-            return new SftpHandler(backend, _logger) as ISftpRequestHandler;
+            return new SftpHandler(backend, _logger,_fsoService) as ISftpRequestHandler;
         })
         .ErrSelectManyAsync(async error => {
             if (error is SshLoginError.TimestampTooEarly or SshLoginError.TimestampWasUsed)
@@ -70,7 +72,7 @@ internal class SftpLoginHandler : ISftpLoginHandler {
         return result
         .Select(token => {
             var backend = _backendFactory.Create(new(token));
-            return new SftpHandler(backend,_logger) as ISftpRequestHandler;
+            return new SftpHandler(backend,_logger,_fsoService) as ISftpRequestHandler;
         })
         .SelectErr(error => error switch {
             Services.LoginError.EmptyCredentials => new LoginError.EmptyCredentials() as LoginError,

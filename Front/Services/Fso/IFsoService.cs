@@ -29,4 +29,5 @@ public interface IFsoService {
     public Task<FsoStatus> GetFsoBySpecificationAsync(FileSpecification specification, IBackend backend, CancellationToken cancellationToken);
     public Task<Result<IEnumerable<string>, ServiceError>> GetFullPath(FsoId fsoId, IBackend backend, CancellationToken cancellationToken);
     public Task<FsoStatus> GetFsoWithRoot(PathData path, FsoId anchor, IBackend backend, CancellationToken cancellationToken);
+    public Task<Result<Unit, ServiceError>> Move(Fso id, string newPath, IBackend backend, CancellationToken cancellationToken);
 }

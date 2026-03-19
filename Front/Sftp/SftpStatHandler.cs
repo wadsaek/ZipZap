@@ -18,12 +18,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Microsoft.Extensions.Logging;
-
 using ZipZap.Classes;
-using ZipZap.Classes.Extensions;
 using ZipZap.Front.Services;
-using ZipZap.LangExt.Extensions;
 using ZipZap.LangExt.Helpers;
 using ZipZap.Sftp;
 using ZipZap.Sftp.Sftp;
@@ -36,10 +32,12 @@ namespace ZipZap.Front.Sftp;
 class SftpStatHandler {
     private readonly IBackend _backend;
     private readonly HandleStore _handleStore;
+    private readonly IFsoService _fsoService;
 
-    public SftpStatHandler(IBackend backend, HandleStore handleStore) {
+    public SftpStatHandler(IBackend backend, HandleStore handleStore, IFsoService fsoService) {
         _backend = backend;
         _handleStore = handleStore;
+        _fsoService = fsoService;
     }
 
     public Task<Result<FileAttributes, Status>> Stat(string path, CancellationToken cancellationToken) {
@@ -72,7 +70,6 @@ class SftpStatHandler {
     }
     private Task<Status> ChangePermissions(Result<Fso, ServiceError> result, FileAttributes fileAttributes, CancellationToken cancellationToken) {
         return result
-
         .Select(fso => fso with {
             Data = fileAttributes.ToFsData(
             fso.Data.Ownership,
@@ -99,25 +96,8 @@ class SftpStatHandler {
     }
 
     internal Task<Status> Rename(string oldpath, string newpath, CancellationToken cancellationToken) {
-        var pathsplit = newpath.SplitPath().ToArray();
-        var newDirname = pathsplit[..^1].ConcatenateWith("/");
-        var newFileName = pathsplit[^1];
         return _backend.GetFsoByPathAsync(new PathDataWithPath(oldpath), cancellationToken)
-        .SelectManyAsync(current =>
-            _backend
-                .GetFsoByPathAsync(new PathDataWithPath(newDirname), cancellationToken)
-                .SelectAsync(parent => (current, parent))
-        )
-        .SelectAsync(param => {
-            var data = param.current.Data;
-            data = data with {
-                Name = newFileName,
-                VirtualLocation = param.parent.Id
-            };
-            param.current = param.current with { Data = data };
-            return param.current;
-        })
-        .SelectManyAsync(updated => _backend.UpdateFso(updated, cancellationToken))
+        .SelectManyAsync(fso => _fsoService.Move(fso, newpath, _backend, cancellationToken))
         .SelectAsync(_ => new Status(SftpError.Ok, "Done!"))
         .UnwrapOrElseAsync(err => err.ToStatus());
     }

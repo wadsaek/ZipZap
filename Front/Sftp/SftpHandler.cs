@@ -41,11 +41,11 @@ class SftpHandler : ISftpRequestHandler {
     private readonly IBackend _backend;
     private readonly HandleStore _handleStore;
 
-    public SftpHandler(IBackend backend, ILogger<SftpHandler> logger) {
+    public SftpHandler(IBackend backend, ILogger<SftpHandler> logger, IFsoService fsoService) {
         _backend = backend;
         _logger = logger;
         _handleStore = new();
-        _statHandler = new(_backend, _handleStore);
+        _statHandler = new(_backend, _handleStore, fsoService);
         _pathHandler = new(_backend);
         _fileHandler = new(_backend, _handleStore);
         _dirHandler = new(_backend, _handleStore);

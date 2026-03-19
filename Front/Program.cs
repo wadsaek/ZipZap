@@ -67,6 +67,7 @@ public class Program {
             rsa.ImportFromPem(pem);
             return rsa;
         });
+        builder.Services.AddScoped<ISftpLoginHandler, SftpLoginHandler>();
         builder.Services.AddSftp<SftpHandlerFactory, SftpConfiguration>();
 
         var app = builder.Build();
