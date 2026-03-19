@@ -14,7 +14,9 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -41,25 +43,40 @@ public class IndexModel : PageModel {
         _logger = logger;
     }
     public new User? User { get; set; }
+    public (FsoAccess acc, User u)[] Accesses = [];
 
     public async Task OnGet(CancellationToken cancellationToken) {
         var token = Request.Cookies[Constants.AUTHORIZATION];
-        if (_logger.IsEnabled(LogLevel.Critical))
-            _logger.LogCritical("Token: {}", token);
         if (token is null)
             return;
 
         var backend = _backendFactory.Create(new(token));
         User = await backend.GetSelf(cancellationToken).UnwrapAsync();
+        var shares = await backend.GetAccessible(cancellationToken).UnwrapOrAsync([]);
+        var tasks = shares.Select(async acc => {
+            var owner = await backend.GetFsoOwner(acc.Fso.Id, cancellationToken);
+            return owner.Select(u => (acc, u));
+        });
+        var results = await Task.WhenAll(tasks);
+        var result = results.ToArrayResult();
+        result.Select(accs => {
+            Accesses = accs;
+            return Page();
+        })
+        .UnwrapOrElse(e => {
+            if (_logger.IsEnabled(LogLevel.Critical))
+                _logger.LogCritical("Received an error when getting owners for fso data: {Err}", e);
+            return Page();
+        });
     }
 
-    public async Task<IActionResult> OnPost() {
-        var response = await _loginService.Login(Username, Password);
+    public async Task<IActionResult> OnPost(CancellationToken cancellationToken) {
+        var response = await _loginService.Login(Username, Password, cancellationToken);
         if (response is Ok<string, LoginError>(var token)) {
             Error = null;
             Response.Cookies.Append(Constants.AUTHORIZATION, token);
-            return Redirect("/");
-
+            await OnGet(cancellationToken);
+            return Page();
         }
 
         if (response is Err<string, LoginError>(var error)) {

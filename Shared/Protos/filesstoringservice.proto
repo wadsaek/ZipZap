@@ -117,6 +117,7 @@ service FilesStoringService {
   rpc GetAccessesForUser(UserSpecification) returns (Accesses);
   rpc GetSharedBySelf(EmptyMessage) returns (Accesses);
   rpc GetAccessible(EmptyMessage) returns (Accesses);
+  rpc GetFsoOwner(Guid) returns (User);
 
   rpc AdminGetUserList(EmptyMessage) returns (UserList);
   rpc AdminGetUser(UserSpecification) returns (User);

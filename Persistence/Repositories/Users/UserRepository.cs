@@ -124,6 +124,14 @@ internal class UserReposirory : IUserRepository {
             token
         );
 
+    public Task<User?> GetUserByRootId(FsoId rootId, CancellationToken cancellationToken = default) {
+        return GetByParameter(
+            $"{UserTableName}.{_userHelper.GetColumnName(nameof(UserInner.Root))}",
+            new NpgsqlParameter<Guid> { Value = rootId.Value },
+            cancellationToken
+        );
+    }
+
     private async Task<User?> GetByParameter<T>(string filterColumn, NpgsqlParameter<T> npgsqlParameter, CancellationToken cancellationToken = default) {
         await using var disposable = await _conn.OpenAsyncDisposable(cancellationToken);
         var cmdBuilder = new StringBuilder($"""
@@ -146,5 +154,4 @@ internal class UserReposirory : IUserRepository {
         }
         return user;
     }
-
 }

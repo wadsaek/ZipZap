@@ -440,6 +440,17 @@ public class Backend : IBackend {
         return result.SelectAsync(accesses => accesses.ToFsoAccesses());
     }
 
+    public Task<Result<User, ServiceError>> GetFsoOwner(FsoId fsoId, CancellationToken cancellationToken = default) {
+        var result = Wrap(
+            async () => await _filesStoringService.GetFsoOwnerAsync(
+                fsoId.Value.ToGrpcGuid(),
+                _configuration.ToMetadata(),
+                cancellationToken: cancellationToken
+        ));
+
+        return result.SelectAsync(u=>u.ToUser());
+        throw new NotImplementedException();
+    }
 }
 public record BackendConfiguration(string AuthToken);
 

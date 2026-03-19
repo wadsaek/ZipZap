@@ -8,6 +8,7 @@
     @{
         var welcomeMessage = "Welcome";
         var user = Model.User;
+        var accesses = Model.Accesses;
     }
     @if (user is not null)
     {
@@ -36,8 +37,22 @@
 
             @if (Model.Error is not null)
             {
-                <div class="alert alert-danger" >@Model.Error</div>
+                <div class="alert alert-danger">@Model.Error</div>
             }
         </form>
+    }
+    @if (accesses is [_, ..])
+    {
+        <h2>Files shared with you</h2>
+        <ul class="list-group">
+            @foreach (var acc in accesses)
+            {
+                <li class="list-group-item">
+                    <a asp-page="/Files/View" asp-route-path="@acc.acc.Fso.Id" asp-route-type="id">@acc.acc.Fso.Data.Name</a>
+                    shared by
+                    <a asp-page="/Account" asp-route-id="@acc.u.Id">@acc.u.Username</a>
+                </li>
+            }
+        </ul>
     }
 </div>

@@ -586,6 +586,19 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         }));
         return new();
     }
+
+    public override async Task<Grpc.User> GetFsoOwner(Grpc.Guid request, ServerCallContext context) {
+        var fsoId = ParseGuidOrThrow(request).ToFsoId();
+        var user = await GetUserOrThrowAsync(context);
+        var fso = await FindDeepestSharedFso(fsoId, user, context.CancellationToken);
+        fso = ThrowNotFoundIfNull(fso);
+        if (fso.OwnershipStatus is OwnershipStatus.Owned) return user.ToGrpcUser();
+        var root = await _fsosRepo.GetRootDirectory(fso.Fso.Id, context.CancellationToken);
+        root = ThrowNotFoundIfNull(root);
+        var owner =  await _usersRepo.GetUserByRootId(root.Id);
+        owner = ThrowNotFoundIfNull(owner);
+        return owner.ToGrpcUser();
+    }
 }
 
 internal static class Predicates {

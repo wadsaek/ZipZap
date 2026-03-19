@@ -23,4 +23,5 @@ namespace ZipZap.Persistence.Repositories;
 
 public interface IUserRepository : IRepository<User, UserId> {
     public Task<User?> GetUserByUsername(string username, CancellationToken cancellationToken = default);
+    public Task<User?> GetUserByRootId(FsoId rootId, CancellationToken cancellationToken = default);
 }

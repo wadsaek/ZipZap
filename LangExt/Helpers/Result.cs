@@ -18,6 +18,7 @@ namespace ZipZap.LangExt.Helpers;
 
 using System;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
@@ -153,8 +154,20 @@ public static class ResultExt {
         public async Task<T> UnwrapOrElseAsync(Func<E, Task<T>> selector)
             => await (await result).UnwrapOrElseAsync(selector);
 
+        public async Task<T> UnwrapOrAsync(T def)
+            => (await result).UnwrapOr(def);
 
         public async Task<T?> UnwrapAsync()
             => (await result).Unwrap();
     };
+    extension<T, E>(Result<T, E>[] results) {
+        public Result<T[], E> ToArrayResult() {
+            var items = new T[results.Length];
+            foreach (var (i, res) in results.Index()) {
+                if (res is Err<T, E>(var e)) return new Err<T[], E>(e);
+                else items[i] = (res as Ok<T, E>)!.Data;
+            }
+            return Ok<T[], E>(items);
+        }
+    }
 }
