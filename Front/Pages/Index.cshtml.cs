@@ -75,8 +75,7 @@ public class IndexModel : PageModel {
         if (response is Ok<string, LoginError>(var token)) {
             Error = null;
             Response.Cookies.Append(Constants.AUTHORIZATION, token);
-            await OnGet(cancellationToken);
-            return Page();
+            return RedirectToPage(this);
         }
 
         if (response is Err<string, LoginError>(var error)) {
