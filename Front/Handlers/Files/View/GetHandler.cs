@@ -18,6 +18,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.ComponentModel;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -27,7 +28,7 @@ using Microsoft.Extensions.Logging;
 
 using ZipZap.Classes;
 using ZipZap.Classes.Extensions;
-using ZipZap.Classes.Helpers;
+using ZipZap.Front.Factories;
 using ZipZap.Front.Helpers;
 using ZipZap.Front.Services;
 using ZipZap.LangExt.Extensions;
@@ -47,9 +48,12 @@ public class GetHandler : IGetHandler {
     private readonly ILogger<GetHandler> _logger;
     private readonly IFsoService _service;
 
-    public GetHandler(ILogger<GetHandler> logger, IFsoService service) {
+    private readonly IRequestBackendFactory _factory;
+
+    public GetHandler(ILogger<GetHandler> logger, IFsoService service, IRequestBackendFactory factory) {
         _logger = logger;
         _service = service;
+        _factory = factory;
     }
 
     public abstract record GetHandlerError {
@@ -61,17 +65,15 @@ public class GetHandler : IGetHandler {
 
     }
 
-    public record GetHandlerResult(Fso Item, Content? Content, string ParentUrl, FileSpecification Specification);
+    public record GetHandlerResult(Fso Item, Content? Content, string ParentUrl, FileSpecification Specification, string FullPath, List<FsoAccess> Accesses);
 
     public async Task<Result<GetHandlerResult, GetHandlerError>> OnGetAsync(FileSpecification specification, HttpRequest request, CancellationToken cancellationToken = default) {
         if (_logger.IsEnabled(LogLevel.Information))
             _logger.LogInformation("Path: {path}\nType: {type}", specification.Identifier, specification.Type);
-        var token = request.Cookies[Constants.AUTHORIZATION];
-        if (token is null)
+        if (_factory.TryGetFromRequest(request) is not (var backend and not null))
             return Err<GetHandlerResult, GetHandlerError>(new GetHandlerError.NotFound());
 
-        var backendConfiguration = new BackendConfiguration(token);
-        var status = await _service.GetFsoBySpecificationAsync(specification, backendConfiguration, cancellationToken);
+        var status = await _service.GetFsoBySpecificationAsync(specification, backend, cancellationToken);
 
         if (status is FsoStatus.ParseError) return Err<GetHandlerResult, GetHandlerError>(new GetHandlerError.BadRequest());
         if (status is FsoStatus.StatusServiceError)
@@ -79,10 +81,28 @@ public class GetHandler : IGetHandler {
 
         var item = (status as FsoStatus.Success)!.Fso;
         var parentUrl = GetRedirectUrl(specification, item);
+        var fullPathResult = await _service.GetFullPath(
+                item.Id,
+                backend,
+                cancellationToken);
+        var fullPath = fullPathResult.UnwrapOr([]).ConcatenateWith("/");
+
+        var contentResult = await TryGetContentAsync(item, specification, backend, cancellationToken);
+        return await contentResult.SelectManyAsync(content =>
+            backend.GetAccessesForFso(item.Id, cancellationToken)
+            .SelectAsync(accesses => (accesses, content))
+            .SelectErrAsync(err => new GetHandlerError.ShouldRedirect(GetRedirectUrl(specification, null)) as GetHandlerError)
+        )
+        .SelectAsync(c => new GetHandlerResult(
+            item, c.content, parentUrl,
+            specification, fullPath, c.accesses.ToList()
+        ));
+    }
+    private async Task<Result<Content, GetHandlerError>> TryGetContentAsync(Fso item, FileSpecification specification, IBackend backend, CancellationToken cancellationToken) {
         Content? content = null;
 
         if (item is Symlink link)
-            return Err<GetHandlerResult, GetHandlerError>(new GetHandlerError.ShouldRedirect(await GetSymlinkLink(specification, backendConfiguration, link, cancellationToken)));
+            return Err<Content, GetHandlerError>(new GetHandlerError.ShouldRedirect(await GetSymlinkLink(specification, backend, link, cancellationToken)));
         if (item is File file) {
             try {
                 var text = file.Content switch {
@@ -96,10 +116,10 @@ public class GetHandler : IGetHandler {
                 content = new Content.UnparsableContent();
             }
         }
-        return Ok<GetHandlerResult, GetHandlerError>(new(item, content, parentUrl, specification));
+        return Ok<Content, GetHandlerError>(content ?? new Content.NoContent());
     }
 
-    private async Task<string> GetSymlinkLink(FileSpecification specification, BackendConfiguration backendConfiguration, Symlink link, CancellationToken cancellationToken) {
+    private async Task<string> GetSymlinkLink(FileSpecification specification, IBackend backend, Symlink link, CancellationToken cancellationToken) {
         // the browser can handle those just fine
         if (specification.Type == IdType.Path) return link.Target;
 
@@ -108,7 +128,7 @@ public class GetHandler : IGetHandler {
         else
             if (await _service.GetFullPath(
                 link.Id,
-                backendConfiguration,
+                backend,
                 cancellationToken) is Ok<IEnumerable<string>, ServiceError>(var path)) { parts = path.ToImmutableList(); } else return "";
         // We're interested in the directory, not the actual path
         parts = parts.RemoveAt(parts.Count - 1);
@@ -116,7 +136,7 @@ public class GetHandler : IGetHandler {
         var result = await _service.GetFsoWithRoot(
             new PathDataWithPath(newpath),
             link.Id,
-            backendConfiguration,
+            backend,
             cancellationToken);
         return result switch {
             FsoStatus.Success(var fso) => $"/Files/View/{fso.Id}?type=id",
@@ -143,6 +163,7 @@ public class GetHandler : IGetHandler {
         };
 
     public abstract record Content {
+        public sealed record NoContent : Content;
         public sealed record TextContent(string Text) : Content;
         public sealed record UnparsableContent : Content;
     }

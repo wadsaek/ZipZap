@@ -16,28 +16,24 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
 using ZipZap.Classes;
 using ZipZap.Classes.Extensions;
-using ZipZap.Front.Factories;
+using ZipZap.Classes.Helpers;
 using ZipZap.Front.Handlers;
+using ZipZap.LangExt.Extensions;
 using ZipZap.LangExt.Helpers;
 
 namespace ZipZap.Front.Services;
 
 public class FsoService : IFsoService {
-    private readonly IBackendFactory _factory;
 
-    public FsoService(IBackendFactory factory) {
-        _factory = factory;
-    }
-
-    public async Task<FsoStatus> GetFsoBySpecificationAsync(FileSpecification specification, BackendConfiguration backendConfiguration, CancellationToken cancellationToken) {
+    public async Task<FsoStatus> GetFsoBySpecificationAsync(FileSpecification specification, IBackend backend, CancellationToken cancellationToken) {
         if (specification.Type == IdType.Path)
             specification = specification with { Identifier = specification.Identifier?.NormalizePath() };
-        var backend = _factory.Create(backendConfiguration);
         if (specification.Type == IdType.Id)
             return await GetFsoById(backend, specification.Identifier, cancellationToken);
 
@@ -52,12 +48,12 @@ public class FsoService : IFsoService {
         return FsoStatus.FromServiceResult(await backend.GetFsoByIdAsync(guid.ToFsoId(), cancellationToken));
     }
 
-    public Task<Result<IEnumerable<string>, ServiceError>> GetFullPath(FsoId id, BackendConfiguration backendConfiguration, CancellationToken cancellationToken) {
-        return _factory.Create(backendConfiguration).GetFullPath(id, cancellationToken);
+    public Task<Result<IEnumerable<string>, ServiceError>> GetFullPath(FsoId id, IBackend backend, CancellationToken cancellationToken) {
+        return backend.GetFullPath(id, cancellationToken);
     }
 
-    public async Task<FsoStatus> GetFsoWithRoot(PathData path, FsoId anchor, BackendConfiguration backendConfiguration, CancellationToken cancellationToken) {
-        return FsoStatus.FromServiceResult(await _factory.Create(backendConfiguration).GetFsoWithRootAsync(path, anchor, cancellationToken));
+    public async Task<FsoStatus> GetFsoWithRoot(PathData path, FsoId anchor, IBackend backend, CancellationToken cancellationToken) {
+        return FsoStatus.FromServiceResult(await backend.GetFsoWithRootAsync(path, anchor, cancellationToken));
     }
 }
 
