@@ -449,7 +449,17 @@ public class Backend : IBackend {
         ));
 
         return result.SelectAsync(u => u.ToUser());
-        throw new NotImplementedException();
+    }
+
+    public Task<Result<Unit, ServiceError>> Unshare(FsoAccessId accessId, CancellationToken cancellationToken = default) {
+        var result = Wrap(
+            async () => await _filesStoringService.UnshareAsync(
+                accessId.Value.ToGrpcGuid(),
+                _configuration.ToMetadata(),
+                cancellationToken: cancellationToken
+        ));
+
+        return result.SelectAsync(_ => new Unit());
     }
 }
 public record BackendConfiguration(string AuthToken);

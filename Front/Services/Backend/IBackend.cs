@@ -53,6 +53,8 @@ public interface IBackend {
     public Task<Result<IEnumerable<FsoAccess>, ServiceError>> GetSharedBySelf(CancellationToken cancellationToken = default);
     public Task<Result<IEnumerable<FsoAccess>, ServiceError>> GetAccessible(CancellationToken cancellationToken = default);
     public Task<Result<User, ServiceError>> GetFsoOwner(FsoId fsoId, CancellationToken cancellationToken = default);
+    public Task<Result<Unit, ServiceError>> Unshare(FsoAccessId fsoId, CancellationToken cancellationToken = default);
+
 
     public Task<Result<User, ServiceError>> GetSelf(CancellationToken cancellationToken = default);
     public Task<Result<User, ServiceError>> RemoveSelf(CancellationToken cancellationToken = default);

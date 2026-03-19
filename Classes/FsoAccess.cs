@@ -24,7 +24,8 @@ public sealed record FsoAccess(
     User User
 ) : IEntity<FsoAccessId>;
 
-public record struct FsoAccessId(Guid Value) {
+public record struct FsoAccessId(Guid Value) : IStrongId {
+    public readonly override string ToString() => Value.ToString();
 }
 
 public record FsoAccessRaw(FsoAccessId Id, FsoId FsoId, UserId UserId) : IEntity<FsoAccessId> {

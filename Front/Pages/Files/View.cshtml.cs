@@ -19,6 +19,7 @@ using System.ComponentModel;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
@@ -28,6 +29,7 @@ using ZipZap.Classes.Extensions;
 using ZipZap.Front.Factories;
 using ZipZap.Front.Handlers;
 using ZipZap.Front.Handlers.Files.View;
+using ZipZap.Front.Services;
 using ZipZap.LangExt.Helpers;
 
 namespace ZipZap.Front.Pages.Files;
@@ -39,11 +41,13 @@ public class FileViewModel : PageModel {
 
     private readonly ILogger<FileViewModel> _logger;
     private readonly IBackendFactory _backendFactory;
+    private readonly IRequestBackendFactory _factory;
 
-    public FileViewModel(ILogger<FileViewModel> logger, IBackendFactory backendFactory, IGetHandler getHandler) {
+    public FileViewModel(ILogger<FileViewModel> logger, IBackendFactory backendFactory, IGetHandler getHandler, IRequestBackendFactory factory) {
         _logger = logger;
         _backendFactory = backendFactory;
         _getHandler = getHandler;
+        _factory = factory;
     }
 
     private readonly IGetHandler _getHandler;
@@ -73,14 +77,36 @@ public class FileViewModel : PageModel {
 
     public async Task<IActionResult> OnPostDelete([FromRoute] Guid path)
         => await DeleteHandler.OnDeleteAsync(path.ToFsoId(), Request, _backendFactory)
-        .SelectAsync(_ => Redirect(".") as IActionResult)
+        .SelectAsync(_ => Redirect(Request.Headers.Referer.ToString()) as IActionResult)
         .UnwrapOrElseAsync(err => err switch {
             DeleteError.Internal => ReportInternalAndRedirect(),
             DeleteError.BadRequest => BadRequest(),
             DeleteError.NotFound => NotFound(),
             _ => throw new InvalidEnumArgumentException()
         });
+    public async Task<IActionResult> OnPostUnshare(Guid accessId, CancellationToken cancellationToken) {
 
+        var backend = _factory.TryGetFromRequest(Request);
+        if (backend is null) return Redirect("/");
+
+        return await backend.Unshare(accessId.ToFsoAccessId(), cancellationToken)
+        .SelectAsync(_ => Redirect(Request.Headers.Referer.ToString()) as IActionResult)
+        .UnwrapOrElseAsync(err => err switch {
+            ServiceError.Unknown(var e) => ReportInternalAndRedirect(),
+            ServiceError.BadRequest => BadRequest(),
+            ServiceError.NotFound => NotFound(),
+            ServiceError.Unauthorized => Unauthorized(),
+            _ => ReportAndRedirect(err, Request)
+        });
+    }
+
+    private RedirectResult ReportAndRedirect(ServiceError error, HttpRequest request) {
+
+        if (_logger.IsEnabled(LogLevel.Critical))
+            _logger.LogCritical("Weird error found: {Error}", error);
+        return Redirect(request.Headers.Referer.ToString());
+
+    }
     private RedirectResult ReportInternalAndRedirect() {
 
         if (_logger.IsEnabled(LogLevel.Critical))
