@@ -21,9 +21,10 @@ using System.Threading.Tasks;
 using ZipZap.Classes;
 
 namespace ZipZap.Persistence.Repositories;
+
 using Key = TrustedAuthorityKey;
-using KeyWithUser = TrustedAuthorityKeyWithUser;
 using KeyId = TrustedAuthorityKeyId;
+using KeyWithUser = TrustedAuthorityKeyWithUser;
 
 public interface ITrustedAuthorityKeysRepository : IRepository<Key, KeyId> {
     public Task<IEnumerable<KeyWithUser>> GetAllWithUser(CancellationToken cancellationToken = default);

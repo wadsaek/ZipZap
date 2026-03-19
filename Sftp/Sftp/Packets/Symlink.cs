@@ -23,17 +23,17 @@ using ZipZap.Sftp.Ssh;
 namespace ZipZap.Sftp.Sftp;
 
 internal record Symlink(uint Id, string LinkPath, string Target) : ISftpClientPayload<Symlink> {
-   public static Message PacketType => Message.Symlink;
+    public static Message PacketType => Message.Symlink;
 
-   public static bool TryParse(byte[] bytes, [NotNullWhen(true)] out Symlink? value) {
-      value = null;
-      var stream = new MemoryStream(bytes);
-      if (!stream.ExpectMessage(PacketType)) return false;
-      if (!stream.SshTryReadUint32Sync(out var id)) return false;
-      if (!stream.SshTryReadStringSync(out var linkpath)) return false;
-      if (!stream.SshTryReadStringSync(out var target)) return false;
-      value = new(id, linkpath, target);
-      return true;
+    public static bool TryParse(byte[] bytes, [NotNullWhen(true)] out Symlink? value) {
+        value = null;
+        var stream = new MemoryStream(bytes);
+        if (!stream.ExpectMessage(PacketType)) return false;
+        if (!stream.SshTryReadUint32Sync(out var id)) return false;
+        if (!stream.SshTryReadStringSync(out var linkpath)) return false;
+        if (!stream.SshTryReadStringSync(out var target)) return false;
+        value = new(id, linkpath, target);
+        return true;
 
-   }
+    }
 }

@@ -25,8 +25,8 @@ using ZipZap.Sftp.Ssh.Services.Connection.Packets;
 
 namespace ZipZap.Sftp.Ssh.Services.Connection;
 
-using SubsystemRequest = ChannelRequest.ChannelRequestGen<ChannelRequestSpecificData.Subsystem>;
 using ExitStatusRequest = ChannelRequest.ChannelRequestGen<ChannelRequestSpecificData.ExitStatus>;
+using SubsystemRequest = ChannelRequest.ChannelRequestGen<ChannelRequestSpecificData.Subsystem>;
 
 internal class SshSessionChannel : SshChannel {
     private readonly ITransportClient _client;

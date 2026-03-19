@@ -20,12 +20,12 @@ using ZipZap.Sftp.Sftp.Numbers;
 namespace ZipZap.Sftp.Sftp;
 
 public record Rmdir(uint Id, string Path) : ISftpClientPayload<Rmdir> {
-   public static Message PacketType => Message.Rmdir;
+    public static Message PacketType => Message.Rmdir;
 
-   public static bool TryParse(byte[] bytes, [NotNullWhen(true)] out Rmdir? value) {
-      value = null;
-      if (!SftpPacketHelper.TryParseIdString(bytes, PacketType, out var id, out var path)) return false;
-      value = new(id, path);
-      return true;
-   }
+    public static bool TryParse(byte[] bytes, [NotNullWhen(true)] out Rmdir? value) {
+        value = null;
+        if (!SftpPacketHelper.TryParseIdString(bytes, PacketType, out var id, out var path)) return false;
+        value = new(id, path);
+        return true;
+    }
 }

@@ -109,7 +109,7 @@ internal class FsoAccessesRepository : IFsoAccessesRepository {
             new NpgsqlParameter<Guid> { Value = id.Value },
             token
         );
-        return accesses switch{
+        return accesses switch {
             [var access] => access,
             [] => null,
             _ => throw new InvalidDataException("Got more accesses than one by id")

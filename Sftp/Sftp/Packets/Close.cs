@@ -21,12 +21,12 @@ using ZipZap.Sftp.Sftp.Numbers;
 namespace ZipZap.Sftp.Sftp;
 
 public record Close(uint Id, string Handle) : ISftpClientPayload<Close> {
-   public static Message PacketType => Message.Close;
+    public static Message PacketType => Message.Close;
 
-   public static bool TryParse(byte[] bytes, [NotNullWhen(true)] out Close? value) {
-      value = null;
-      if (!SftpPacketHelper.TryParseIdString(bytes, PacketType, out var id, out var handle)) return false;
-      value = new(id, handle);
-      return true;
-   }
+    public static bool TryParse(byte[] bytes, [NotNullWhen(true)] out Close? value) {
+        value = null;
+        if (!SftpPacketHelper.TryParseIdString(bytes, PacketType, out var id, out var handle)) return false;
+        value = new(id, handle);
+        return true;
+    }
 }

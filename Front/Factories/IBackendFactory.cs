@@ -23,6 +23,6 @@ namespace ZipZap.Front.Factories;
 public interface IBackendFactory {
     public IBackend Create(BackendConfiguration configuration);
 }
-public interface IRequestBackendFactory{
+public interface IRequestBackendFactory {
     public IBackend? TryGetFromRequest(HttpRequest request);
 }

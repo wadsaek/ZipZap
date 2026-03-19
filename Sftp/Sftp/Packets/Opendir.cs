@@ -21,12 +21,12 @@ using ZipZap.Sftp.Sftp.Numbers;
 namespace ZipZap.Sftp.Sftp;
 
 public record OpenDir(uint Id, string Path) : ISftpClientPayload<OpenDir> {
-   public static Message PacketType => Message.OpenDir;
+    public static Message PacketType => Message.OpenDir;
 
-   public static bool TryParse(byte[] bytes, [NotNullWhen(true)] out OpenDir? value) {
-      value = null;
-      if (!SftpPacketHelper.TryParseIdString(bytes, PacketType, out var id, out var path)) return false;
-      value = new(id, path);
-      return true;
-   }
+    public static bool TryParse(byte[] bytes, [NotNullWhen(true)] out OpenDir? value) {
+        value = null;
+        if (!SftpPacketHelper.TryParseIdString(bytes, PacketType, out var id, out var path)) return false;
+        value = new(id, path);
+        return true;
+    }
 }

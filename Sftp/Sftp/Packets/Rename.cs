@@ -23,16 +23,16 @@ using ZipZap.Sftp.Ssh;
 namespace ZipZap.Sftp.Sftp;
 
 public record Rename(uint Id, string OldPath, string NewPath) : ISftpClientPayload<Rename> {
-   public static Message PacketType => Message.Rename;
+    public static Message PacketType => Message.Rename;
 
-   public static bool TryParse(byte[] bytes, [NotNullWhen(true)] out Rename? value) {
-      value = null;
-      var stream = new MemoryStream(bytes);
-      if (!stream.ExpectMessage(PacketType)) return false;
-      if (!stream.SshTryReadUint32Sync(out var id)) return false;
-      if (!stream.SshTryReadStringSync(out var oldpath)) return false;
-      if (!stream.SshTryReadStringSync(out var newpath)) return false;
-      value = new(id,oldpath,newpath);
-      return true;
-   }
+    public static bool TryParse(byte[] bytes, [NotNullWhen(true)] out Rename? value) {
+        value = null;
+        var stream = new MemoryStream(bytes);
+        if (!stream.ExpectMessage(PacketType)) return false;
+        if (!stream.SshTryReadUint32Sync(out var id)) return false;
+        if (!stream.SshTryReadStringSync(out var oldpath)) return false;
+        if (!stream.SshTryReadStringSync(out var newpath)) return false;
+        value = new(id, oldpath, newpath);
+        return true;
+    }
 }

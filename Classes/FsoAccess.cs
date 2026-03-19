@@ -27,7 +27,7 @@ public sealed record FsoAccess(
 public record struct FsoAccessId(Guid Value) {
 }
 
-public record FsoAccessRaw(FsoAccessId Id, FsoId FsoId, UserId UserId) :IEntity<FsoAccessId>{
-    public FsoAccessRaw (FsoAccess full) :this(full.Id, full.Fso.Id, full.User.Id){}
+public record FsoAccessRaw(FsoAccessId Id, FsoId FsoId, UserId UserId) : IEntity<FsoAccessId> {
+    public FsoAccessRaw(FsoAccess full) : this(full.Id, full.Fso.Id, full.User.Id) { }
     public static FsoAccessRaw From(FsoAccess full) => new(full);
 }

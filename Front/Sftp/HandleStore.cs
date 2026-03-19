@@ -18,6 +18,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 
 namespace ZipZap.Front.Sftp;
+
 using ZipZap.Sftp;
 
 class HandleStore {
@@ -41,7 +42,7 @@ class HandleStore {
         data = fileData;
         return true;
     }
-    public bool TryGetDirData(Handle handle, [NotNullWhen(true)] out OpenFileData.DirectoryData? data){
+    public bool TryGetDirData(Handle handle, [NotNullWhen(true)] out OpenFileData.DirectoryData? data) {
         data = null;
         if (!_openHandles.TryGetValue(handle, out var dataRaw)
             || dataRaw is not OpenFileData.DirectoryData dirData) return false;
@@ -49,5 +50,5 @@ class HandleStore {
         return true;
     }
     public bool Remove(Handle handle) => _openHandles.Remove(handle);
-    public OpenFileData this[Handle handle] {set => _openHandles[handle] = value;}
+    public OpenFileData this[Handle handle] { set => _openHandles[handle] = value; }
 }

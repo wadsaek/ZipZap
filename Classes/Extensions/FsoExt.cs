@@ -35,9 +35,9 @@ public static class FsoExt {
                 ?? fso.Id)
                 .Value.ToGrpcGuid()
         };
-        public FsoWithOwnership Owned()=>new(fso,OwnershipStatus.Owned);
-        public FsoWithOwnership Shared()=>new(fso,OwnershipStatus.Shared);
-        public FsoWithOwnership AdminAccessible()=>new(fso,OwnershipStatus.AdminAccessible);
+        public FsoWithOwnership Owned() => new(fso, OwnershipStatus.Owned);
+        public FsoWithOwnership Shared() => new(fso, OwnershipStatus.Shared);
+        public FsoWithOwnership AdminAccessible() => new(fso, OwnershipStatus.AdminAccessible);
     }
     extension(File file) {
         public static async Task<FileData> ToRpcFileDataAsync(Stream stream) {

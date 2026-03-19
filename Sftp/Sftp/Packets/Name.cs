@@ -23,15 +23,15 @@ using ZipZap.Sftp.Ssh;
 namespace ZipZap.Sftp.Sftp;
 
 internal record Name(uint Id, ImmutableList<FileName> Names) : ISftpServerPayload {
-   public Message PacketType => Message.Name;
+    public Message PacketType => Message.Name;
 
-   public Packet ToPacket() {
-      return new SshMessageBuilder()
-         .Write(PacketType)
-         .Write(Id)
-         .Write((uint)Names.Count)
-         .WriteArray(Names.SelectMany(n => n.ToBytes()).ToArray())
-         .Build();
-   }
+    public Packet ToPacket() {
+        return new SshMessageBuilder()
+           .Write(PacketType)
+           .Write(Id)
+           .Write((uint)Names.Count)
+           .WriteArray(Names.SelectMany(n => n.ToBytes()).ToArray())
+           .Build();
+    }
 }
 

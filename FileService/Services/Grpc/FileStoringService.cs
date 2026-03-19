@@ -45,12 +45,12 @@ using DeleteOptions = ZipZap.Classes.DeleteOptions;
 using Directory = ZipZap.Classes.Directory;
 using File = ZipZap.Classes.File;
 using Guid = System.Guid;
+using OwnershipStatus = ZipZap.Classes.OwnershipStatus;
 using PathData = ZipZap.Classes.PathData;
 using SshKey = ZipZap.Grpc.SshKey;
 using User = ZipZap.Classes.User;
 using UserRole = ZipZap.Classes.UserRole;
 using UserSshKey = ZipZap.Classes.UserSshKey;
-using OwnershipStatus = ZipZap.Classes.OwnershipStatus;
 
 namespace ZipZap.FileService.Services;
 
@@ -595,7 +595,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         if (fso.OwnershipStatus is OwnershipStatus.Owned) return user.ToGrpcUser();
         var root = await _fsosRepo.GetRootDirectory(fso.Fso.Id, context.CancellationToken);
         root = ThrowNotFoundIfNull(root);
-        var owner =  await _usersRepo.GetUserByRootId(root.Id);
+        var owner = await _usersRepo.GetUserByRootId(root.Id);
         owner = ThrowNotFoundIfNull(owner);
         return owner.ToGrpcUser();
     }

@@ -23,17 +23,17 @@ using ZipZap.Sftp.Ssh;
 namespace ZipZap.Sftp.Sftp;
 
 public record Write(uint Id, string Handle, ulong Offset, byte[] Data) : ISftpClientPayload<Write> {
-   public static Message PacketType => Message.Write;
+    public static Message PacketType => Message.Write;
 
-   public static bool TryParse(byte[] bytes, [NotNullWhen(true)] out Write? value) {
-      value = null;
-      var stream = new MemoryStream(bytes);
-      if (!stream.ExpectMessage(PacketType)) return false;
-      if (!stream.SshTryReadUint32Sync(out var id)) return false;
-      if (!stream.SshTryReadStringSync(out var handle)) return false;
-      if (!stream.SshTryReadUInt64Sync(out var offset)) return false;
-      if (!stream.SshTryReadByteStringSync(out var data)) return false;
-      value = new(id, handle, offset, data);
-      return true;
-   }
+    public static bool TryParse(byte[] bytes, [NotNullWhen(true)] out Write? value) {
+        value = null;
+        var stream = new MemoryStream(bytes);
+        if (!stream.ExpectMessage(PacketType)) return false;
+        if (!stream.SshTryReadUint32Sync(out var id)) return false;
+        if (!stream.SshTryReadStringSync(out var handle)) return false;
+        if (!stream.SshTryReadUInt64Sync(out var offset)) return false;
+        if (!stream.SshTryReadByteStringSync(out var data)) return false;
+        value = new(id, handle, offset, data);
+        return true;
+    }
 }

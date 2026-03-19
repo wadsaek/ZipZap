@@ -68,10 +68,9 @@ internal abstract class SshBackgroundHandler<TReceive, TSend> {
             var payload = packet;
             try {
                 await HandlePacket(payload, cancellationToken);
-            } catch(OperationCanceledException){
+            } catch (OperationCanceledException) {
                 return;
-            }
-            catch (Exception ex) {
+            } catch (Exception ex) {
                 if (_logger.IsEnabled(LogLevel.Critical))
                     _logger.LogCritical("Received exception {Ex}", ex);
 

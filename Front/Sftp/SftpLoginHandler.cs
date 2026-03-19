@@ -14,8 +14,11 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Microsoft.Extensions.Logging;
 
 using ZipZap.Classes;
 using ZipZap.Front.Factories;
@@ -25,8 +28,6 @@ using ZipZap.Sftp;
 using ZipZap.Sftp.Ssh.Algorithms;
 
 using LoginError = ZipZap.Sftp.LoginError;
-using System.Linq;
-using Microsoft.Extensions.Logging;
 
 namespace ZipZap.Front.Sftp;
 
@@ -52,7 +53,7 @@ internal class SftpLoginHandler : ISftpLoginHandler {
         return await result
         .Select(token => {
             var backend = _backendFactory.Create(new(token));
-            return new SftpHandler(backend, _logger,_fsoService) as ISftpRequestHandler;
+            return new SftpHandler(backend, _logger, _fsoService) as ISftpRequestHandler;
         })
         .ErrSelectManyAsync(async error => {
             if (error is SshLoginError.TimestampTooEarly or SshLoginError.TimestampWasUsed)
@@ -72,7 +73,7 @@ internal class SftpLoginHandler : ISftpLoginHandler {
         return result
         .Select(token => {
             var backend = _backendFactory.Create(new(token));
-            return new SftpHandler(backend,_logger,_fsoService) as ISftpRequestHandler;
+            return new SftpHandler(backend, _logger, _fsoService) as ISftpRequestHandler;
         })
         .SelectErr(error => error switch {
             Services.LoginError.EmptyCredentials => new LoginError.EmptyCredentials() as LoginError,

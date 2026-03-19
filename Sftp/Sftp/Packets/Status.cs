@@ -21,15 +21,15 @@ using ZipZap.Sftp.Ssh;
 namespace ZipZap.Sftp.Sftp;
 
 internal record Status(uint Id, SftpError Code, string ErrorMessage) : ISftpPayload, ISftpServerPayload {
-   public Message PacketType => Message.Status;
+    public Message PacketType => Message.Status;
 
-   public Packet ToPacket() {
-      return new SshMessageBuilder()
-         .Write(PacketType)
-         .Write(Id)
-         .Write((uint)Code)
-         .Write(ErrorMessage)
-         .Write(string.Empty)
-         .Build();
-   }
+    public Packet ToPacket() {
+        return new SshMessageBuilder()
+           .Write(PacketType)
+           .Write(Id)
+           .Write((uint)Code)
+           .Write(ErrorMessage)
+           .Write(string.Empty)
+           .Build();
+    }
 }

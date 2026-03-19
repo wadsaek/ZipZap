@@ -39,7 +39,7 @@ internal class SftpService {
         _configuration = configuration;
     }
 
-    internal async Task HandleSocket(Socket socket,AsyncServiceScope scope, CancellationToken cancellationToken) {
+    internal async Task HandleSocket(Socket socket, AsyncServiceScope scope, CancellationToken cancellationToken) {
         try {
             using var _socket = socket;
             using var _scope = scope;

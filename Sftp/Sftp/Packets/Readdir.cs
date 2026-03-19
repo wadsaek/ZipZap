@@ -20,13 +20,13 @@ using ZipZap.Sftp.Sftp.Numbers;
 
 namespace ZipZap.Sftp.Sftp;
 
- public record ReadDir(uint Id, string Handle) : ISftpClientPayload<ReadDir> {
+public record ReadDir(uint Id, string Handle) : ISftpClientPayload<ReadDir> {
     public static Message PacketType => Message.ReadDir;
 
     public static bool TryParse(byte[] bytes, [NotNullWhen(true)] out ReadDir? value) {
-      value = null;
-      if (!SftpPacketHelper.TryParseIdString(bytes, PacketType, out var id, out var handle)) return false;
-      value = new(id, handle);
-      return true;
+        value = null;
+        if (!SftpPacketHelper.TryParseIdString(bytes, PacketType, out var id, out var handle)) return false;
+        value = new(id, handle);
+        return true;
     }
 }

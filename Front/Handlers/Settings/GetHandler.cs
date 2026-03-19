@@ -15,26 +15,27 @@
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
+using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+
+using Microsoft.AspNetCore.Http;
 
 using ZipZap.Classes;
-
-using ZipZap.LangExt.Helpers;
-using System.Threading.Tasks;
-using System.Threading;
-using ZipZap.Front.Factories;
-using Microsoft.AspNetCore.Http;
 using ZipZap.Classes.Helpers;
-using static ZipZap.LangExt.Helpers.ResultConstructor;
-using System.Linq;
+using ZipZap.Front.Factories;
 using ZipZap.Front.Services;
-using System;
+using ZipZap.LangExt.Helpers;
 using ZipZap.Sftp.Ssh.Algorithms;
+
+using static ZipZap.LangExt.Helpers.ResultConstructor;
 
 namespace ZipZap.Front.Handlers.Settings;
 
-using Result = IGetHandler.HandlerResult;
 using Error = IGetHandler.HandlerError;
+using Result = IGetHandler.HandlerResult;
 
 public interface IGetHandler {
     public Task<Result<Result, Error>> Handle(HttpRequest request, CancellationToken cancellationToken);

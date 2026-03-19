@@ -20,13 +20,13 @@ using ZipZap.Sftp.Ssh;
 namespace ZipZap.Sftp.Sftp;
 
 public record Data(uint Id, byte[] Bytes) : ISftpServerPayload {
-   public Message PacketType => Message.Data;
+    public Message PacketType => Message.Data;
 
-   public Packet ToPacket() {
-      return new SshMessageBuilder()
-         .Write(PacketType)
-         .Write(Id)
-         .WriteByteString(Bytes)
-         .Build();
-   }
+    public Packet ToPacket() {
+        return new SshMessageBuilder()
+           .Write(PacketType)
+           .Write(Id)
+           .WriteByteString(Bytes)
+           .Build();
+    }
 }

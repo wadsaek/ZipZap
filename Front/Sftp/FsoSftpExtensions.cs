@@ -14,33 +14,33 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-using ZipZap.Sftp.Sftp.Numbers;
-
-using ZipZap.Classes;
-using ZipZap.Front.Services;
-using ZipZap.Sftp;
-using ZipZap.Sftp.Sftp;
-using ZipZap.LangExt.Helpers;
-using ZipZap.Classes.Extensions;
-
+using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using ZipZap.Front.Helpers;
-using ZipZap.LangExt.Extensions;
-using static ZipZap.LangExt.Helpers.ResultConstructor;
-using System.ComponentModel;
 
 using Google.Protobuf;
+
+using ZipZap.Classes;
+using ZipZap.Classes.Extensions;
+using ZipZap.Front.Helpers;
+using ZipZap.Front.Services;
+using ZipZap.LangExt.Extensions;
+using ZipZap.LangExt.Helpers;
+using ZipZap.Sftp;
+using ZipZap.Sftp.Sftp;
+using ZipZap.Sftp.Sftp.Numbers;
+
+using static ZipZap.LangExt.Helpers.ResultConstructor;
 
 
 namespace ZipZap.Front;
 
+using static ServiceError;
+
 using Ownership = Classes.Ownership;
 using SftpOwnership = ZipZap.Sftp.Sftp.Ownership;
 using UnixFileMode = System.IO.UnixFileMode;
-
-using static ServiceError;
 
 static class FsoSftpExtensions {
     extension(Fso fso) {

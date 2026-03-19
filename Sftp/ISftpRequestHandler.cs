@@ -17,12 +17,11 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-using ZipZap.Sftp.Sftp.Numbers;
-
 using ZipZap.LangExt.Helpers;
 using ZipZap.Sftp.Sftp;
-using ZipZap.Sftp.Ssh.Algorithms;
+using ZipZap.Sftp.Sftp.Numbers;
 using ZipZap.Sftp.Ssh;
+using ZipZap.Sftp.Ssh.Algorithms;
 
 namespace ZipZap.Sftp;
 

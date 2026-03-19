@@ -24,9 +24,9 @@ public record Realpath(uint Id, string Path) : ISftpClientPayload<Realpath> {
     public static Message PacketType => Message.Realpath;
 
     public static bool TryParse(byte[] bytes, [NotNullWhen(true)] out Realpath? value) {
-      value = null;
-      if (!SftpPacketHelper.TryParseIdString(bytes, PacketType, out var id, out var path)) return false;
-      value = new(id, path);
-      return true;
+        value = null;
+        if (!SftpPacketHelper.TryParseIdString(bytes, PacketType, out var id, out var path)) return false;
+        value = new(id, path);
+        return true;
     }
 }

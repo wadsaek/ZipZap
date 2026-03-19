@@ -20,7 +20,8 @@ using System.Linq;
 using ZipZap.Classes.Extensions;
 
 namespace ZipZap.Front.Helpers;
-static class PathHelper{
+
+static class PathHelper {
 
     public static IEnumerable<string> NormalizePath(string target, IEnumerable<string> parts) {
         List<string> partsMut = parts.ToList();

@@ -448,7 +448,7 @@ public class Backend : IBackend {
                 cancellationToken: cancellationToken
         ));
 
-        return result.SelectAsync(u=>u.ToUser());
+        return result.SelectAsync(u => u.ToUser());
         throw new NotImplementedException();
     }
 }

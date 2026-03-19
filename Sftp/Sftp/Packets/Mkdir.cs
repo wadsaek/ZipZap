@@ -23,16 +23,16 @@ using ZipZap.Sftp.Ssh;
 namespace ZipZap.Sftp.Sftp;
 
 public record Mkdir(uint Id, string Path, FileAttributes Attrs) : ISftpClientPayload<Mkdir> {
-   public static Message PacketType => Message.Mkdir;
+    public static Message PacketType => Message.Mkdir;
 
-   public static bool TryParse(byte[] bytes, [NotNullWhen(true)] out Mkdir? value) {
-      value = null;
-      var stream = new MemoryStream(bytes);
-      if (!stream.ExpectMessage(PacketType)) return false;
-      if (!stream.SshTryReadUint32Sync(out var id)) return false;
-      if (!stream.SshTryReadStringSync(out var path)) return false;
-      if (!FileAttributes.TryParse(stream, out var attrs)) return false;
-      value = new(id,path,attrs);
-      return true;
-   }
+    public static bool TryParse(byte[] bytes, [NotNullWhen(true)] out Mkdir? value) {
+        value = null;
+        var stream = new MemoryStream(bytes);
+        if (!stream.ExpectMessage(PacketType)) return false;
+        if (!stream.SshTryReadUint32Sync(out var id)) return false;
+        if (!stream.SshTryReadStringSync(out var path)) return false;
+        if (!FileAttributes.TryParse(stream, out var attrs)) return false;
+        value = new(id, path, attrs);
+        return true;
+    }
 }

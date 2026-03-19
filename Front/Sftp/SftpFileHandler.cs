@@ -45,7 +45,7 @@ class SftpFileHandler {
     public Task<Result<Handle, Status>> Open(string pathName, OpenFlags flags, FileAttributes attributes, CancellationToken cancellationToken) {
         return _backend.GetFsoByPathAsync(new PathDataWithPath(pathName), cancellationToken)
         .SelectAsync(f => f.Fso)
-        .CheckFlags(_backend , pathName, flags, attributes, cancellationToken)
+        .CheckFlags(_backend, pathName, flags, attributes, cancellationToken)
         .FollowSymlinks(_backend, pathName, cancellationToken)
         .SelectAsync(fso => _handleStore.CreateHandle(new OpenFileData.FileData(
             fso.Id,
