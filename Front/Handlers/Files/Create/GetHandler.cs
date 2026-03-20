@@ -30,8 +30,10 @@ namespace ZipZap.Front.Handlers.Files.Create;
 
 public class GetHandler {
     public User User { get; }
+    public Fso Fso { get; }
 
-    public GetHandler(User user) {
+    public GetHandler(Fso fso, User user) {
+        Fso = fso;
         User = user;
     }
 
@@ -41,8 +43,8 @@ public class GetHandler {
             return Task.FromResult(Err<GetHandler, GetHandlerError>(new GetHandlerError.Unauthorized()));
         var backend = backendFactory.Create(new(token));
         return backend.GetFsoByIdAsync(id, cancellationToken)
-        .SelectManyAsync(_ => backend.GetSelf(cancellationToken))
-        .SelectAsync(user => new GetHandler(user))
+        .WithUser(backend, cancellationToken)
+        .SelectAsync(param => new GetHandler(param.Item1, param.Item2))
         .SelectErrAsync(err => err switch {
             ServiceError.NotFound => new GetHandlerError.NotFound() as GetHandlerError,
             ServiceError.Unauthorized => new GetHandlerError.Unauthorized(),
