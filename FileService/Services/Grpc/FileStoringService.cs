@@ -25,6 +25,7 @@ using System.Threading.Tasks;
 
 using Grpc.Core;
 
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Logging;
 
 using ZipZap.Classes;
@@ -556,7 +557,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
                 belongingToCurrentUser.Add(acc);
         }
 
-        return accesses.ToGrpc();
+        return belongingToCurrentUser.ToGrpc();
 
     }
     public override async Task<Accesses> GetSharedBySelf(EmptyMessage request, ServerCallContext context) {
@@ -569,7 +570,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
                 belongingToCurrentUser.Add(acc);
         }
 
-        return accesses.ToGrpc();
+        return belongingToCurrentUser.ToGrpc();
     }
 
     public override async Task<EmptyMessage> ShareFso(ShareFsoRequest request, ServerCallContext context) {
