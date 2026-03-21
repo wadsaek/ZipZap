@@ -1,0 +1,18 @@
+@using ZipZap.Classes
+@model IEnumerable<UserSshKey>;
+@{
+var keys = Model.ToList();
+}
+@if (keys is not [])
+{
+    <hr>
+    <h2>Ssh keys</h2>
+    <ul class="list-group">
+        @foreach (var key in keys)
+        {
+            <li class="list-group-item font-monospace overflow-x-scroll text-nowrap user-select-all">
+                @key.Key.Value
+            </li>
+        }
+    </ul>
+}

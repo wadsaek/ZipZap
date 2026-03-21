@@ -1,5 +1,6 @@
 ﻿@page "/Admin/Users/{id:guid}"
 @using ZipZap.Classes
+@using ZipZap.Front.Components
 @model ZipZap.Front.Pages.Admin.Users.UserModel
 @{
     ViewData["Title"] = "User Data";
@@ -7,33 +8,9 @@
 @if (Model.HandlerResult is var data and not null)
 {
     <h1>@data.User.Username</h1>
-    <details class="border border-1 rounded p-2 bg-white col-5 height-8">
-        <summary class=" text text-bold lead " style="display:block">
-            See Details
-        </summary>
-        <hr>
-        <span class="text-secondary ">Id: @data.User.Id</span>
-        <br />
-        <span class="text-secondary">Email: @data.User.Email</span>
-        <br />
-        <span class="text-secondary">Uid: @data.User.DefaultOwnership.FsoOwner</span>
-        <br />
-        <span class="text-secondary">Gid: @data.User.DefaultOwnership.FsoGroup</span>
-    </details>
+    <vc:user-details user=data.User></vc:user-details>
     <a class="btn btn-primary-mine mb-2 mt-2" asp-page="/Files/View" asp-route-path="@data.User.Root.Id" asp-route-type="id">Go to user's root</a>
-    <hr>
-    @if (data.SshKeys is not [])
-    {
-        <h2>Ssh keys</h2>
-        <ul class="list-group">
-            @foreach (var key in data.SshKeys)
-            {
-                <li class="list-group-item font-monospace overflow-x-scroll text-nowrap user-select-all">
-                    @key.Key.Value
-                </li>
-            }
-        </ul>
-    }
+    <vc:user-ssh-keys keys=data.SshKeys></vc:user-ssh-keys>
     <hr>
     <details class="border border-1 border-secondary rounded p-2 col-2">
         <summary class="text text-danger text-bold lead" style="display:block">
