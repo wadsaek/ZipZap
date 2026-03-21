@@ -54,9 +54,9 @@ public class Program {
             Directory.CreateDirectory(path);
         return path;
     }
-    public static RsaSecurityKey GetRsaSecurityKey() {
+    public static RsaSecurityKey GetRsaSecurityKey(ConfigurationManager configuration) {
 
-        var pem = System.IO.File.ReadAllText("/home/wadsaek/Developing/ZipZap/FileService/rsa/grpc");
+        var pem = System.IO.File.ReadAllText(configuration["Rsa:PrivateKey"] ?? throw new Exception("private key not provided"));
         var rsa = RSA.Create();
         rsa.ImportFromPem(pem);
         var key = new RsaSecurityKey(rsa);
@@ -91,19 +91,7 @@ public class Program {
         builder.Services.AddScoped<ISshService, SshService>();
         builder.Services.AddScoped<ITokenService, TokenService>();
 
-        builder.Services.AddScoped(_ => GetRsaSecurityKey());
-
-        builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-            .AddJwtBearer(options => {
-                options.TokenValidationParameters = new() {
-                    ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = GetRsaSecurityKey(),
-
-                    ValidateLifetime = true
-                };
-            });
-        builder.Services.AddAuthorization();
-
+        builder.Services.AddScoped(_ => GetRsaSecurityKey(builder.Configuration));
 
         var app = builder.Build();
         app.MapGrpcService<FilesStoringServiceImpl>();

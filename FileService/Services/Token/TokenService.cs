@@ -60,6 +60,19 @@ public class TokenService : ITokenService {
         var handler = new JwtSecurityTokenHandler();
         if (!handler.CanReadToken(split[1])) return false;
         var jwt = handler.ReadJwtToken(split[1]);
+        try {
+            handler.ValidateToken(split[1], new() {
+                ValidateIssuerSigningKey = true,
+                ValidateAudience = false,
+                ValidateIssuer = false,
+                IssuerSigningKey = _key,
+
+                LogValidationExceptions = true,
+                ValidateLifetime = true
+            }, out _);
+        } catch (Exception e) {
+            return false;
+        }
 
         if (!Guid.TryParse(jwt.Subject, out var guid)) return false;
         userId = guid.ToUserId();
