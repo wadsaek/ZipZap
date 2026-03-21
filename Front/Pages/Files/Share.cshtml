@@ -1,0 +1,29 @@
+﻿@page "/Files/Share/{id:guid}"
+@using ZipZap.Classes
+@model ZipZap.Front.Pages.Files.ShareModel
+@{
+    ViewData["Title"] = "Share an fso";
+}
+@if (Model.Users is not null && Model.Item is not null)
+{
+    <h1>Share @Model.Item.ToString(Fso.ShortListingFormat)</h1>
+    <div class="row">
+        <form method="post" class="col col-5 border-end">
+            <label asp-for="Username" class="form-label h2"></label>
+            <input asp-for="Username" class="form-control mb-2" placeholder="user1234" />
+            <input type="submit" class="btn btn-primary-mine" />
+        </form>
+        <div class="col col-7">
+            @if (Model.Users is not [])
+            {
+                <h2>Users you've already shared fsos with</h2>
+                <ul class="list-group ">
+                    @foreach (var user in Model.Users)
+                    {
+                        <li class="list-group-item">@user.Username</li>
+                    }
+                </ul>
+            }
+        </div>
+    </div>
+}

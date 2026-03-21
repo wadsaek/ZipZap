@@ -14,7 +14,6 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading;
@@ -43,12 +42,13 @@ public class IndexModel : PageModel {
         _logger = logger;
     }
     public new User? User { get; set; }
-    public (FsoAccess acc, User u)[] Accesses = [];
+    public (FsoAccess acc, User u)[] Accessible = [];
+    public FsoAccess[] Shared = [];
 
-    public async Task OnGet(CancellationToken cancellationToken) {
+    public async Task<IActionResult> OnGet(CancellationToken cancellationToken) {
         var token = Request.Cookies[Constants.AUTHORIZATION];
         if (token is null)
-            return;
+            return Page();
 
         var backend = _backendFactory.Create(new(token));
         User = await backend.GetSelf(cancellationToken).UnwrapAsync();
@@ -59,11 +59,13 @@ public class IndexModel : PageModel {
         });
         var results = await Task.WhenAll(tasks);
         var result = results.ToArrayResult();
-        result.Select(accs => {
-            Accesses = accs;
+        return await result
+        .SelectManyAsync(accesible => backend.GetSharedBySelf(cancellationToken).SelectAsync(shared => (shared.ToArray(), accesible)))
+        .SelectAsync(accs => {
+            (Shared, Accessible) = accs;
             return Page();
         })
-        .UnwrapOrElse(e => {
+        .UnwrapOrElseAsync(e => {
             if (_logger.IsEnabled(LogLevel.Critical))
                 _logger.LogCritical("Received an error when getting owners for fso data: {Err}", e);
             return Page();
@@ -75,7 +77,7 @@ public class IndexModel : PageModel {
         if (response is Ok<string, LoginError>(var token)) {
             Error = null;
             Response.Cookies.Append(Constants.AUTHORIZATION, token);
-            return RedirectToPage(this);
+            return Redirect(Request.Path);
         }
 
         if (response is Err<string, LoginError>(var error)) {

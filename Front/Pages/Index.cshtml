@@ -4,11 +4,12 @@
     ViewData["Title"] = "Home page";
 }
 
-<div class="d-flex flex-column justify-content-start align-items-center">
+<div class="d-flex flex-column justify-content-between align-items-center mb-5">
     @{
         var welcomeMessage = "Welcome";
         var user = Model.User;
-        var accesses = Model.Accesses;
+        var accessible = Model.Accessible;
+        var shared = Model.Shared;
     }
     @if (user is not null)
     {
@@ -41,18 +42,40 @@
             }
         </form>
     }
-    @if (accesses is [_, ..])
+</div>
+<div class="row">
+    @if (accessible is [_, ..])
     {
-        <h2>Files shared with you</h2>
-        <ul class="list-group">
-            @foreach (var acc in accesses)
-            {
-                <li class="list-group-item">
-                    <a asp-page="/Files/View" asp-route-path="@acc.acc.Fso.Id" asp-route-type="id">@acc.acc.Fso.Data.Name</a>
-                    shared by
-                    <a asp-page="/Account" asp-route-id="@acc.u.Id">@acc.u.Username</a>
-                </li>
-            }
-        </ul>
+        <div class="col">
+            <h2>Files shared with you</h2>
+            <ul class="list-group">
+                @foreach (var acc in accessible)
+                {
+                    <li class="list-group-item">
+                        <a asp-page="/Files/View" asp-route-path="@acc.acc.Fso.Id"
+                           asp-route-type="id">@acc.acc.Fso.Data.Name</a>
+                        shared by
+                        <a asp-page="/Account" asp-route-id="@acc.u.Id">@acc.u.Username</a>
+                    </li>
+                }
+            </ul>
+        </div>
+    }
+    @if (shared is [_, ..])
+    {
+        <div class="col">
+            <h2>Files shared by you</h2>
+            <ul class="list-group">
+                @foreach (var acc in shared)
+                {
+                    <li class="list-group-item">
+                        <a asp-page="/Files/View" asp-route-path="@acc.Fso.Id"
+                           asp-route-type="id">@acc.Fso.Data.Name</a>
+                        shared with
+                        <a asp-page="/Account" asp-route-id="@acc.User.Id">@acc.User.Username</a>
+                    </li>
+                }
+            </ul>
+        </div>
     }
 </div>
