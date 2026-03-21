@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <ItemGroup>
     <ProjectReference Include="..\Classes\Classes.csproj" />
@@ -11,6 +11,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
     <LangVersion>preview</LangVersion>
+    <UserSecretsId>64fa831c-c7dc-4ec5-97ee-7aa5403d8b1b</UserSecretsId>
+    <AssemblyName>ZipZap.Front</AssemblyName>
   </PropertyGroup>
 
 </Project>

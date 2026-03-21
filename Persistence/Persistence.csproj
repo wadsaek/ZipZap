@@ -10,6 +10,7 @@
     <Nullable>enable</Nullable>
     <LangVersion>preview</LangVersion>
     <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>ZipZap.Persistence</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>

@@ -5,10 +5,13 @@
     <Nullable>enable</Nullable>
     <LangVersion>preview</LangVersion>
     <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>ZipZap.Classes</AssemblyName>
   </PropertyGroup>
+
   <ItemGroup>
     <Protobuf Include="../Shared/Protos/*" />
   </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Grpc.AspNetCore" Version="2.70.0" />
     <PackageReference Include="Grpc.AspNetCore.Server.Reflection" Version="2.70.0" />

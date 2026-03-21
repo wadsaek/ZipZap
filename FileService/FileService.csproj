@@ -6,6 +6,7 @@
     <LangVersion>preview</LangVersion>
     <ImplicitUsings>disable</ImplicitUsings>
     <UserSecretsId>c1c4b4f5-d5d3-4104-ab3d-c856f459c4f8</UserSecretsId>
+    <AssemblyName>ZipZap.FileService</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
