@@ -25,7 +25,6 @@ using System.Threading.Tasks;
 
 using Grpc.Core;
 
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Logging;
 
 using ZipZap.Classes;
@@ -495,9 +494,8 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
             new LoginSshResponse { Error = err.ToGrpcError() }
         );
     }
-    public override async Task<Grpc.User> AdminGetUser(UserSpecification request, ServerCallContext context) {
-        await EnsureAdminOrThrow(context);
-        User? requestedUser = await TryGetUserFromSpecification(request, context.CancellationToken);
+    public override async Task<Grpc.User> GetUser(UserSpecification request, ServerCallContext context) {
+        var requestedUser = await TryGetUserFromSpecification(request, context.CancellationToken);
         return ThrowNotFoundIfNull(requestedUser).ToGrpcUser();
     }
 
@@ -517,8 +515,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         return keys.ToSshKeyList();
     }
 
-    public override async Task<HostKeys> AdminGetSshHostKeys(EmptyMessage request, ServerCallContext context) {
-        await EnsureAdminOrThrow(context);
+    public override async Task<HostKeys> GetSshHostKeys(EmptyMessage request, ServerCallContext context) {
         var keys = await _trustedKeysRepo.GetAllWithUser();
         return keys.ToGrpcHostKeys();
     }

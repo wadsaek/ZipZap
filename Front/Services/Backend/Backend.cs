@@ -277,8 +277,8 @@ public class Backend : IBackend {
         return result.Select(f => f.ToFso());
     }
 
-    public async Task<Result<User, ServiceError>> AdminGetUserById(UserId id, CancellationToken cancellationToken = default) {
-        var result = await Wrap(async () => await _filesStoringService.AdminGetUserAsync(
+    public async Task<Result<User, ServiceError>> GetUserById(UserId id, CancellationToken cancellationToken = default) {
+        var result = await Wrap(async () => await _filesStoringService.GetUserAsync(
             new() { Id = id.Value.ToGrpcGuid() },
             _configuration.ToMetadata(),
             cancellationToken: cancellationToken
@@ -286,8 +286,8 @@ public class Backend : IBackend {
         return result.Select(u => u.ToUser());
     }
 
-    public async Task<Result<User, ServiceError>> AdminGetUserByUsername(string username, CancellationToken cancellationToken = default) {
-        var result = await Wrap(async () => await _filesStoringService.AdminGetUserAsync(
+    public async Task<Result<User, ServiceError>> GetUserByUsername(string username, CancellationToken cancellationToken = default) {
+        var result = await Wrap(async () => await _filesStoringService.GetUserAsync(
             new() { Username = username },
             _configuration.ToMetadata(),
             cancellationToken: cancellationToken
@@ -335,9 +335,9 @@ public class Backend : IBackend {
         return result.Select(list => list.ToSshKeys());
     }
 
-    public async Task<Result<IEnumerable<TrustedAuthorityKeyWithUser>, ServiceError>> AdminGetSshHostKeys(CancellationToken cancellationToken = default) {
+    public async Task<Result<IEnumerable<TrustedAuthorityKeyWithUser>, ServiceError>> GetSshHostKeys(CancellationToken cancellationToken = default) {
         var result = await Wrap(
-            async () => await _filesStoringService.AdminGetSshHostKeysAsync(
+            async () => await _filesStoringService.GetSshHostKeysAsync(
                 new(),
                 _configuration.ToMetadata(),
                 cancellationToken: cancellationToken

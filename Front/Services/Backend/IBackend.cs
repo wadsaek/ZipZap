@@ -63,11 +63,11 @@ public interface IBackend {
 
     public Task<Result<IEnumerable<User>, ServiceError>> AdminGetUsers(CancellationToken cancellationToken = default);
     public Task<Result<Unit, ServiceError>> AdminRemoveUser(UserId id, CancellationToken cancellationToken = default);
-    public Task<Result<User, ServiceError>> AdminGetUserById(UserId id, CancellationToken cancellationToken = default);
-    public Task<Result<User, ServiceError>> AdminGetUserByUsername(string username, CancellationToken cancellationToken = default);
+    public Task<Result<User, ServiceError>> GetUserById(UserId id, CancellationToken cancellationToken = default);
+    public Task<Result<User, ServiceError>> GetUserByUsername(string username, CancellationToken cancellationToken = default);
     public Task<Result<Unit, ServiceError>> AdminAddSshHostKey(SshPublicKey key, string serverName, CancellationToken cancellationToken = default);
     public Task<Result<IEnumerable<UserSshKeyRaw>, ServiceError>> AdminGetSshKeysForUser(UserId key, CancellationToken cancellationToken = default);
-    public Task<Result<IEnumerable<TrustedAuthorityKeyWithUser>, ServiceError>> AdminGetSshHostKeys(CancellationToken cancellationToken = default);
+    public Task<Result<IEnumerable<TrustedAuthorityKeyWithUser>, ServiceError>> GetSshHostKeys(CancellationToken cancellationToken = default);
     public Task<Result<Unit, ServiceError>> AdminRemoveTrustedKey(TrustedAuthorityKeyId id, CancellationToken cancellationToken = default);
 }
 

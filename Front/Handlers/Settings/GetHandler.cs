@@ -59,7 +59,7 @@ public class GetHandler : IGetHandler {
         var token = request.Cookies[Constants.AUTHORIZATION];
         if (token is null) return Err<Result, Error>(new Error.ShouldRedirect("/"));
         var backend = _factory.Create(new(token));
-        return await backend.AdminGetSshHostKeys(cancellationToken)
+        return await backend.GetSshHostKeys(cancellationToken)
         .SelectAsync(keys => new Result(
             keys.ToList(),
             new(

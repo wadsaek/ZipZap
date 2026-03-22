@@ -90,7 +90,7 @@ public class GetHandler : IGetHandler {
         var backend = _factory.Create(new(token));
         var userResult =
             id is not null
-            ? await backend.AdminGetUserById(id.Value, cancellationToken)
+            ? await backend.GetUserById(id.Value, cancellationToken)
             : await backend.GetSelf(cancellationToken);
 
         return await userResult

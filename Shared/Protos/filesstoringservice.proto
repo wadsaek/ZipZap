@@ -120,12 +120,13 @@ service FilesStoringService {
   rpc GetFsoOwner(Guid) returns (User);
   rpc Unshare(Guid) returns (EmptyMessage);
 
+  rpc GetUser(UserSpecification) returns (User);
+  rpc GetSshHostKeys(EmptyMessage) returns (HostKeys);
+
   rpc AdminGetUserList(EmptyMessage) returns (UserList);
-  rpc AdminGetUser(UserSpecification) returns (User);
   rpc AdminRemoveUser(Guid) returns (EmptyMessage);
   rpc AdminGetSshKeysForUser(Guid) returns (UserSshKeyList);
 
-  rpc AdminGetSshHostKeys(EmptyMessage) returns (HostKeys);
   rpc AdminAddSshHostKey(AdminAddSshHostKeyRequest) returns (EmptyMessage);
   rpc AdminRemoveSshHostKey(Guid) returns (EmptyMessage);
 }
