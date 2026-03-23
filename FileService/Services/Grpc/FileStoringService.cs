@@ -363,7 +363,9 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
     }
 
     public override async Task<UserSshKeyList> GetSshKeys(EmptyMessage request, ServerCallContext context) {
-        return await base.GetSshKeys(request, context);
+        var user = await GetUserOrThrowAsync(context);
+        var keys = await _userKeysRepo.GetForUserId(user.Id);
+        return keys.ToSshKeyList();
     }
 
     public override async Task<UserList> AdminGetUserList(EmptyMessage request, ServerCallContext context) {
