@@ -22,7 +22,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
 using ZipZap.Classes.Extensions;
-using ZipZap.Front.Handlers.Users;
+using ZipZap.Front.Handlers.Admin.Users;
 using ZipZap.LangExt.Helpers;
 
 namespace ZipZap.Front.Pages.Admin.Users;

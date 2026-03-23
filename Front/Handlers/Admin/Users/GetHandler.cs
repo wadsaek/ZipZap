@@ -31,12 +31,12 @@ using ZipZap.LangExt.Helpers;
 
 using static ZipZap.LangExt.Helpers.ResultConstructor;
 
-namespace ZipZap.Front.Handlers.Users;
+namespace ZipZap.Front.Handlers.Admin.Users;
 
 using static IGetHandler;
 
 public interface IGetHandler {
-    Task<Result<IResult, Error>> Get(HttpRequest request, UserId? id, CancellationToken cancellationToken);
+    Task<Result<IResult, Error>> Get(HttpRequest request, UserId id, CancellationToken cancellationToken);
 
     public interface IResult {
         User User { get; }
@@ -84,14 +84,11 @@ public class GetHandler : IGetHandler {
         _logger = logger;
     }
 
-    public async Task<Result<IResult, Error>> Get(HttpRequest request, UserId? id, CancellationToken cancellationToken) {
+    public async Task<Result<IResult, Error>> Get(HttpRequest request, UserId id, CancellationToken cancellationToken) {
         var token = request.Cookies[Constants.AUTHORIZATION];
         if (token is null) return Err<IResult, Error>(new Error.ShouldRedirect("/"));
         var backend = _factory.Create(new(token));
-        var userResult =
-            id is not null
-            ? await backend.GetUserById(id.Value, cancellationToken)
-            : await backend.GetSelf(cancellationToken);
+        var userResult = await backend.GetUserById(id, cancellationToken);
 
         return await userResult
             .SelectManyAsync(u => GetKeysForUser(id, backend, u, cancellationToken))
@@ -104,11 +101,8 @@ public class GetHandler : IGetHandler {
 
     }
 
-    private static async Task<Result<IResult, ServiceError>> GetKeysForUser(UserId? id, IBackend backend, User user, CancellationToken cancellationToken) {
-        var keysResult =
-            id is not null
-            ? await backend.AdminGetSshKeysForUser(id.Value, cancellationToken)
-            : await backend.GetSshKeys(cancellationToken);
+    private static async Task<Result<IResult, ServiceError>> GetKeysForUser(UserId id, IBackend backend, User user, CancellationToken cancellationToken) {
+        var keysResult = await backend.AdminGetSshKeysForUser(id, cancellationToken);
 
         return keysResult.Select(keys => new Result(
             user,
