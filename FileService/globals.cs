@@ -15,7 +15,7 @@
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 global using ZipZap.Classes;
-global using ZipZap.LangExt.Helpers;
 global using ZipZap.Classes.Extensions;
+global using ZipZap.LangExt.Helpers;
 
 global using static ZipZap.LangExt.Helpers.ResultConstructor;

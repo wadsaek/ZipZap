@@ -18,9 +18,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace ZipZap.Front.Pages.Status;
 
-public class _404Model : PageModel
-{
-    public void OnGet()
-    {
+public class _404Model : PageModel {
+    public void OnGet() {
     }
 }

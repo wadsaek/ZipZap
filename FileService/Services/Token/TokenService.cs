@@ -67,7 +67,7 @@ public class TokenService : ITokenService {
                 LogValidationExceptions = true,
                 ValidateLifetime = true
             }, out _);
-        } catch (Exception e) {
+        } catch {
             return false;
         }
 

@@ -25,7 +25,7 @@ namespace ZipZap.Front.Components;
 [ViewComponent]
 public class UserDetails : ViewComponent {
     public async Task<IViewComponentResult> InvokeAsync(User user, bool showEmail) {
-        return View(new UserDetailsDto( user, showEmail));
+        return View(new UserDetailsDto(user, showEmail));
     }
 }
 public record UserDetailsDto(User User, bool ShowEmail);

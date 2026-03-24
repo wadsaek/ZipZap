@@ -64,9 +64,9 @@ public class UserService : IUserService {
 
     public async Task<Result<Unit, DbError>> RemoveUser(UserId id, CancellationToken cancellationToken) {
         var user = await _repo.GetByIdAsync(id, cancellationToken);
-        if (user is null) return Err<Unit,DbError>(new DbError.NothingChanged());
+        if (user is null) return Err<Unit, DbError>(new DbError.NothingChanged());
 
-        return await _fsosService.RemoveFso(user.Root,DeleteOptions.All,cancellationToken);
+        return await _fsosService.RemoveFso(user.Root, DeleteOptions.All, cancellationToken);
     }
 
     public Task<IEnumerable<User>> GetAllUsers(CancellationToken token) {
