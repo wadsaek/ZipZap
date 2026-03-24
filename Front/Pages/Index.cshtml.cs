@@ -42,8 +42,8 @@ public class IndexModel : PageModel {
         _logger = logger;
     }
     public new User? User { get; set; }
-    public (FsoAccess acc, User u)[] Accessible = [];
-    public FsoAccess[] Shared = [];
+    public (FsoAccess acc, User u)[] Accessible { get; set; } = [];
+    public FsoAccess[] Shared { get; set; } = [];
 
     public async Task<IActionResult> OnGet(CancellationToken cancellationToken) {
         var token = Request.Cookies[Constants.AUTHORIZATION];

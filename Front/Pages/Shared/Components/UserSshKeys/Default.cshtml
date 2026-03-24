@@ -1,17 +1,24 @@
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery antiforgery
 @using ZipZap.Classes
 @model IEnumerable<UserSshKey>;
 @{
-var keys = Model.ToList();
+    var keys = Model.ToList();
+    var requestToken = antiforgery.GetAndStoreTokens(Context).RequestToken;
 }
 @if (keys is not [])
 {
+    <input id="RequestVerificationToken" type="hidden" value="@requestToken" />
     <hr>
     <h2>Ssh keys</h2>
-    <ul class="list-group">
+    <ul class="list-group mb-2">
         @foreach (var key in keys)
         {
-            <li class="list-group-item font-monospace overflow-x-scroll text-nowrap user-select-all">
-                @key.Key.Value
+            <li class="list-group-item">
+                <div class="row d-flex justify-content-between">
+                    <div class="col-11 font-monospace overflow-x-scroll text-nowrap user-select-all mx-1"> @key.Key.Value</div>
+                    <input type="hidden" value="@key.Id" name="key-id"/>
+                    <button class="btn btn-primary-mine col ms-1" id="@key.Id" class="usersshkeys-remove">Remove</button>
+                </div>
             </li>
         }
     </ul>

@@ -43,6 +43,7 @@
         </form>
     }
 </div>
+<!-- TODO: make a view component for this here and in /Account/ -->
 <div class="row">
     @if (accessible is [_, ..])
     {
@@ -55,7 +56,7 @@
                         <a asp-page="/Files/View" asp-route-path="@acc.acc.Fso.Id"
                            asp-route-type="id">@acc.acc.Fso.Data.Name</a>
                         shared by
-                        <a asp-page="/Account" asp-route-id="@acc.u.Id">@acc.u.Username</a>
+                        <a asp-page="/Account/User" asp-route-id="@acc.u.Id">@acc.u.Username</a>
                     </li>
                 }
             </ul>
@@ -72,7 +73,7 @@
                         <a asp-page="/Files/View" asp-route-path="@acc.Fso.Id"
                            asp-route-type="id">@acc.Fso.Data.Name</a>
                         shared with
-                        <a asp-page="/Account" asp-route-id="@acc.User.Id">@acc.User.Username</a>
+                        <a asp-page="/Account/User" asp-route-id="@acc.User.Id">@acc.User.Username</a>
                     </li>
                 }
             </ul>

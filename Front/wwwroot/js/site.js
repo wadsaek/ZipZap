@@ -12,6 +12,13 @@ async function setLogoutButton() {
         inner.className = "navlink text-light btn";
         inner.innerHTML = "Logout"
         logout.append(inner)
+        const innerAccount = document.createElement("button");
+        innerAccount.onclick = () => {
+            window.location.replace("/Account")
+        };
+        innerAccount.className = "navlink text-light btn";
+        innerAccount.innerHTML = "Account"
+        logout.append(innerAccount)
     }
 }
 _ = setLogoutButton()

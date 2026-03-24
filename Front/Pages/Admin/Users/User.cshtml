@@ -8,8 +8,9 @@
 @if (Model.HandlerResult is var data and not null)
 {
     <h1>@data.User.Username</h1>
-    <vc:user-details user=data.User></vc:user-details>
-    <a class="btn btn-primary-mine mb-2 mt-2" asp-page="/Files/View" asp-route-path="@data.User.Root.Id" asp-route-type="id">Go to user's root</a>
+    <vc:user-details user=data.User show-email></vc:user-details>
+    <a class="btn btn-primary-mine mb-2 mt-2" asp-page="/Files/View" asp-route-path="@data.User.Root.Id"
+       asp-route-type="id">Go to user's root</a>
     <vc:user-ssh-keys keys=data.SshKeys></vc:user-ssh-keys>
     <hr>
     <details class="border border-1 border-secondary rounded p-2 col-2">
@@ -17,19 +18,22 @@
             Danger zone
         </summary>
         <hr>
-        @if(@data.User.Role != UserRole.Admin){
+        @if (@data.User.Role != UserRole.Admin)
+        {
             <button class="btn btn-secondary mb-2">
                 Make an admin
             </button>
-        } else {
+        }
+        else
+        {
             <button class="btn btn-secondary mb-2">
                 Remove admin status
             </button>
         }
         <form method="post" asp-page-handler="Delete">
-        <button class="btn btn-danger" type="submit">
-            Delete this user
-        </button>
+            <button class="btn btn-danger" type="submit">
+                Delete this user
+            </button>
         </form>
     </details>
 }

@@ -50,6 +50,7 @@ public class Program {
         builder.Services.AddScoped<IFsoService, FsoService>();
         builder.Services.AddScoped<Handlers.Files.View.IGetHandler, Handlers.Files.View.GetHandler>();
         builder.Services.AddScoped<Handlers.Admin.Users.IGetHandler, Handlers.Admin.Users.GetHandler>();
+        builder.Services.AddScoped<Handlers.Users.IGetHandler, Handlers.Users.GetHandler>();
         builder.Services.AddScoped<Handlers.Settings.IGetHandler, Handlers.Settings.GetHandler>();
 
         builder.Services

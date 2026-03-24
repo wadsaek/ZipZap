@@ -1,0 +1,97 @@
+﻿@page "/Account/{id:guid?}"
+@using ZipZap.Classes
+@model ZipZap.Front.Pages.Account.UserModel
+@{
+    ViewData["Title"] = "User Data";
+}
+@if (Model.HandlerResult is var data and not null)
+{
+    <h1>@data.User.Username</h1>
+    <vc:user-details user=data.User show-email=Model.ShowEmail></vc:user-details>
+    <hr>
+    <h2>Ssh keys</h2>
+    @if (Model.KeyError is not null)
+    {
+        <p class="text-danger">
+            @Model.KeyError
+        </p>
+    }
+    <ul class="list-group mb-2">
+        @foreach (var key in Model.HandlerResult.SshKeys)
+        {
+            <li class="list-group-item">
+                <div class="font-monospace overflow-x-scroll text-nowrap user-select-all mb-2"> @key.Key.Value</div>
+                @if (data.AddSshKey is not null)
+                {
+                    <form asp-page-handler="DeleteKey" asp-route-key-id="@key.Id.Id">
+                        <input class="btn btn-primary-mine" type="submit" value="Remove">
+                    </form>
+                }
+            </li>
+        }
+    </ul>
+    @if (data.AddSshKey is not null)
+    {
+        <details class="bg-white border border-1 rounded p-2 keyform">
+            <summary class="lead">
+                Add a new key
+            </summary>
+            <hr>
+            <form method="post" onsubmit="return confirm('Are you sure you want to add this key?')" asp-page-handler="AddKey">
+                <div class="mb-2">
+                    <label asp-for="Key" class="form-label"></label>
+                    <textarea class="form-control font-monospace user-select-all" rows="8" style="resize: none"
+                              asp-for="Key"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary-mine">Submit</button>
+            </form>
+        </details>
+    }
+    <form>
+    </form>
+    <div class="row">
+        @if (data.Accessible is [_, ..])
+        {
+            <div class="col">
+                <h2>Files shared with you</h2>
+                <ul class="list-group">
+                    @foreach (var acc in data.Accessible)
+                    {
+                        <li class="list-group-item">
+                            <a asp-page="/Files/View" asp-route-path="@acc.Fso.Id" asp-route-type="id">@acc.Fso.Data.Name</a>
+                        </li>
+                    }
+                </ul>
+            </div>
+        }
+        @if (data.Shared is [_, ..])
+        {
+            <div class="col">
+                <h2>Files shared by you</h2>
+                <ul class="list-group">
+                    @foreach (var acc in data.Shared)
+                    {
+                        <li class="list-group-item">
+                            <a asp-page="/Files/View" asp-route-path="@acc.Fso.Id" asp-route-type="id">@acc.Fso.Data.Name</a>
+                        </li>
+                    }
+                </ul>
+            </div>
+        }
+    </div>
+    @if (data.DeleteUser is not null)
+    {
+        <hr>
+        <details class="border border-1 border-secondary rounded p-2 col-2">
+            <summary class="text text-danger text-bold lead" style="display:block">
+                Danger zone
+            </summary>
+            <hr>
+            <form method="post" asp-page-handler="Delete">
+                <button class="btn btn-danger" type="submit">
+                    Delete yourself
+                </button>
+            </form>
+        </details>
+    }
+}

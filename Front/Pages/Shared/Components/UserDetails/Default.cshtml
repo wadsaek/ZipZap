@@ -1,15 +1,21 @@
-@model ZipZap.Classes.User
+@using ZipZap.Classes
+@{
+}
+@model ZipZap.Front.Components.UserDetailsDto;
 
 <details class="border border-1 rounded p-2 bg-white col-5 height-8">
     <summary class=" text text-bold lead " style="display:block">
         See Details
     </summary>
     <hr>
-    <span class="text-secondary ">Id: @Model.Id</span>
+    <span class="text-secondary ">Id: @Model.User.Id</span>
     <br />
-    <span class="text-secondary">Email: @Model.Email</span>
+    @if (Model.ShowEmail)
+    {
+        <span class="text-secondary">Email: @Model.User.Email</span>
+        <br />
+    }
+    <span class="text-secondary">Uid: @Model.User.DefaultOwnership.FsoOwner</span>
     <br />
-    <span class="text-secondary">Uid: @Model.DefaultOwnership.FsoOwner</span>
-    <br />
-    <span class="text-secondary">Gid: @Model.DefaultOwnership.FsoGroup</span>
+    <span class="text-secondary">Gid: @Model.User.DefaultOwnership.FsoGroup</span>
 </details>
