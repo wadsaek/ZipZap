@@ -461,6 +461,17 @@ public class Backend : IBackend {
 
         return result.SelectAsync(_ => new Unit());
     }
+
+    public Task<Result<Unit, ServiceError>> RemoveSshKey(SshUserKeyId id, CancellationToken cancellationToken) {
+        var result = Wrap(
+            async () => await _filesStoringService.RemoveSshKeyAsync(
+                id.Id.ToGrpcGuid(),
+                _configuration.ToMetadata(),
+                cancellationToken: cancellationToken
+        ));
+
+        return result.SelectAsync(_ => new Unit());
+    }
 }
 public record BackendConfiguration(string AuthToken);
 

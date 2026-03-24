@@ -111,6 +111,7 @@ service FilesStoringService {
   rpc RemoveSelf(EmptyMessage) returns (User);
   rpc AddSshKey(SshKey) returns (Guid);
   rpc GetSshKeys(EmptyMessage) returns (UserSshKeyList);
+  rpc RemoveSshKey(Guid) returns (EmptyMessage);
 
   rpc ShareFso(ShareFsoRequest) returns (EmptyMessage);
   rpc GetAccessesForFso(Guid) returns (Accesses);

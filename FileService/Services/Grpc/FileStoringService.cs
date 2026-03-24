@@ -611,6 +611,14 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         await _fsoAccessesRepo.DeleteAsync(access.Id);
         return new();
     }
+    public override async Task<EmptyMessage> RemoveSshKey(Grpc.Guid request, ServerCallContext context) {
+        var id = ParseGuidOrThrow(request);
+        var user = await GetUserOrThrowAsync(context);
+        var key = await _userKeysRepo.GetByIdAsync(new(id));
+        if (key?.User.Id != user.Id) throw new RpcException(new(StatusCode.NotFound, "Key not found"));
+        await _userKeysRepo.DeleteAsync(key);
+        return new();
+    }
 }
 
 internal static class Predicates {

@@ -60,6 +60,7 @@ public interface IBackend {
     public Task<Result<User, ServiceError>> RemoveSelf(CancellationToken cancellationToken = default);
     public Task<Result<UserSshKeyRaw, ServiceError>> AddSshKey(SshPublicKey key, CancellationToken cancellationToken = default);
     public Task<Result<IEnumerable<UserSshKeyRaw>, ServiceError>> GetSshKeys(CancellationToken cancellationToken = default);
+    Task<Result<Unit, ServiceError>> RemoveSshKey(SshUserKeyId id, CancellationToken cancellationToken);
 
     public Task<Result<IEnumerable<User>, ServiceError>> AdminGetUsers(CancellationToken cancellationToken = default);
     public Task<Result<Unit, ServiceError>> AdminRemoveUser(UserId id, CancellationToken cancellationToken = default);
