@@ -20,9 +20,6 @@ using System.Security.Claims;
 
 using Microsoft.IdentityModel.Tokens;
 
-using ZipZap.Classes;
-using ZipZap.Classes.Extensions;
-
 namespace ZipZap.FileService.Services;
 
 public class TokenService : ITokenService {

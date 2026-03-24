@@ -21,12 +21,8 @@ using System.Threading.Tasks;
 
 using Google.Protobuf.WellKnownTypes;
 
-using ZipZap.Classes;
 using ZipZap.Classes.Helpers;
-using ZipZap.LangExt.Helpers;
 using ZipZap.Persistence.Repositories;
-
-using static ZipZap.LangExt.Helpers.ResultConstructor;
 
 namespace ZipZap.FileService.Services;
 

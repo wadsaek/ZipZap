@@ -19,9 +19,6 @@ using System.Threading.Tasks;
 
 using Google.Protobuf.WellKnownTypes;
 
-using ZipZap.Classes;
-using ZipZap.LangExt.Helpers;
-
 namespace ZipZap.FileService.Services;
 
 public interface ISshService {

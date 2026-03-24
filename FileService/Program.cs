@@ -19,7 +19,6 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -27,7 +26,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 
-using ZipZap.Classes;
 using ZipZap.FileService.Helpers;
 using ZipZap.FileService.Services;
 using ZipZap.Persistence;
@@ -90,6 +88,7 @@ public class Program {
         builder.Services.AddScoped<IUserService, UserService>();
         builder.Services.AddScoped<ISshService, SshService>();
         builder.Services.AddScoped<ITokenService, TokenService>();
+        builder.Services.AddScoped<IFsosService, FsosService>();
 
         builder.Services.AddScoped(_ => GetRsaSecurityKey(builder.Configuration));
 

@@ -27,6 +27,8 @@ namespace ZipZap.FileService.Helpers;
 
 using static LangExt.Helpers.Assertions;
 
+using File = System.IO.File;
+
 public class IO : IIO {
     private readonly IConfiguration _config;
     private readonly ILogger<IO> _logger;

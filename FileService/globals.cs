@@ -1,4 +1,4 @@
-// IConfiguration.cs - Part of the ZipZap project for storing files online
+// globals.cs - Part of the ZipZap project for storing files online
 //     Copyright (C) 2026  Barenboim Esther wadsaek@gmail.com
 //
 //     This program is free software: you can redistribute it and/or modify
@@ -14,9 +14,8 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-namespace ZipZap.FileService.Helpers;
+global using ZipZap.Classes;
+global using ZipZap.LangExt.Helpers;
+global using ZipZap.Classes.Extensions;
 
-public interface IConfiguration {
-    public string BaseFilePath { get; init; }
-    public FileSize MaximumFileSize { get; init; }
-}
+global using static ZipZap.LangExt.Helpers.ResultConstructor;
