@@ -87,6 +87,7 @@ public class Program {
         app.UseAuthentication();
 
         app.MapStaticAssets();
+        app.UseStatusCodePagesWithRedirects("/Status/{0}");
         app.MapRazorPages()
             .WithStaticAssets();
         app.MapDefaultControllerRoute();
