@@ -214,7 +214,7 @@ internal class FsosRepository : IFsosRepository {
                     },
                     token)).FirstOrDefault();
 
-    public async Task<Result<Unit, DbError>> DeleteAsync(Fso fso, DeleteOptions options, CancellationToken cancellationToken) {
+    public async Task<Result<Unit, DbError>> DeleteAsync(FsoId fso, DeleteOptions options, CancellationToken cancellationToken) {
         if (options is DeleteOptions.All)
             return await DeleteAsync(fso, cancellationToken);
 
@@ -243,7 +243,7 @@ internal class FsosRepository : IFsosRepository {
         cmdBuilder.Append(condition);
         cmdBuilder.Append(';');
         var cmd = _conn.CreateCommand(cmdBuilder.ToString());
-        cmd.Parameters.Add(new NpgsqlParameter<Guid> { Value = fso.Id.Value });
+        cmd.Parameters.Add(new NpgsqlParameter<Guid> { Value = fso.Value });
         if (parameter2 is not null)
             cmd.Parameters.Add(parameter2);
         var deleted = await cmd.ExecuteNonQueryAsync(cancellationToken);

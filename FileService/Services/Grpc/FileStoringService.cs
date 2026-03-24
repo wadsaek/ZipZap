@@ -38,7 +38,6 @@ using ZipZap.Persistence.Repositories;
 
 using static Grpc.Core.Metadata;
 
-using DeleteOptions = ZipZap.Classes.DeleteOptions;
 using Directory = ZipZap.Classes.Directory;
 using File = ZipZap.Classes.File;
 using Guid = System.Guid;
@@ -61,6 +60,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
     private readonly IUserRepository _usersRepo;
     private readonly ITrustedAuthorityKeysRepository _trustedKeysRepo;
     private readonly IFsoAccessesRepository _fsoAccessesRepo;
+    private readonly IFsosService _fsosService;
 
     public FilesStoringServiceImpl(
         ILogger<FilesStoringServiceImpl> logger,
@@ -71,7 +71,8 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         IUserSshKeysRepository userKeysRepo,
         ITrustedAuthorityKeysRepository trustedKeysRepo,
         IUserRepository usersRepo,
-        IFsoAccessesRepository fsoAccessesRepo
+        IFsoAccessesRepository fsoAccessesRepo,
+        IFsosService fsosService
     ) {
         _logger = logger;
         _io = io;
@@ -82,6 +83,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         _trustedKeysRepo = trustedKeysRepo;
         _usersRepo = usersRepo;
         _fsoAccessesRepo = fsoAccessesRepo;
+        _fsosService = fsosService;
     }
 
     /// <summary>throws `Unauthenticated` RpcException</summary>
@@ -153,12 +155,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         var user = await GetUserOrThrowAsync(context);
         var (fso, _) = await GetFsoOrFailAsync(request.FsoId, user, context.CancellationToken);
         var options = request.Options.ToOptions();
-        if (options is DeleteOptions.All or DeleteOptions.AllExceptDirectories) {
-            var willBeDeleted = await _fsosRepo.GetAllChildFilesAsync(fso.Id, context.CancellationToken);
-            var paths = willBeDeleted.Select(f => f.PhysicalPath);
-            await _io.RemoveRangeAsync(paths);
-        }
-        return await _fsosRepo.DeleteAsync(fso, options, context.CancellationToken)
+        return await _fsosService.RemoveFso(fso.Id, options, context.CancellationToken)
         .SelectAsync(_ => new EmptyMessage())
         .UnwrapOrElseAsync(err => err switch {
             DbError.NothingChanged => throw new RpcException(new(StatusCode.NotFound, "Resource not found")),
@@ -260,7 +257,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
         var entries = await _fsosRepo.GetAllByDirectory(user.Root, context.CancellationToken);
         if (_logger.IsEnabled(LogLevel.Information))
             _logger.LogInformation("deleting {user}'s [{id}] root :)", user.Username, user.Id);
-        await _fsosRepo.DeleteRangeAsync(entries, context.CancellationToken);
+        await _fsosService.RemoveFsoRange(entries.Select(f => f.Id), context.CancellationToken);
         return new();
     }
 
@@ -508,8 +505,7 @@ public class FilesStoringServiceImpl : FilesStoringService.FilesStoringServiceBa
 
     public override async Task<UserSshKeyList> AdminGetSshKeysForUser(Grpc.Guid request, ServerCallContext context) {
         var id = ParseGuidOrThrow(request).ToUserId();
-        var user = await GetUserOrThrowAsync(context);
-        ThrowIfNotAdmin(user);
+        await EnsureAdminOrThrow(context);
         var keys = await _userKeysRepo.GetForUserId(id);
         return keys.ToSshKeyList();
     }

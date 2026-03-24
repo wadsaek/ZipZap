@@ -31,12 +31,14 @@ namespace ZipZap.FileService.Services;
 public class UserService : IUserService {
     private readonly IUserRepository _repo;
     private readonly ITokenService _tokenService;
+    private readonly IFsosService _fsosService;
 
     public byte[] HashPassword(string password) => SHA512.HashData(Encoding.UTF8.GetBytes(password));
 
-    public UserService(IUserRepository repo, ITokenService tokenService) {
+    public UserService(IUserRepository repo, ITokenService tokenService, IFsosService fsosService) {
         _repo = repo;
         _tokenService = tokenService;
+        _fsosService = fsosService;
     }
 
     private bool UserHasPassword(User user, string password) {
@@ -60,8 +62,11 @@ public class UserService : IUserService {
         return user;
     }
 
-    public Task<Result<Unit, DbError>> RemoveUser(UserId id, CancellationToken cancellationToken) {
-        return _repo.DeleteAsync(id, cancellationToken);
+    public async Task<Result<Unit, DbError>> RemoveUser(UserId id, CancellationToken cancellationToken) {
+        var user = await _repo.GetByIdAsync(id, cancellationToken);
+        if (user is null) return Err<Unit,DbError>(new DbError.NothingChanged());
+
+        return await _fsosService.RemoveFso(user.Root,DeleteOptions.All,cancellationToken);
     }
 
     public Task<IEnumerable<User>> GetAllUsers(CancellationToken token) {
